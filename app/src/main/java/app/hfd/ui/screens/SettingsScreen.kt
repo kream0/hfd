@@ -1,6 +1,11 @@
 package app.hfd.ui.screens
 
 import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import app.hfd.data.Backup
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +71,10 @@ fun SettingsScreen() {
     ) {
         ScreenHeader(stringResource(R.string.tab_settings).uppercase())
 
+        SettingsSection(stringResource(R.string.settings_progress)) {
+            ProgressSection(settings)
+        }
+
         SettingsSection(stringResource(R.string.settings_listening)) {
             ListeningSection(settings)
         }
@@ -107,6 +116,44 @@ fun SettingsScreen() {
                 color = P.textFaint,
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
+        }
+    }
+}
+
+@Composable
+private fun ProgressSection(settings: AppSettings) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    SettingBlock(stringResource(R.string.settings_goal), stringResource(R.string.settings_goal_body)) {
+        val options = AppSettings.GOALS
+        Segmented(options.map { "$it′" }, options.indexOf(settings.dailyGoalMin).coerceAtLeast(0), { i ->
+            Graph.settings.update { it.copy(dailyGoalMin = options[i]) }
+        })
+    }
+    SettingBlock(stringResource(R.string.settings_learn_repeats), stringResource(R.string.settings_learn_repeats_body)) {
+        val options = AppSettings.LEARN_REPEATS
+        Segmented(options.map { "×$it" }, options.indexOf(settings.learnRepeats).coerceAtLeast(0), { i ->
+            Graph.settings.update { it.copy(learnRepeats = options[i]) }
+        })
+    }
+    val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) scope.launch {
+            runCatching { Backup.export(context, uri) }
+                .onSuccess { Graph.toast(R.string.backup_exported) }
+                .onFailure { Graph.toast(R.string.backup_failed, it.message.orEmpty()) }
+        }
+    }
+    val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            runCatching { Backup.import(context, uri) }
+                .onSuccess { Graph.toast(R.string.backup_imported, it) }
+                .onFailure { Graph.toast(R.string.backup_failed, it.message.orEmpty()) }
+        }
+    }
+    SettingBlock(stringResource(R.string.settings_backup), stringResource(R.string.settings_backup_body)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PillButton(stringResource(R.string.settings_export), { exporter.launch(Backup.fileName()) })
+            PillButton(stringResource(R.string.settings_import), { importer.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) })
         }
     }
 }

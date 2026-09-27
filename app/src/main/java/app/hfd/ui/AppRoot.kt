@@ -57,6 +57,9 @@ import app.hfd.ui.components.SheetSpec
 import app.hfd.ui.screens.FadailScreen
 import app.hfd.ui.screens.FadilaScreen
 import app.hfd.ui.screens.HomeScreen
+import app.hfd.ui.screens.LearnScreen
+import app.hfd.ui.screens.ReviewScreen
+import app.hfd.ui.screens.StatsScreen
 import app.hfd.ui.screens.SettingsScreen
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
@@ -92,8 +95,9 @@ fun AppRoot(app: AppViewModel) {
             Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) {
                     when (app.tab) {
-                        Tab.HOME -> HomeScreen(onOpen = app::openFadila, onAll = { app.selectTab(Tab.FADAIL) })
+                        Tab.HOME -> HomeScreen(app)
                         Tab.FADAIL -> FadailScreen(onOpen = app::openFadila)
+                        Tab.STATS -> StatsScreen(onOpen = app::openFadila)
                         Tab.SETTINGS -> SettingsScreen()
                     }
                     FadilaOverlay(app)
@@ -101,12 +105,32 @@ fun AppRoot(app: AppViewModel) {
                 val np by Graph.nowPlaying.collectAsStateWithLifecycle()
                 val playing = np
                 if (playing != null && app.fadila != playing.session.fadilaId) {
-                    MiniPlayer(playing, onOpen = { app.openFadila(playing.session.fadilaId) })
+                    MiniPlayer(playing, onOpen = app::openPlaying)
                 }
                 BottomNav(tab = app.tab, onTab = app::selectTab)
             }
+            FlowOverlay(app)
             ToastHost(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 6.dp))
             SheetHost(sheet, onShow = { sheet = it }) { sheet = null }
+        }
+    }
+}
+
+/** Learn / Review / Test cover the whole screen. */
+@Composable
+private fun FlowOverlay(app: AppViewModel) {
+    var last by remember { mutableStateOf<PracticeFlow?>(null) }
+    app.flow?.let { last = it }
+    AnimatedVisibility(
+        visible = app.flow != null,
+        enter = slideInVertically { it } + fadeIn(),
+        exit = slideOutVertically { it } + fadeOut(),
+    ) {
+        when (val f = last) {
+            PracticeFlow.Learn -> LearnScreen(onClose = { app.flow = null })
+            is PracticeFlow.Review -> ReviewScreen(testOf = null, only = f.only, onClose = { app.flow = null })
+            is PracticeFlow.Test -> ReviewScreen(testOf = f.fadilaId, only = null, onClose = { app.flow = null })
+            null -> Unit
         }
     }
 }
@@ -121,7 +145,7 @@ private fun FadilaOverlay(app: AppViewModel) {
         enter = slideInHorizontally { it / 3 } + fadeIn(),
         exit = slideOutHorizontally { it / 3 } + fadeOut(),
     ) {
-        last?.let { id -> FadilaScreen(id, onBack = { app.fadila = null }) }
+        last?.let { id -> FadilaScreen(id, app, onBack = { app.fadila = null }) }
     }
 }
 

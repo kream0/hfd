@@ -8,12 +8,14 @@ import androidx.media3.exoplayer.ExoPlayer
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.playback.Cursor
+import app.hfd.core.playback.GapMode
 import app.hfd.core.playback.PlanItem
 import app.hfd.core.playback.PlanSpec
 import app.hfd.core.playback.PlaybackPlan
 import app.hfd.core.playback.Reciter
 import app.hfd.core.playback.Reciters
 import app.hfd.core.playback.Timing
+import app.hfd.core.progress.Event
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.AppSettings
 import app.hfd.data.JsonFile
@@ -40,6 +42,13 @@ data class PlaySession(
     /** Position of the sub-range within the faḍīla (for the range picker). */
     val from: Int,
     val to: Int,
+    /** Overrides of the listening settings (Learn steps play with their own repeats and gaps). */
+    val repeatEach: Int? = null,
+    val repeatRange: Int? = null,
+    val gap: GapMode? = null,
+    val basmala: Boolean? = null,
+    /** Lets a caller recognise the end of its own request (e.g. a Learn step). */
+    val tag: String? = null,
 )
 
 /** Saved on every change so playback resumes exactly there (in the app or from earbuds). */
@@ -64,6 +73,8 @@ data class NowPlaying(
     val reciter: Reciter,
     val item: PlanItem?,
     val sleep: Sleep?,
+    /** The plan played to its end. */
+    val ended: Boolean = false,
 )
 
 /**
@@ -89,8 +100,15 @@ class PlaybackEngine(
     val state: StateFlow<NowPlaying?> = _state.asStateFlow()
 
     private var saveJob: Job? = null
+    private val listening = ListenTracker()
 
     init {
+        scope.launch {
+            while (isActive) {
+                listening.tick()
+                delay(TICK_MS)
+            }
+        }
         player.setPlaybackSpeed(applied.speed)
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -102,9 +120,13 @@ class PlaybackEngine(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY) onReady()
                 if (playbackState == Player.STATE_ENDED) onEnded()
+                publish()
             }
 
-            override fun onIsPlayingChanged(isPlaying: Boolean) = scheduleSave()
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (!isPlaying) listening.flush()
+                scheduleSave()
+            }
         })
     }
 
@@ -112,6 +134,7 @@ class PlaybackEngine(
 
     /** Plays [session] from [start] (its first āya by default). */
     fun play(session: PlaySession, start: AyahRef? = null, rep: Int = 1) {
+        listening.flush()
         this.session = session
         endOfFadila = false
         if (_state.value?.sleep == Sleep.EndOfFadila) cancelSleep()
@@ -230,20 +253,23 @@ class PlaybackEngine(
     }
 
     fun saveNow() {
+        listening.flush()
         saveJob?.cancel()
         snapshot()?.let { resumeFile.write(it) }
     }
 
+    fun pause() = player.pause()
+
     // ------------------------------------------------------------------ internals
 
     private fun specFor(session: PlaySession, s: AppSettings): PlanSpec {
-        var repeatEach = s.repeatEach
-        var repeatRange = s.repeatRange
+        var repeatEach = session.repeatEach ?: s.repeatEach
+        var repeatRange = session.repeatRange ?: s.repeatRange
         if (endOfFadila) {
             if (repeatEach == PlanSpec.INFINITE) repeatEach = 1
             repeatRange = currentItem()?.cursor?.pass ?: 1
         }
-        return PlanSpec(session.ayat, repeatEach, repeatRange, s.gap, s.basmala)
+        return PlanSpec(session.ayat, repeatEach, repeatRange, session.gap ?: s.gap, session.basmala ?: s.basmala)
     }
 
     fun currentItem(): PlanItem? {
@@ -343,7 +369,7 @@ class PlaybackEngine(
     private fun publish() {
         val session = session ?: return
         val spec = spec ?: return
-        _state.value = NowPlaying(session, spec, reciter, currentItem(), sleepState)
+        _state.value = NowPlaying(session, spec, reciter, currentItem(), sleepState, player.playbackState == Player.STATE_ENDED)
     }
 
     private fun publishLater() {
@@ -365,7 +391,74 @@ class PlaybackEngine(
         }
     }
 
+    /**
+     * Listening statistics: time spent on each āya (its recitations and the pauses after them)
+     * and recitations heard to at least 90 %, measured from actual playback progress (seeking
+     * doesn't count). Consecutive repetitions of an āya become one event.
+     */
+    private inner class ListenTracker {
+        private var key: String? = null
+        private var ms = 0L
+        private var completions = 0
+        private var itemId: String? = null
+        private var itemPlayed = 0L
+        private var itemDuration = 0L
+        private var lastPos = -1L
+        private var lastTick = 0L
+
+        fun tick() {
+            val item = currentItem()
+            val id = player.currentMediaItem?.mediaId
+            if (!player.isPlaying || item == null || item is PlanItem.Basmala || id == null) {
+                closeItem()
+                lastTick = 0
+                return
+            }
+            if (item.ref.key != key) flush()
+            key = item.ref.key
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (lastTick > 0 && now - lastTick < 3 * TICK_MS) ms += now - lastTick
+            lastTick = now
+            if (item !is PlanItem.Ayah) {
+                closeItem()
+                return
+            }
+            if (id != itemId) {
+                closeItem()
+                itemId = id
+                lastPos = -1
+            }
+            val pos = player.currentPosition
+            val d = player.duration
+            if (d != C.TIME_UNSET && d > 0) itemDuration = d
+            if (lastPos >= 0 && pos >= lastPos && pos - lastPos < 3 * TICK_MS * 2) itemPlayed += pos - lastPos
+            lastPos = pos
+        }
+
+        /** The recitation being tracked ended (or was left): count it if ≥ 90 % was heard. */
+        private fun closeItem() {
+            if (itemId != null && itemDuration > 0 && itemPlayed >= itemDuration * 0.9) completions++
+            itemId = null
+            itemPlayed = 0
+            itemDuration = 0
+            lastPos = -1
+        }
+
+        fun flush() {
+            closeItem()
+            val k = key
+            if (k != null && (ms > 0 || completions > 0)) {
+                Graph.progress.record(Event.Listen(System.currentTimeMillis(), k, ms, completions, reciter.id))
+            }
+            key = null
+            ms = 0
+            completions = 0
+            lastTick = 0
+        }
+    }
+
     companion object {
+        private const val TICK_MS = 500L
         private const val WINDOW = 120
         private const val LOW_WATER = 40
         private const val TRIM_AFTER = 200

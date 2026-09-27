@@ -5,13 +5,16 @@ import app.hfd.core.playback.GapMode
 import app.hfd.core.playback.PlanSpec
 import app.hfd.core.playback.Reciter
 import app.hfd.core.playback.Reciters
+import kotlinx.serialization.Serializable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /** Which translation of meanings shows under each āya. AUTO follows the app language. */
+@Serializable
 enum class TranslationChoice { AUTO, FR, EN }
 
+@Serializable
 data class AppSettings(
     val autoUpdate: Boolean = true,
     /** Translation of meanings under each āya. */
@@ -31,6 +34,10 @@ data class AppSettings(
     val speed: Float = 1f,
     /** Basmala before āya 1 of a sūra (other than al-Fātiḥa and at-Tawba). */
     val basmala: Boolean = true,
+    /** Minutes of practice a day (listening + reciting from memory) that count for the streak. */
+    val dailyGoalMin: Int = 15,
+    /** Recitations heard in the Learn steps "listen" and "repeat". */
+    val learnRepeats: Int = 3,
 ) {
     val reciterInfo: Reciter get() = Reciters.byId(reciter)
 
@@ -47,6 +54,8 @@ data class AppSettings(
         val REPEAT_EACH = listOf(1, 3, 5, 7, 10, PlanSpec.INFINITE)
         val REPEAT_RANGE = listOf(1, 2, 3, 5, 10, PlanSpec.INFINITE)
         val SPEEDS = listOf(0.75f, 0.9f, 1f, 1.1f, 1.25f)
+        val GOALS = listOf(5, 10, 15, 20, 30, 45)
+        val LEARN_REPEATS = listOf(2, 3, 5, 7)
     }
 }
 
@@ -77,6 +86,8 @@ class Settings(context: Context) {
             gap = enumOr(prefs.getString("gap", null), d.gap),
             speed = prefs.getFloat("speed", d.speed).coerceIn(0.5f, 2f),
             basmala = prefs.getBoolean("basmala", d.basmala),
+            dailyGoalMin = prefs.getInt("dailyGoalMin", d.dailyGoalMin).takeIf { it in AppSettings.GOALS } ?: d.dailyGoalMin,
+            learnRepeats = prefs.getInt("learnRepeats", d.learnRepeats).takeIf { it in AppSettings.LEARN_REPEATS } ?: d.learnRepeats,
         )
     }
 
@@ -93,6 +104,8 @@ class Settings(context: Context) {
             .putString("gap", s.gap.name)
             .putFloat("speed", s.speed)
             .putBoolean("basmala", s.basmala)
+            .putInt("dailyGoalMin", s.dailyGoalMin)
+            .putInt("learnRepeats", s.learnRepeats)
             .apply()
     }
 

@@ -136,4 +136,96 @@
     <string name="chip_range">Range ×%s</string>
     <string name="chip_gap">Gap %s</string>
     <string name="chip_all">All</string>
+    <string name="tab_stats">Stats</string>
+
+    <string name="learn">Learn</string>
+    <string name="review">Review</string>
+    <string name="test">Test</string>
+    <string name="learn_title">Learn · %1$s</string>
+    <string name="learn_position">Āya %1$d of %2$d · %3$s</string>
+    <string name="learn_step_listen">Listen</string>
+    <string name="learn_step_listen_body">Listen with the text in front of you.</string>
+    <string name="learn_step_repeat">Repeat in the pauses</string>
+    <string name="learn_step_repeat_body">Recite it aloud in each pause.</string>
+    <string name="learn_step_first_words">First word only</string>
+    <string name="learn_step_first_words_body">Recite along with only the first word to lean on.</string>
+    <string name="learn_step_recite">Recite from memory</string>
+    <string name="learn_step_recite_body">Say the whole āya, then reveal it to check.</string>
+    <string name="learn_step_revealed">How did it go?</string>
+    <string name="learn_step_cumulative">From the start</string>
+    <string name="learn_step_cumulative_body">Recite everything learnt so far, from %1$s to %2$s, from memory.</string>
+    <string name="learn_step_cumulative_revealed">All of it right?</string>
+    <string name="learn_done">Range learnt</string>
+    <string name="learn_done_body">These āyāt now come back in Review when they\'re due.</string>
+    <string name="replay">Replay</string>
+    <string name="next">Next</string>
+    <string name="skip">Skip</string>
+    <string name="reveal">Reveal</string>
+    <string name="hint">Hint</string>
+    <string name="done">Done</string>
+    <string name="close">Close</string>
+    <string name="chain_ok">Flawless</string>
+    <string name="chain_mistakes">Mistakes</string>
+    <string name="rate_again">Again</string>
+    <string name="rate_hard">Hard</string>
+    <string name="rate_good">Good</string>
+    <string name="rate_easy">Easy</string>
+
+    <string name="review_title">Review</string>
+    <string name="test_title">Test · %1$s</string>
+    <string name="review_position">%1$d of %2$d</string>
+    <string name="review_recite">Recite this āya from memory, then reveal it.</string>
+    <string name="review_empty">Nothing due</string>
+    <string name="review_empty_body">Every āya you\'ve learnt is fresh for today.</string>
+    <string name="review_summary">%1$d reviewed · %2$d right</string>
+    <string name="test_summary">%1$d of %2$d recalled</string>
+
+    <string name="home_due">Due today</string>
+    <plurals name="home_due_count">
+        <item quantity="one">%d āya to review</item>
+        <item quantity="other">%d āyāt to review</item>
+    </plurals>
+    <string name="home_goal">Today</string>
+    <string name="home_goal_value">%1$d / %2$d min</string>
+    <string name="home_streak">Streak %1$d</string>
+    <string name="home_continue">Continue</string>
+    <string name="home_continue_learn">Learning %1$s · %2$s</string>
+    <string name="home_continue_listen">Listening to %1$s</string>
+    <string name="home_continue_test">Testing %1$s</string>
+    <string name="home_test_suggested">Time to test yourself</string>
+
+    <string name="progress_memorised">%1$d / %2$d memorised</string>
+    <string name="progress_next_due">next review %1$s</string>
+    <string name="due_now">now</string>
+    <string name="due_in">in %1$s</string>
+
+    <string name="ayah_learn_from">Learn from here</string>
+    <string name="ayah_test">Test this āya</string>
+    <string name="ayah_mark_known">Mark as known</string>
+    <string name="ayah_marked">Marked as known</string>
+    <string name="ayah_strength">Strength %1$d%%</string>
+
+    <string name="stats_title">Stats</string>
+    <string name="stats_streak">Streak</string>
+    <string name="stats_best">Best</string>
+    <string name="stats_memorised">Āyāt memorised</string>
+    <string name="stats_listening">Listening</string>
+    <string name="stats_goal">Daily goal</string>
+    <string name="stats_calendar">Last 20 weeks</string>
+    <string name="stats_fadail">Per faḍīla</string>
+    <string name="stats_reviews">Recitations from memory</string>
+    <string name="stats_listens">Āyāt heard</string>
+
+    <string name="settings_progress">Progress</string>
+    <string name="settings_goal">Daily goal</string>
+    <string name="settings_goal_body">Minutes of practice a day (listening and reciting from memory). Days that reach it build the streak.</string>
+    <string name="settings_learn_repeats">Learn: recitations per step</string>
+    <string name="settings_learn_repeats_body">How many times an āya plays in the “listen” and “repeat” steps.</string>
+    <string name="settings_backup">Backup</string>
+    <string name="settings_backup_body">Progress and settings are in Android\'s own backup. You can also save a JSON file anywhere, and import it on this or another phone (imports merge, nothing is lost).</string>
+    <string name="settings_export">Export</string>
+    <string name="settings_import">Import</string>
+    <string name="backup_exported">Backup saved</string>
+    <string name="backup_imported">Backup imported · %1$d new events</string>
+    <string name="backup_failed">Couldn\'t read that backup: %1$s</string>
 </resources>

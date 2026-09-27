@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         Graph.player.disconnect()
+        Graph.progress.flush()
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -3,6 +3,8 @@ package app.hfd
 import android.app.Application
 import androidx.annotation.StringRes
 import app.hfd.data.ContentRepo
+import app.hfd.data.ProgressRepo
+import app.hfd.data.SessionStore
 import app.hfd.data.RangeStore
 import app.hfd.data.Settings
 import app.hfd.download.AudioDownloader
@@ -50,6 +52,8 @@ object Graph {
     val downloads: AudioDownloader by lazy { AudioDownloader(app, audio, http, scope) }
     val player: PlayerConnection by lazy { PlayerConnection(app) }
     val ranges: RangeStore by lazy { RangeStore(app) }
+    val progress: ProgressRepo by lazy { ProgressRepo(app, scope) }
+    val sessions: SessionStore by lazy { SessionStore(app) }
 
     /** Set by [app.hfd.playback.PlaybackService] while it runs (same process). */
     val engine = MutableStateFlow<PlaybackEngine?>(null)
@@ -73,5 +77,6 @@ object Graph {
         app = application
         content.content // start loading the text in the background right away
         audio.files // and indexing the āya files on the phone
+        progress.state // and rebuilding progress from its log
     }
 }

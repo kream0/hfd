@@ -18,6 +18,7 @@ import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.fadail.FadailGroup
 import app.hfd.core.fadail.FadailGrouping
+import app.hfd.core.progress.Stats
 import app.hfd.ui.components.DotLoader
 import app.hfd.ui.components.FadilaRow
 import app.hfd.ui.components.ScreenHeader
@@ -28,6 +29,8 @@ import app.hfd.ui.label
 fun FadailScreen(onOpen: (String) -> Unit) {
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
+    val progress by Graph.progress.state.collectAsStateWithLifecycle()
+    val now = System.currentTimeMillis()
     val c = content
     Box(Modifier.fillMaxSize().statusBarsPadding()) {
         if (c == null) {
@@ -42,7 +45,7 @@ fun FadailScreen(onOpen: (String) -> Unit) {
                     SectionLabel(groupTitle(group), Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp))
                 }
                 items(entries, key = { "$group-${it.id}" }) { f ->
-                    FadilaRow(f, progress = 0f, onClick = { onOpen(f.id) })
+                    FadilaRow(f, progress = Stats.fadila(progress, f, Graph.progress.fsrs, now).fraction, onClick = { onOpen(f.id) })
                 }
             }
             item { Box(Modifier.padding(bottom = 24.dp)) }

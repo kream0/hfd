@@ -18,6 +18,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import app.hfd.core.progress.Event
+import app.hfd.core.progress.Mode
+import app.hfd.core.progress.Stats
+import app.hfd.core.srs.Rating
+import app.hfd.ui.AppViewModel
+import app.hfd.ui.components.DotRing
+import app.hfd.ui.components.PillButton
+import app.hfd.ui.components.PillStyle
+import app.hfd.ui.components.StrengthRing
+import app.hfd.ui.components.formatInterval
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
@@ -65,11 +76,12 @@ import app.hfd.ui.theme.Type
 import app.hfd.ui.uiLanguage
 
 @Composable
-fun FadilaScreen(id: String, onBack: () -> Unit) {
+fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
     val translations by Graph.content.translations.collectAsStateWithLifecycle()
     val np by Graph.nowPlaying.collectAsStateWithLifecycle()
+    val progress by Graph.progress.state.collectAsStateWithLifecycle()
     val sheets = LocalSheets.current
     val context = LocalContext.current
     val lang = settings.translationFor(uiLanguage)
@@ -122,16 +134,23 @@ fun FadilaScreen(id: String, onBack: () -> Unit) {
             }
             val title = f.title.text
             val bottomSpace = with(LocalDensity.current) { panelPx.toDp() } + 24.dp
+            val now = System.currentTimeMillis()
             LazyColumn(Modifier.fillMaxSize(), state = listState) {
-                item(key = "intro") { Intro(f) }
+                item(key = "intro") { Intro(f, app) }
                 readingItems(
                     content = c,
                     fadila = f,
                     arabicSize = settings.arabicSize,
                     translation = if (settings.showTranslation) translations[lang] else null,
                     current = current,
+                    marks = { ref ->
+                        val p = progress[ref.key]
+                        if (!p.started) null else {
+                            { StrengthRing(Graph.progress.fsrs.strength(p.card, now).toFloat(), Modifier.size(16.dp)) }
+                        }
+                    },
                     onTap = { ref -> playFrom(f, title, ref) },
-                    onLongPress = { ref -> sheets(ayahActions(context, f, title, ref)) },
+                    onLongPress = { ref -> sheets(ayahActions(context, app, f, title, ref)) },
                 )
                 item(key = "end") { Spacer(Modifier.height(bottomSpace)) }
             }
@@ -154,13 +173,21 @@ private fun playFrom(f: Fadila, title: String, ref: AyahRef) {
     Graph.player.play(sessionFor(f, title, range), start = ref)
 }
 
-private fun ayahActions(context: android.content.Context, f: Fadila, title: String, ref: AyahRef): SheetSpec {
+private fun ayahActions(context: android.content.Context, app: AppViewModel, f: Fadila, title: String, ref: AyahRef): SheetSpec {
     val index = f.ayat.indexOf(ref)
     val range = Graph.ranges.get(f.id, f.size)
+    val p = Graph.progress.state.value[ref.key]
+    val strength = if (p.started) " · " + context.getString(R.string.ayah_strength, (Graph.progress.fsrs.strength(p.card, System.currentTimeMillis()) * 100).toInt()) else ""
     return SheetSpec(
         title = ref.toString(),
-        subtitle = title,
-        actions = listOf(
+        subtitle = title + strength,
+        actions = listOfNotNull(
+            SheetAction(context.getString(R.string.ayah_learn_from)) { app.learn(f, index) },
+            SheetAction(context.getString(R.string.ayah_test)) { app.review(listOf(ref)) },
+            if (p.started) null else SheetAction(context.getString(R.string.ayah_mark_known), Ic.Check) {
+                Graph.progress.record(Event.Rate(System.currentTimeMillis(), ref.key, Rating.EASY, Mode.LEARN))
+                Graph.toast(R.string.ayah_marked)
+            },
             SheetAction(context.getString(R.string.ayah_play_from)) { playFrom(f, title, ref) },
             SheetAction(context.getString(R.string.ayah_repeat), Ic.RepeatOne) {
                 val single = SubRange(index, index)
@@ -179,8 +206,12 @@ private fun ayahActions(context: android.content.Context, f: Fadila, title: Stri
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Intro(f: Fadila) {
+private fun Intro(f: Fadila, app: AppViewModel) {
     val uri = LocalUriHandler.current
+    val progress by Graph.progress.state.collectAsStateWithLifecycle()
+    val now = System.currentTimeMillis()
+    val p = Stats.fadila(progress, f, Graph.progress.fsrs, now)
+    val lang = uiLanguage
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
         Text(
             f.title.ar.orEmpty(),
@@ -206,6 +237,28 @@ private fun Intro(f: Fadila) {
         if (!f.grading.grade.acceptable) {
             Spacer(Modifier.height(14.dp))
             Text(stringResource(R.string.detail_weak_warning), style = Type.body, color = P.accent)
+        }
+
+        // Memorisation: progress, next review, and the practice flows.
+        Spacer(Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            DotRing(p.fraction, Modifier.size(34.dp), color = P.saveColor(p.fraction))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.progress_memorised, p.memorised, p.total), style = Type.title, color = P.text)
+                p.nextDue?.let { d ->
+                    Text(
+                        stringResource(R.string.progress_next_due, if (d <= now) stringResource(R.string.due_now) else stringResource(R.string.due_in, formatInterval(d - now, lang))).uppercase(),
+                        style = Type.label,
+                        color = P.textDim,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PillButton(stringResource(R.string.learn), { app.learn(f) }, style = PillStyle.Filled)
+            if (p.started > 0) PillButton(stringResource(R.string.test), { app.test(f) })
         }
 
         Spacer(Modifier.height(18.dp))

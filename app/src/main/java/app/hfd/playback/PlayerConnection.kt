@@ -10,6 +10,7 @@ import androidx.media3.session.SessionToken
 import app.hfd.Graph
 import app.hfd.core.playback.MediaIds
 import app.hfd.core.quran.AyahRef
+import app.hfd.data.AppMode
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -118,8 +119,10 @@ class PlayerConnection(private val context: Context) {
     // ------------------------------------------------------------------ commands
 
     /** Plays [session] from [start]; the service builds the plan (repeats, gaps, basmala). */
-    fun play(session: PlaySession, start: AyahRef? = null) = withController {
-        Graph.engine.value?.play(session, start)
+    fun play(session: PlaySession, start: AyahRef? = null) {
+        // Plain listening (not a Learn / Review step) is what "continue" resumes.
+        if (session.tag == null) Graph.sessions.update { it.copy(mode = AppMode.LISTEN, fadilaId = session.fadilaId) }
+        withController { Graph.engine.value?.play(session, start) }
     }
 
     fun togglePlay() = withController { c ->
