@@ -142,8 +142,7 @@ object Type {
 }
 
 @Composable
-fun HfdTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
+fun HfdTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val p = if (dark) DarkPalette else LightPalette
     val scheme = if (dark) {
         darkColorScheme(

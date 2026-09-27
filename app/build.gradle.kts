@@ -90,6 +90,15 @@ android {
         abortOnError = false
         checkReleaseBuilds = false
     }
+
+    testOptions {
+        unitTests {
+            // Robolectric screenshot tests (src/testDebug, run by .github/workflows/screenshots.yml)
+            // need the app's resources and assets, and write their PNGs to docs/screenshots.
+            isIncludeAndroidResources = true
+            all { it.systemProperty("hfd.screenshots", rootProject.file("docs/screenshots").absolutePath) }
+        }
+    }
 }
 
 dependencies {
@@ -115,4 +124,11 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

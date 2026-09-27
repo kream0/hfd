@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+Progress per āya: Learn, Review and Test with spaced repetition (FSRS), stats, streak, backup.
+- Learn an āya step by step: listen, repeat in the pauses, first word only, recite from memory, reveal and rate; then recite from the start of the range.
+- Review what's due today across all faḍāʾil, text hidden; full-faḍīla tests when everything is memorised.
+- Strength ring on every āya, progress ring on every faḍīla; Stats tab with streak, daily goal, calendar, āyāt memorised, listening time.
+- The app reopens exactly where you left it. Progress is in Android's backup, and can be exported / imported as a file.
+
 ## 0.3.0
 Listen per āya: repeats, gaps to repeat aloud, speed, five reciters, offline audio, earbud controls.
 - Repeat each āya ×1–10 or ∞, the range ×1–10 or ∞, a pause of ½×, 1× or 1½× the āya's length after each recitation, speed 0.75–1.25×, basmala before a sūra.

@@ -49,6 +49,27 @@ that the app updates itself from new releases. Android 8.0 or newer.
 - **Offline:** opening a faḍīla downloads all its āya files (resumable, retried when the network
   returns); local files always play first and streamed ones are cached (256 MB). The chip goes
   red → orange → yellow → green as files arrive. *Settings → Listening* shows and clears them.
+- **Progress per āya:** every āya is a card keyed `sūra:āya` holding listening stats
+  (recitations heard to ≥ 90 %, listening time, last heard) and its memorisation state under
+  **FSRS-6** (state, due, stability, difficulty, reps, lapses, last rating), ported to pure
+  Kotlin and checked against the reference py-fsrs 6.3.2. Its strength (current
+  retrievability) shows as a red → green ring next to the āya.
+- **Learn:** per āya, listen ×N with the text, repeat aloud in the pauses, first word only,
+  recite from memory, reveal and rate Again / Hard / Good / Easy (each button shows the next
+  interval); after each new āya, recite from the start of the range (sabaq / sabqī).
+  Long-press an āya to learn from there, test it, or mark it as known.
+- **Review:** everything due today across all faḍāʾil, in muṣḥaf order: text hidden, recite,
+  reveal (the āya plays), rate. A full test of a faḍīla is suggested once all its āyāt are
+  memorised, then every 30 days.
+- **Home and Stats:** today's goal (minutes of practice), streak, due reviews, continue where
+  you left off, per-faḍīla progress (memorised / total, next review), a dot-matrix calendar,
+  total āyāt memorised and listening time.
+- **Never lose progress:** every event (listen, rating, recitation from the start, test) is
+  appended to `progress/events.jsonl`, from which all state and stats are rebuilt (a snapshot
+  only speeds up startup). `progress/` and the settings are in Android Auto Backup; *Settings →
+  Progress → Backup* exports / imports a JSON file (imports merge, nothing is overwritten).
+  The app reopens exactly where you left it: tab, faḍīla, Learn step or test position, and the
+  player's āya, repetition and position.
 - **Updates:** on every start the app checks the repo's latest published release. A newer APK
   is downloaded in the background, its SHA-256 checked against the release's `version.json`,
   then the app offers *Install* (Android shows its own confirmation; the first time it asks to
@@ -56,7 +77,7 @@ that the app updates itself from new releases. Android 8.0 or newer.
   auto-download switch. Pre-releases and test builds are never offered.
 - **Never lose progress:** settings and progress are included in Android's Auto Backup.
 
-Roadmap: v0.4.0 per-āya progress (FSRS), Learn and Review · v1.0.0 reminders.
+Roadmap: v1.0.0 reminders.
 
 ## Releasing
 
