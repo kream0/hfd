@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,7 +57,9 @@ fun GradeChip(grade: Grade, modifier: Modifier = Modifier) {
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun rangesLabel(f: Fadila): String {
-    val refs = f.ranges.joinToString(" · ") { it.toString() }
+    // Whole sūras read better as their numbers ("112 · 113 · 114") than as āya ranges.
+    val refs = if ("sura" in f.tags) f.ranges.joinToString(" · ") { it.sura.toString() }
+    else f.ranges.joinToString(" · ") { it.toString() }
     return refs + "  ·  " + pluralStringResource(R.plurals.ayat_count, f.size, f.size)
 }
 
@@ -88,6 +91,13 @@ fun FadilaRow(f: Fadila, progress: Float, onClick: () -> Unit, modifier: Modifie
             }
         }
         Spacer(Modifier.width(12.dp))
-        Text(f.title.ar.orEmpty(), style = Type.arabicTitle.copy(fontSize = 20.sp, lineHeight = 32.sp), color = P.textDim, maxLines = 1)
+        Text(
+            f.title.ar.orEmpty(),
+            style = Type.arabicTitle.copy(fontSize = 20.sp, lineHeight = 32.sp),
+            color = P.textDim,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 140.dp),
+        )
     }
 }

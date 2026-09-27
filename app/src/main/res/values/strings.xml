@@ -228,4 +228,5 @@
     <string name="backup_exported">Backup saved</string>
     <string name="backup_imported">Backup imported · %1$d new events</string>
     <string name="backup_failed">Couldn\'t read that backup: %1$s</string>
+    <string name="offline_partial">%d%% offline · save all</string>
 </resources>

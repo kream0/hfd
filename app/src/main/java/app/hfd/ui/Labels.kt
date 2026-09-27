@@ -44,5 +44,9 @@ val Grade.label: Int
 /** Western digits → Arabic-Indic (٠١٢…), for āya-end markers. */
 fun arabicDigits(n: Int): String = n.toString().map { '٠' + (it - '0') }.joinToString("")
 
-/** The āya-end medallion (U+06DD) with its number, kept on the same line as the last word. */
-fun ayahEnd(aya: Int): String = " ۝" + arabicDigits(aya)
+/**
+ * The āya number between ornate parentheses ﴿٤﴾, kept on the same line as the last word.
+ * (The U+06DD medallion would need the font to enclose the digits, which Android's text
+ * stack doesn't do: the number ends up beside an empty medallion.)
+ */
+fun ayahEnd(aya: Int): String = "\u00A0\uFD3F" + arabicDigits(aya) + "\uFD3E"

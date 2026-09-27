@@ -64,7 +64,7 @@ import app.hfd.ui.components.PlayerPanel
 import app.hfd.ui.components.SectionLabel
 import app.hfd.ui.components.SheetAction
 import app.hfd.ui.components.SheetSpec
-import app.hfd.ui.components.neededAudio
+import app.hfd.ui.components.autoAudio
 import app.hfd.ui.components.rangesLabel
 import app.hfd.ui.components.readingIndex
 import app.hfd.ui.components.readingItems
@@ -98,8 +98,11 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
     val f = c?.fadila(id)
 
     // Opening a faḍīla downloads its āyāt for the chosen reciter (small files; then fully offline).
-    LaunchedEffect(f, settings.reciter, settings.basmala) {
-        if (f != null) Graph.downloads.ensure(settings.reciterInfo, neededAudio(f, settings))
+    // Long sūras only get the chosen range (or their first āyāt): the rest streams and is cached,
+    // and a tap on the offline chip saves everything.
+    val ranges by Graph.ranges.ranges.collectAsStateWithLifecycle()
+    LaunchedEffect(f, settings.reciter, settings.basmala, ranges[id]) {
+        if (f != null) Graph.downloads.ensure(settings.reciterInfo, autoAudio(f, settings))
     }
 
     val current: AyahRef? = np?.takeIf { it.session.fadilaId == id }?.item?.ref

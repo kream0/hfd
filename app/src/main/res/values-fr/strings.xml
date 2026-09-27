@@ -229,4 +229,5 @@
     <string name="backup_exported">Sauvegarde enregistrée</string>
     <string name="backup_imported">Sauvegarde importée · %1$d nouveaux événements</string>
     <string name="backup_failed">Sauvegarde illisible : %1$s</string>
+    <string name="offline_partial">%d %% hors ligne · tout enregistrer</string>
 </resources>

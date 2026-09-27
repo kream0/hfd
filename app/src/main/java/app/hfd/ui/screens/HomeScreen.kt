@@ -134,7 +134,8 @@ fun HomeScreen(app: AppViewModel) {
         val visible = remember(c) { c.fadail.filter { it.visible(showWeak = false) } }
         fun progressOf(f: Fadila) = Stats.fadila(progress, f, Graph.progress.fsrs, now).fraction
 
-        val tests = visible.filter { Stats.testSuggested(progress, it, now) }
+        // One suggestion per passage (three entries share Āyat al-Kursī).
+        val tests = visible.filter { Stats.testSuggested(progress, it, now) }.distinctBy { f -> f.ayat }
         if (tests.isNotEmpty()) {
             SectionLabel(stringResource(R.string.home_test_suggested), Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp))
             tests.forEach { f -> FadilaRow(f, progressOf(f), onClick = { app.test(f) }) }

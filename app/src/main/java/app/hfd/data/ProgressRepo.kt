@@ -55,8 +55,13 @@ class ProgressRepo(context: Context, private val scope: CoroutineScope) {
         scope.launch {
             val loaded = withContext(io) { load() }
             val b = ProgressBook(loaded, fsrs, zone)
-            // Events recorded while loading were already written; apply them now.
-            pending.forEach(b::apply)
+            // Events recorded while loading are written and applied only now, after the load
+            // read the file, so none is counted twice.
+            for (e in pending) {
+                val line = EventLog.encode(e)
+                launch(io) { append(line) }
+                b.apply(e)
+            }
             pending.clear()
             book = b
             _state.value = b.snapshot()
@@ -66,13 +71,13 @@ class ProgressRepo(context: Context, private val scope: CoroutineScope) {
 
     /** Appends [event] to the log and updates the state. Main thread. */
     fun record(event: Event) {
-        val line = EventLog.encode(event)
-        scope.launch(io) { append(line) }
         val b = book
         if (b == null) {
             pending += event
             return
         }
+        val line = EventLog.encode(event)
+        scope.launch(io) { append(line) }
         b.apply(event)
         _state.value = b.snapshot()
         scheduleSnapshot()

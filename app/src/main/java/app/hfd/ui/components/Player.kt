@@ -98,17 +98,19 @@ fun OfflineChip(f: Fadila, modifier: Modifier = Modifier) {
     val failed = keys.any { tasks[it]?.status == DlStatus.FAILED }
     val waiting = keys.any { tasks[it]?.status == DlStatus.WAITING_NETWORK }
     val color = P.saveColor(progress)
+    val active = keys.any { tasks[it] != null }
     val label = when {
         progress >= 1f -> stringResource(R.string.offline_saved)
         failed -> stringResource(R.string.offline_failed)
         waiting -> stringResource(R.string.offline_waiting)
-        else -> stringResource(R.string.offline_saving, (progress * 100).toInt())
+        active -> stringResource(R.string.offline_saving, (progress * 100).toInt())
+        else -> stringResource(R.string.offline_partial, (progress * 100).toInt())
     }
     Row(
         modifier
             .clip(CircleShape)
             .border(1.dp, color, CircleShape)
-            .clickable(enabled = failed) { Graph.downloads.ensure(reciter, refs) }
+            .clickable(enabled = progress < 1f) { Graph.downloads.ensure(reciter, refs) }
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -127,6 +129,21 @@ fun neededAudio(f: Fadila, s: AppSettings): List<AyahRef> {
     val needsBasmala = s.basmala && f.ranges.any { it.from == 1 && it.sura != 1 && it.sura != 9 }
     return if (needsBasmala) f.ayat + app.hfd.core.playback.EveryAyah.BASMALA else f.ayat
 }
+
+/**
+ * What opening a faḍīla downloads by itself: everything, except for long sūras (al-Baqara is
+ * ~90 MB), where only the chosen range, or the first [LONG_PREFETCH] āyāt, are fetched.
+ */
+fun autoAudio(f: Fadila, s: AppSettings): List<AyahRef> {
+    val all = neededAudio(f, s)
+    if (!f.isLong) return all
+    val r = Graph.ranges.get(f.id, f.size)
+    val whole = r.from == 0 && r.to == f.ayat.lastIndex
+    val part = if (whole) f.ayat.take(LONG_PREFETCH) else f.ayat.subList(r.from, r.to + 1)
+    return part + all.filter { it == app.hfd.core.playback.EveryAyah.BASMALA }
+}
+
+private const val LONG_PREFETCH = 10
 
 @Composable
 private fun SettingChip(text: String, onClick: () -> Unit, active: Boolean = false) {
