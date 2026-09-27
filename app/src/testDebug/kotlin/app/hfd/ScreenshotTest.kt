@@ -63,6 +63,7 @@ class ScreenshotTest {
 
     @Test
     fun screens() {
+        Graph.player.connectable = false
         val vm = AppViewModel()
         var dark by mutableStateOf(true)
         rule.mainClock.autoAdvance = false

@@ -46,6 +46,7 @@ jobs:
           grep -E "^e: |error:|What went wrong|FAILED|Exception|Caused by" -A 6 build.log | head -150 || true
           find app/build/test-results -name '*.xml' -exec grep -h -A 30 '<failure' {} + | head -120 || true
       - name: Commit screenshots
+        if: always()
         run: |
           ls -la docs/screenshots
           git config user.name "github-actions[bot]"

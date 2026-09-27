@@ -48,8 +48,11 @@ class PlayerConnection(private val context: Context) {
     private val pending = mutableListOf<(MediaController) -> Unit>()
     private var ticker: Job? = null
 
+    /** Off in screenshot tests, which render screens without the media service. */
+    var connectable = true
+
     fun connect() {
-        if (controller != null || future != null) return
+        if (!connectable || controller != null || future != null) return
         val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val f = MediaController.Builder(context, token).buildAsync()
         future = f
