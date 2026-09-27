@@ -40,6 +40,18 @@ import app.hfd.ui.theme.Type
 /** Key of the list item showing [ref], for scrolling the reading view to it. */
 fun ayahKey(ref: AyahRef): String = "a-${ref.key}"
 
+/** Index in the list of [ref]'s block, given [leading] items before the reading items. */
+fun readingIndex(content: Content, fadila: Fadila, ref: AyahRef, leading: Int): Int? {
+    var i = leading
+    for (range in fadila.ranges) {
+        i++ // sūra header
+        if (range.from == 1 && content.quran.basmalaOf(range.sura) != null) i++
+        if (ref in range) return i + (ref.aya - range.from)
+        i += range.size
+    }
+    return null
+}
+
 /**
  * The reading view of a faḍīla: per range a sūra header, the basmala when the range starts a
  * sūra (except al-Fātiḥa, where it is āya 1, and at-Tawba), then one block per āya. The text is

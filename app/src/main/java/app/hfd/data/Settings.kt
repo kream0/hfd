@@ -1,6 +1,10 @@
 package app.hfd.data
 
 import android.content.Context
+import app.hfd.core.playback.GapMode
+import app.hfd.core.playback.PlanSpec
+import app.hfd.core.playback.Reciter
+import app.hfd.core.playback.Reciters
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,7 +21,19 @@ data class AppSettings(
     val showWeak: Boolean = false,
     /** Qur'an text size, in sp. */
     val arabicSize: Int = 28,
+    /** everyayah.com recitation (see [Reciters]). */
+    val reciter: String = Reciters.DEFAULT.id,
+    /** Times each āya is recited in a row; [PlanSpec.INFINITE] = until skipped. */
+    val repeatEach: Int = 3,
+    /** Times the whole range is played; [PlanSpec.INFINITE] = loop. */
+    val repeatRange: Int = 1,
+    val gap: GapMode = GapMode.NONE,
+    val speed: Float = 1f,
+    /** Basmala before āya 1 of a sūra (other than al-Fātiḥa and at-Tawba). */
+    val basmala: Boolean = true,
 ) {
+    val reciterInfo: Reciter get() = Reciters.byId(reciter)
+
     fun translationFor(uiLanguage: String): TranslationLang = when (translation) {
         TranslationChoice.FR -> TranslationLang.FR
         TranslationChoice.EN -> TranslationLang.EN
@@ -28,6 +44,9 @@ data class AppSettings(
         val ARABIC_SIZES = 20..48
         /** Choices offered in Settings (S, M, L, XL). */
         val ARABIC_PRESETS = listOf(24, 28, 32, 38)
+        val REPEAT_EACH = listOf(1, 3, 5, 7, 10, PlanSpec.INFINITE)
+        val REPEAT_RANGE = listOf(1, 2, 3, 5, 10, PlanSpec.INFINITE)
+        val SPEEDS = listOf(0.75f, 0.9f, 1f, 1.1f, 1.25f)
     }
 }
 
@@ -52,6 +71,12 @@ class Settings(context: Context) {
             translation = enumOr(prefs.getString("translation", null), d.translation),
             showWeak = prefs.getBoolean("showWeak", d.showWeak),
             arabicSize = prefs.getInt("arabicSize", d.arabicSize).coerceIn(AppSettings.ARABIC_SIZES),
+            reciter = Reciters.byId(prefs.getString("reciter", null)).id,
+            repeatEach = prefs.getInt("repeatEach", d.repeatEach).takeIf { it in AppSettings.REPEAT_EACH } ?: d.repeatEach,
+            repeatRange = prefs.getInt("repeatRange", d.repeatRange).takeIf { it in AppSettings.REPEAT_RANGE } ?: d.repeatRange,
+            gap = enumOr(prefs.getString("gap", null), d.gap),
+            speed = prefs.getFloat("speed", d.speed).coerceIn(0.5f, 2f),
+            basmala = prefs.getBoolean("basmala", d.basmala),
         )
     }
 
@@ -62,6 +87,12 @@ class Settings(context: Context) {
             .putString("translation", s.translation.name)
             .putBoolean("showWeak", s.showWeak)
             .putInt("arabicSize", s.arabicSize)
+            .putString("reciter", s.reciter)
+            .putInt("repeatEach", s.repeatEach)
+            .putInt("repeatRange", s.repeatRange)
+            .putString("gap", s.gap.name)
+            .putFloat("speed", s.speed)
+            .putBoolean("basmala", s.basmala)
             .apply()
     }
 

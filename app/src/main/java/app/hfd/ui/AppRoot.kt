@@ -44,7 +44,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
+import app.hfd.playback.NowPlaying
+import app.hfd.ui.components.DotGlyphs
+import app.hfd.ui.components.DotIcon
+import app.hfd.ui.components.DotProgressBar
 import app.hfd.ui.components.Ic
+import app.hfd.ui.components.itemLabel
 import app.hfd.ui.components.LocalSheets
 import app.hfd.ui.components.SheetAction
 import app.hfd.ui.components.SheetHost
@@ -93,6 +98,11 @@ fun AppRoot(app: AppViewModel) {
                     }
                     FadilaOverlay(app)
                 }
+                val np by Graph.nowPlaying.collectAsStateWithLifecycle()
+                val playing = np
+                if (playing != null && app.fadila != playing.session.fadilaId) {
+                    MiniPlayer(playing, onOpen = { app.openFadila(playing.session.fadilaId) })
+                }
                 BottomNav(tab = app.tab, onTab = app::selectTab)
             }
             ToastHost(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 6.dp))
@@ -112,6 +122,54 @@ private fun FadilaOverlay(app: AppViewModel) {
         exit = slideOutHorizontally { it / 3 } + fadeOut(),
     ) {
         last?.let { id -> FadilaScreen(id, onBack = { app.fadila = null }) }
+    }
+}
+
+@Composable
+private fun MiniPlayer(np: NowPlaying, onOpen: () -> Unit) {
+    val ui by Graph.player.state.collectAsStateWithLifecycle()
+    val progress by Graph.player.progress.collectAsStateWithLifecycle()
+    val fraction = if (ui.durationMs > 0) progress.positionMs.toFloat() / ui.durationMs else 0f
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(P.surfaceHigh)
+            .clickable(onClick = onOpen),
+    ) {
+        Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(np.session.title, style = Type.title, color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    listOf(itemLabel(np.item), np.reciter.short.uppercase()).filter { it.isNotBlank() }.joinToString("  ·  "),
+                    style = Type.label,
+                    color = P.textDim,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Box(
+                Modifier.size(44.dp).clip(CircleShape).clickable { Graph.player.togglePlay() },
+                contentAlignment = Alignment.Center,
+            ) {
+                DotIcon(if (ui.playWhenReady) DotGlyphs.PAUSE else DotGlyphs.PLAY, P.text, Modifier.size(18.dp))
+            }
+            Box(
+                Modifier.size(44.dp).clip(CircleShape).clickable { Graph.player.nextAyah() },
+                contentAlignment = Alignment.Center,
+            ) {
+                DotIcon(DotGlyphs.NEXT, P.textDim, Modifier.size(16.dp))
+            }
+        }
+        DotProgressBar(
+            progress = fraction,
+            modifier = Modifier.padding(horizontal = 14.dp),
+            height = 14.dp,
+            spacing = 5.dp,
+            radius = 1.2.dp,
+            showHead = false,
+        )
     }
 }
 

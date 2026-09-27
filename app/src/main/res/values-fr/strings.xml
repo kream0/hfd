@@ -83,4 +83,57 @@
     <string name="settings_sources">Sources et licences</string>
     <string name="settings_sources_body">Texte du Coran : Tanzil Project (tanzil.net), texte uthmani v1.1, CC BY 3.0, utilisé tel quel.\nTraductions des sens : Muhammad Hamidullah (français) et Saheeh International (anglais), depuis tanzil.net.\nPolice du texte coranique : Amiri Quran (OFL).\nRéférences des ḥadīth : sunnah.com, dorar.net.\nRécitations : everyayah.com.</string>
     <string name="settings_tanzil_link">Ouvrir tanzil.net</string>
+    <string name="basmala_label">Bismillāh</string>
+    <string name="player_error">Lecture impossible de %1$s : %2$s</string>
+    <string name="player_play">Lire</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_next">Āya suivante</string>
+    <string name="player_previous">Āya précédente</string>
+    <string name="player_listen">Écouter</string>
+    <string name="player_resume">Reprendre</string>
+
+    <string name="repeat_each">Répéter chaque āya</string>
+    <string name="repeat_each_body">Nombre de récitations de chaque āya avant la suivante. ∞ la répète jusqu\'à ce que vous passiez.</string>
+    <string name="repeat_range">Répéter la plage</string>
+    <string name="repeat_range_body">Nombre de lectures de toute la sélection.</string>
+    <string name="gap">Pause après chaque āya</string>
+    <string name="gap_body">Un silence de la durée de l\'āya (×½, ×1, ×1½) pour la répéter à voix haute.</string>
+    <string name="gap_none">Aucune</string>
+    <string name="speed">Vitesse</string>
+    <string name="reciter">Récitateur</string>
+    <string name="basmala_setting">Basmala avant une sourate</string>
+    <string name="basmala_setting_body">Quand une sélection commence à l\'āya 1 (hors al-Fātiḥa et at-Tawba)</string>
+    <string name="range">Plage</string>
+    <string name="range_body">Ne lire qu\'une partie de ce faḍīla.</string>
+    <string name="range_from">De</string>
+    <string name="range_to">À</string>
+    <string name="range_whole">Tout le faḍīla</string>
+    <string name="sleep">Minuterie</string>
+    <string name="sleep_end">Fin de ce faḍīla</string>
+    <string name="sleep_minutes">%d min</string>
+    <string name="sleep_off">Désactivée</string>
+    <string name="sleep_active_minutes">Arrêt dans %d min</string>
+    <string name="sleep_active_end">Arrêt à la fin du faḍīla</string>
+
+    <string name="offline_saved">Hors ligne</string>
+    <string name="offline_saving">Téléchargement %d %%</string>
+    <string name="offline_waiting">En attente du réseau</string>
+    <string name="offline_failed">Échec · réessayer</string>
+
+    <string name="ayah_play_from">Lire à partir d\'ici</string>
+    <string name="ayah_repeat">Répéter cette āya</string>
+    <string name="ayah_range_start">Commencer la plage ici</string>
+    <string name="ayah_range_end">Terminer la plage ici</string>
+
+    <string name="settings_listening">Écoute</string>
+    <string name="settings_audio">Audio sur le téléphone</string>
+    <string name="settings_audio_body">%1$d fichiers d\'āya · %2$s. Les āyāt d\'un faḍīla se téléchargent quand vous l\'ouvrez.</string>
+    <string name="settings_audio_delete">Supprimer</string>
+    <string name="settings_audio_deleted">Audio supprimé</string>
+    <string name="settings_controls">Commandes</string>
+    <string name="settings_controls_body">La lecture passe par une session multimédia : la notification, l\'écran verrouillé et les écouteurs Bluetooth la contrôlent. Suivant / précédent passent à l\'āya suivante / précédente, pas à la répétition suivante. Retirer les écouteurs met en pause ; appuyer sur lecture appli fermée reprend là où vous en étiez.</string>
+    <string name="chip_ayah">Āya ×%s</string>
+    <string name="chip_range">Plage ×%s</string>
+    <string name="chip_gap">Pause %s</string>
+    <string name="chip_all">Tout</string>
 </resources>

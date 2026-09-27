@@ -1,6 +1,20 @@
 package app.hfd.ui.screens
 
 import android.app.Activity
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import app.hfd.core.playback.GapMode
+import app.hfd.ui.components.LocalSheets
+import app.hfd.ui.components.gapLabel
+import app.hfd.ui.components.reciterSheet
+import app.hfd.ui.components.speedLabel
+import app.hfd.ui.components.timesLabel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.platform.LocalUriHandler
@@ -52,8 +66,21 @@ fun SettingsScreen() {
     ) {
         ScreenHeader(stringResource(R.string.tab_settings).uppercase())
 
+        SettingsSection(stringResource(R.string.settings_listening)) {
+            ListeningSection(settings)
+        }
+
         SettingsSection(stringResource(R.string.settings_reading)) {
             ReadingSection(settings)
+        }
+
+        SettingsSection(stringResource(R.string.settings_controls)) {
+            Text(
+                stringResource(R.string.settings_controls_body),
+                style = Type.body,
+                color = P.textDim,
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
         }
 
         SettingsSection(stringResource(R.string.settings_updates)) {
@@ -82,6 +109,61 @@ fun SettingsScreen() {
             )
         }
     }
+}
+
+@Composable
+private fun ListeningSection(settings: AppSettings) {
+    val sheets = LocalSheets.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    SettingLine(stringResource(R.string.reciter), "${settings.reciterInfo.name} · ${settings.reciterInfo.style}") {
+        PillButton(settings.reciterInfo.short, { sheets(reciterSheet(context, settings.reciter)) })
+    }
+    SettingBlock(stringResource(R.string.repeat_each), stringResource(R.string.repeat_each_body)) {
+        val options = AppSettings.REPEAT_EACH
+        Segmented(options.map { "×" + timesLabel(it) }, options.indexOf(settings.repeatEach).coerceAtLeast(0), { i ->
+            Graph.settings.update { it.copy(repeatEach = options[i]) }
+        })
+    }
+    SettingBlock(stringResource(R.string.repeat_range), stringResource(R.string.repeat_range_body)) {
+        val options = AppSettings.REPEAT_RANGE
+        Segmented(options.map { "×" + timesLabel(it) }, options.indexOf(settings.repeatRange).coerceAtLeast(0), { i ->
+            Graph.settings.update { it.copy(repeatRange = options[i]) }
+        })
+    }
+    SettingBlock(stringResource(R.string.gap), stringResource(R.string.gap_body)) {
+        Segmented(
+            GapMode.entries.map { if (it == GapMode.NONE) stringResource(R.string.gap_none) else gapLabel(it) },
+            settings.gap.ordinal,
+            { i -> Graph.settings.update { it.copy(gap = GapMode.entries[i]) } },
+        )
+    }
+    SettingBlock(stringResource(R.string.speed), null) {
+        val options = AppSettings.SPEEDS
+        Segmented(options.map { speedLabel(it) }, options.indexOf(settings.speed).let { if (it < 0) options.indexOf(1f) else it }, { i ->
+            Graph.settings.update { it.copy(speed = options[i]) }
+        })
+    }
+    SettingLine(stringResource(R.string.basmala_setting), stringResource(R.string.basmala_setting_body)) {
+        NothingSwitch(settings.basmala, { on -> Graph.settings.update { it.copy(basmala = on) } })
+    }
+    val files by Graph.audio.files.collectAsStateWithLifecycle()
+    var bytes by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(files.size) { bytes = withContext(Dispatchers.IO) { Graph.audio.totalBytes() } }
+    SettingLine(stringResource(R.string.settings_audio), stringResource(R.string.settings_audio_body, files.size, formatBytes(bytes))) {
+        PillButton(stringResource(R.string.settings_audio_delete), {
+            scope.launch {
+                withContext(Dispatchers.IO) { Graph.audio.deleteAll() }
+                Graph.toast(R.string.settings_audio_deleted)
+            }
+        }, enabled = files.isNotEmpty())
+    }
+}
+
+private fun formatBytes(bytes: Long): String {
+    val mb = bytes / (1024.0 * 1024.0)
+    return if (mb >= 1024) String.format(java.util.Locale.US, "%.2f GB", mb / 1024)
+    else String.format(java.util.Locale.US, "%.1f MB", mb)
 }
 
 @Composable

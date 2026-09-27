@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import app.hfd.Graph
 import app.hfd.R
 
 enum class Tab(@StringRes val label: Int) {
@@ -26,5 +27,10 @@ class AppViewModel : ViewModel() {
 
     fun openFadila(id: String) {
         fadila = id
+    }
+
+    /** From the notification: show what's playing (or what would resume). */
+    fun openPlaying() {
+        Graph.nowPlaying.value?.session?.fadilaId?.let { fadila = it }
     }
 }

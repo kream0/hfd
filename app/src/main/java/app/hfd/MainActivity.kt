@@ -39,7 +39,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        Graph.player.connect()
         Graph.updater.checkIfDue()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Graph.player.disconnect()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -50,10 +56,12 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         when (intent?.action) {
             ACTION_INSTALL_STATUS -> Graph.updater.onInstallStatus(this, intent)
+            ACTION_OPEN_PLAYER -> appViewModel.openPlaying()
         }
     }
 
     companion object {
         const val ACTION_INSTALL_STATUS = "app.hfd.INSTALL_STATUS"
+        const val ACTION_OPEN_PLAYER = "app.hfd.OPEN_PLAYER"
     }
 }

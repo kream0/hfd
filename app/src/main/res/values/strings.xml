@@ -83,4 +83,57 @@
     <string name="settings_sources">Sources and licences</string>
     <string name="settings_sources_body">Qur\'an text: Tanzil Project (tanzil.net), Uthmani text v1.1, CC BY 3.0, used verbatim.\nTranslations of meanings: Muhammad Hamidullah (French) and Saheeh International (English), from tanzil.net.\nFont of the Qur\'an text: Amiri Quran (OFL).\nḤadīth references: sunnah.com, dorar.net.\nRecitations: everyayah.com.</string>
     <string name="settings_tanzil_link">Open tanzil.net</string>
+    <string name="basmala_label">Bismillāh</string>
+    <string name="player_error">Can\'t play %1$s: %2$s</string>
+    <string name="player_play">Play</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_next">Next āya</string>
+    <string name="player_previous">Previous āya</string>
+    <string name="player_listen">Listen</string>
+    <string name="player_resume">Resume</string>
+
+    <string name="repeat_each">Repeat each āya</string>
+    <string name="repeat_each_body">How many times each āya is recited before the next. ∞ loops it until you skip.</string>
+    <string name="repeat_range">Repeat the range</string>
+    <string name="repeat_range_body">How many times the whole selection plays.</string>
+    <string name="gap">Pause after each āya</string>
+    <string name="gap_body">Silence as long as the āya (×½, ×1, ×1½), to repeat it aloud.</string>
+    <string name="gap_none">None</string>
+    <string name="speed">Speed</string>
+    <string name="reciter">Reciter</string>
+    <string name="basmala_setting">Basmala before a sūra</string>
+    <string name="basmala_setting_body">When a selection starts at āya 1 (not al-Fātiḥa or at-Tawba)</string>
+    <string name="range">Range</string>
+    <string name="range_body">Play only part of this faḍīla.</string>
+    <string name="range_from">From</string>
+    <string name="range_to">To</string>
+    <string name="range_whole">Whole faḍīla</string>
+    <string name="sleep">Sleep timer</string>
+    <string name="sleep_end">End of this faḍīla</string>
+    <string name="sleep_minutes">%d min</string>
+    <string name="sleep_off">Off</string>
+    <string name="sleep_active_minutes">Stops in %d min</string>
+    <string name="sleep_active_end">Stops at the end of the faḍīla</string>
+
+    <string name="offline_saved">Offline</string>
+    <string name="offline_saving">Saving %d%%</string>
+    <string name="offline_waiting">Waiting for network</string>
+    <string name="offline_failed">Download failed · retry</string>
+
+    <string name="ayah_play_from">Play from here</string>
+    <string name="ayah_repeat">Repeat this āya</string>
+    <string name="ayah_range_start">Start the range here</string>
+    <string name="ayah_range_end">End the range here</string>
+
+    <string name="settings_listening">Listening</string>
+    <string name="settings_audio">Audio on the phone</string>
+    <string name="settings_audio_body">%1$d āya files · %2$s. A faḍīla\'s āyāt download when you open it.</string>
+    <string name="settings_audio_delete">Delete</string>
+    <string name="settings_audio_deleted">Audio deleted</string>
+    <string name="settings_controls">Controls</string>
+    <string name="settings_controls_body">Playback runs in a media session: the notification, lock screen and Bluetooth earbuds control it. Next / previous jump to the next / previous āya, not the next repetition. Taking the earbuds out pauses; pressing play with the app closed resumes where you left off.</string>
+    <string name="chip_ayah">Āya ×%s</string>
+    <string name="chip_range">Range ×%s</string>
+    <string name="chip_gap">Gap %s</string>
+    <string name="chip_all">All</string>
 </resources>
