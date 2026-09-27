@@ -31,10 +31,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.fadail.FadailGrouping
+import app.hfd.core.fadail.Fadila
 import app.hfd.core.progress.LearnStep
 import app.hfd.core.progress.Stats
 import app.hfd.data.AppMode
 import app.hfd.ui.AppViewModel
+import app.hfd.ui.Tab
 import app.hfd.ui.components.DotLoader
 import app.hfd.ui.components.DotRing
 import app.hfd.ui.components.FadilaRow
@@ -130,7 +132,7 @@ fun HomeScreen(app: AppViewModel) {
         }
 
         val visible = remember(c) { c.fadail.filter { it.visible(showWeak = false) } }
-        fun progressOf(f: app.hfd.core.fadail.Fadila) = Stats.fadila(progress, f, Graph.progress.fsrs, now).fraction
+        fun progressOf(f: Fadila) = Stats.fadila(progress, f, Graph.progress.fsrs, now).fraction
 
         val tests = visible.filter { Stats.testSuggested(progress, it, now) }
         if (tests.isNotEmpty()) {
@@ -152,6 +154,6 @@ fun HomeScreen(app: AppViewModel) {
             SectionLabel(stringResource(R.string.home_daily), Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp))
             daily.forEach { FadilaRow(it, progressOf(it), onClick = { app.openFadila(it.id) }) }
         }
-        Box(Modifier.padding(20.dp)) { PillButton(stringResource(R.string.home_all), { app.selectTab(app.hfd.ui.Tab.FADAIL) }) }
+        Box(Modifier.padding(20.dp)) { PillButton(stringResource(R.string.home_all), { app.selectTab(Tab.FADAIL) }) }
     }
 }

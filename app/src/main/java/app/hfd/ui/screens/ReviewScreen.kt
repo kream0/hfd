@@ -174,6 +174,7 @@ private fun ReviewCard(
     val startedAt = remember(ref, position) { mutableLongStateOf(System.currentTimeMillis()) }
     val sura = c.sura(ref.sura)
     val fadila = test ?: c.fadail.firstOrNull { f -> f.ranges.any { ref in it } }
+    val playTitle = fadila?.title?.text ?: sura.tname
 
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(horizontal = 20.dp)) {
@@ -203,9 +204,8 @@ private fun ReviewCard(
                     Spacer(Modifier.weight(1f))
                     PillButton(stringResource(R.string.reveal), {
                         revealed = true
-                        val title = fadila?.title?.text ?: sura.tname
                         Graph.player.play(
-                            PlaySession(fadila?.id ?: "review", title, listOf(ref), 0, 0, repeatEach = 1, repeatRange = 1, gap = GapMode.NONE, basmala = false, tag = "review:$ref"),
+                            PlaySession(fadila?.id ?: "review", playTitle, listOf(ref), 0, 0, repeatEach = 1, repeatRange = 1, gap = GapMode.NONE, basmala = false, tag = "review:$ref"),
                         )
                     }, style = PillStyle.Accent)
                 }
