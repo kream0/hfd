@@ -36,6 +36,11 @@
   `.github/workflows/data.yml` runs on pushes touching `tools/**` or `fadail.json`:
   `fetch` downloads the Tanzil text/metadata/translations and commits them (pull before your
   next push), `verify` prints what each cited source says (read it with `get_job_logs`).
+- UI checks without a phone: `.github/workflows/screenshots.yml` renders the main screens with
+  Robolectric (`app/src/testDebug/.../ScreenshotTest.kt`) and commits PNGs to `docs/screenshots`
+  (pull before your next push, then look at them). It runs on pushes touching `app/src/testDebug`
+  or `tools/screenshots.trigger`; the session token can't dispatch or cancel workflows (403), so
+  touch that file to re-render.
 
 ## Content rules
 - Qur'an text: Tanzil Uthmani, rendered verbatim, never altered; keep Tanzil's notice.

@@ -60,6 +60,22 @@ class ScreenshotTest {
         }
     }
 
+    /** If the test stalls, writes every thread's stack to hang.txt next to the screenshots. */
+    private fun watchdog(afterMs: Long) = Thread {
+        try {
+            Thread.sleep(afterMs)
+        } catch (_: InterruptedException) {
+            return@Thread
+        }
+        val dump = Thread.getAllStackTraces().entries.joinToString("\n\n") { (t, stack) ->
+            "${t.name} (${t.state})\n" + stack.joinToString("\n") { "    at $it" }
+        }
+        File(out, "hang.txt").writeText(dump)
+    }.apply {
+        isDaemon = true
+        start()
+    }
+
     private fun ui(block: () -> Unit) {
         rule.runOnUiThread(block)
         rule.mainClock.advanceTimeBy(100)
@@ -68,6 +84,8 @@ class ScreenshotTest {
 
     @Test
     fun screens() {
+        File(out, "hang.txt").delete()
+        val watchdog = watchdog(180_000)
         Graph.player.connectable = false
         val vm = AppViewModel()
         var dark by mutableStateOf(true)
@@ -131,5 +149,6 @@ class ScreenshotTest {
             ui { vm.review() }
             shot("$theme-08-review")
         }
+        watchdog.interrupt()
     }
 }
