@@ -28,6 +28,27 @@ that the app updates itself from new releases. Android 8.0 or newer.
   ḥarakāt, waqf marks and the ۝ āya-end medallion with Arabic-Indic numbers. Each sūra's basmala
   is shown above its first āya. Optional translation of meanings under each āya (Hamidullah in
   French, Saheeh International in English; *Auto* follows the app language). Text size S–XL.
+- **Per-āya player:** playback is built as an explicit plan, a flat list of items such as
+  basmala, āya (repetition 1), gap, āya (repetition 2), gap, …, next āya. Settings: repeat each
+  āya ×1/3/5/7/10/∞, repeat the range ×1/2/3/5/10/∞, a pause after each recitation of ½×, 1× or
+  1½× the āya's length (to repeat it aloud), speed 0.75–1.25×, reciter, basmala before a sūra,
+  and a sub-range of the faḍīla (range chip, or long-press an āya). Changing a setting rebuilds
+  the plan from the current āya. Gaps are `hfd://silence/<ms>` items (a WAV of silence made on
+  the fly) sized from the āya's measured length.
+- **Reciters** (everyayah.com, one MP3 per āya): Mishary Alafasy (`Alafasy_128kbps`),
+  al-Ḥuṣarī (`Husary_128kbps`), al-Ḥuṣarī Muʿallim (`Husary_Muallim_128kbps`), al-Minshāwī
+  murattal (`Minshawy_Murattal_128kbps`), ʿAbd al-Bāsiṭ murattal (`Abdul_Basit_Murattal_192kbps`).
+  Folder names were checked on the server by the *Data* workflow.
+- **Media session:** notification, lock screen and Bluetooth earbuds. Next / previous jump to the
+  next / previous āya (a `ForwardingPlayer`), not the next repetition; the title reads like
+  "Āyat al-Kursī · 2:255 · 3/5". Play on the earbuds with the app closed resumes exactly where
+  you left off.
+- **Reading along:** the playing āya is highlighted and scrolled into view (unless you just
+  scrolled yourself); tap an āya to play from it; long-press to repeat it or start / end the
+  range there. Sleep timer: end of this faḍīla, or 15 / 30 / 60 minutes.
+- **Offline:** opening a faḍīla downloads all its āya files (resumable, retried when the network
+  returns); local files always play first and streamed ones are cached (256 MB). The chip goes
+  red → orange → yellow → green as files arrive. *Settings → Listening* shows and clears them.
 - **Updates:** on every start the app checks the repo's latest published release. A newer APK
   is downloaded in the background, its SHA-256 checked against the release's `version.json`,
   then the app offers *Install* (Android shows its own confirmation; the first time it asks to
@@ -35,8 +56,7 @@ that the app updates itself from new releases. Android 8.0 or newer.
   auto-download switch. Pre-releases and test builds are never offered.
 - **Never lose progress:** settings and progress are included in Android's Auto Backup.
 
-Roadmap: v0.3.0 per-āya player · v0.4.0 per-āya progress (FSRS), Learn and Review ·
-v1.0.0 reminders.
+Roadmap: v0.4.0 per-āya progress (FSRS), Learn and Review · v1.0.0 reminders.
 
 ## Releasing
 

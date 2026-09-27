@@ -24,7 +24,7 @@ object Items {
     fun ayahUri(reciter: Reciter, ref: AyahRef): Uri =
         Uri.parse("$SCHEME://$HOST_AYAH/${reciter.folder}/${EveryAyah.fileName(ref)}")
 
-    fun silenceUri(ms: Long): Uri = Uri.parse("$SCHEME://$HOST_SILENCE/$ms")
+    fun silenceUri(ms: Long): Uri = Uri.parse("$SCHEME://$HOST_SILENCE/${ms.coerceAtLeast(100)}")
 
     fun silenceMs(item: MediaItem): Long? =
         item.localConfiguration?.uri?.takeIf { it.host == HOST_SILENCE }?.lastPathSegment?.toLongOrNull()
