@@ -145,7 +145,8 @@ class ScreenshotTest {
             shot("$theme-06-settings")
             // performScrollTo() waits for an animated scroll that the hand-driven clock never
             // advances; ScrollBy only starts it, and shot() runs the clock.
-            val top = rule.onNodeWithText("Āyat al-Kursī after each prayer").fetchSemanticsNode().boundsInRoot.top
+            // (positionInRoot: boundsInRoot is clipped to the viewport, empty for an off-screen node.)
+            val top = rule.onNodeWithText("Āyat al-Kursī after each prayer").fetchSemanticsNode().positionInRoot.y
             rule.onNodeWithTag("settings").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, top - 300f) }
             shot("$theme-10-reminders")
             ui { vm.learn(Graph.content.content.value!!.fadila("ikhlas-third")!!) }
