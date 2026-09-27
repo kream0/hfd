@@ -5,9 +5,29 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/** Which translation of meanings shows under each āya. AUTO follows the app language. */
+enum class TranslationChoice { AUTO, FR, EN }
+
 data class AppSettings(
     val autoUpdate: Boolean = true,
-)
+    /** Translation of meanings under each āya. */
+    val showTranslation: Boolean = true,
+    val translation: TranslationChoice = TranslationChoice.AUTO,
+    /** Show weak (ḍaʿīf) and fabricated (mawḍūʿ) narrations, clearly labelled. */
+    val showWeak: Boolean = false,
+    /** Qur'an text size, in sp. */
+    val arabicSize: Int = 30,
+) {
+    fun translationFor(uiLanguage: String): TranslationLang = when (translation) {
+        TranslationChoice.FR -> TranslationLang.FR
+        TranslationChoice.EN -> TranslationLang.EN
+        TranslationChoice.AUTO -> if (uiLanguage == "fr") TranslationLang.FR else TranslationLang.EN
+    }
+
+    companion object {
+        val ARABIC_SIZES = 22..44
+    }
+}
 
 /** App settings in SharedPreferences (`hfd_settings.xml`, included in Auto Backup). */
 class Settings(context: Context) {
@@ -26,14 +46,25 @@ class Settings(context: Context) {
         val d = AppSettings()
         return AppSettings(
             autoUpdate = prefs.getBoolean("autoUpdate", d.autoUpdate),
+            showTranslation = prefs.getBoolean("showTranslation", d.showTranslation),
+            translation = enumOr(prefs.getString("translation", null), d.translation),
+            showWeak = prefs.getBoolean("showWeak", d.showWeak),
+            arabicSize = prefs.getInt("arabicSize", d.arabicSize).coerceIn(AppSettings.ARABIC_SIZES),
         )
     }
 
     private fun save(s: AppSettings) {
         prefs.edit()
             .putBoolean("autoUpdate", s.autoUpdate)
+            .putBoolean("showTranslation", s.showTranslation)
+            .putString("translation", s.translation.name)
+            .putBoolean("showWeak", s.showWeak)
+            .putInt("arabicSize", s.arabicSize)
             .apply()
     }
+
+    private inline fun <reified E : Enum<E>> enumOr(name: String?, fallback: E): E =
+        enumValues<E>().firstOrNull { it.name == name } ?: fallback
 
     companion object {
         const val PREFS = "hfd_settings"

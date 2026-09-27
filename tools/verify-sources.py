@@ -48,16 +48,28 @@ def sunnah(url):
         print('RAW:', text_of(page)[:1200])
 
 
-def dorar(query):
-    url = 'https://dorar.net/dorar_api.json?skey=' + urllib.parse.quote(query)
-    status, _, body = get(url)
-    print(f'HTTP {status} {url}')
-    try:
-        data = json.loads(body.decode('utf-8', 'replace'))
-        result = data.get('ahadith', {}).get('result', '')
-        print(text_of(result)[:6000])
-    except Exception:
-        print('RAW:', text_of(body.decode('utf-8', 'replace'))[:2000])
+def dorar(query, pages=1, only=None):
+    """dorar.net search API: 15 results per page. [only] keeps results mentioning one of these."""
+    for page in range(1, pages + 1):
+        url = 'https://dorar.net/dorar_api.json?skey=' + urllib.parse.quote(query) + f'&page={page}'
+        status, _, body = get(url)
+        print(f'HTTP {status} page {page}')
+        try:
+            data = json.loads(body.decode('utf-8', 'replace'))
+            result = data.get('ahadith', {}).get('result', '')
+        except Exception:
+            print('RAW:', text_of(body.decode('utf-8', 'replace'))[:2000])
+            return
+        # Results are separated by "--------------"; keep each one's links (permalinks).
+        for chunk in re.split(r'-{5,}', result):
+            flat = ' '.join(text_of(chunk).split())
+            if not flat or (only and not any(o in flat for o in only)):
+                continue
+            links = sorted(set(re.findall(r'href="([^"]+)"', chunk)))
+            print('*', flat[:700])
+            if links:
+                print('  links:', ' '.join(links))
+        time.sleep(1)
 
 
 def everyayah(folder, files):
@@ -86,8 +98,10 @@ def main():
             print(text_of(body.decode('utf-8', 'replace'))[:3000])
         time.sleep(1.5)
     for q in extra.get('dorar', []):
-        print(f'\n==================== dorar: {q}')
-        dorar(q)
+        if isinstance(q, str):
+            q = {'q': q}
+        print(f'\n==================== dorar: {q["q"]}')
+        dorar(q['q'], q.get('pages', 1), q.get('only'))
         time.sleep(1.5)
     ea = extra.get('everyayah', {})
     if ea:

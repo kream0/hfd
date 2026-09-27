@@ -17,6 +17,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.sp
 import app.hfd.R
 
@@ -112,6 +114,8 @@ object Fonts {
         Font(R.font.space_mono_regular, FontWeight.Normal),
         Font(R.font.space_mono_bold, FontWeight.Bold),
     )
+    /** Amiri Quran (OFL): designed for Unicode Qur'an text such as Tanzil's Uthmani script. */
+    val Quran = FontFamily(Font(R.font.amiri_quran, FontWeight.Normal))
 }
 
 object Type {
@@ -124,6 +128,17 @@ object Type {
     val label = TextStyle(fontFamily = Fonts.Mono, fontWeight = FontWeight.Normal, fontSize = 11.sp, letterSpacing = 1.2.sp)
     val labelBold = label.copy(fontWeight = FontWeight.Bold)
     val input = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.Medium, fontSize = 17.sp)
+
+    /** Qur'an text: generous line height so ḥarakāt and waqf marks never collide. */
+    fun quran(size: Int) = TextStyle(
+        fontFamily = Fonts.Quran,
+        fontSize = size.sp,
+        lineHeight = (size * 2.05f).sp,
+        textDirection = TextDirection.Rtl,
+        textAlign = TextAlign.Right,
+    )
+    val arabicTitle = TextStyle(fontFamily = Fonts.Quran, fontSize = 26.sp, lineHeight = 44.sp, textDirection = TextDirection.Rtl)
+    val translation = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 21.sp)
 }
 
 @Composable
