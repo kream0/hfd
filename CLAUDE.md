@@ -17,6 +17,8 @@
   `vX.Y.Z` and publishes the GitHub release with `hfd.apk` + `version.json`. Release notes come
   from the matching `## X.Y.Z` section of `CHANGELOG.md` (the first line is what the in-app
   update sheet shows).
+- A release build is never cancelled by a later push (its concurrency group includes the plan
+  mode), but check the release exists (`list_releases`) before telling the owner.
 - versionCode = major·1,000,000 + minor·1,000 + patch. Plain pushes build a test APK
   (`0.dev.<run>`, Actions artifact) that the app never offers.
 
