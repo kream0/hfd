@@ -5,7 +5,11 @@ import app.hfd.core.playback.GapMode
 import app.hfd.core.playback.PlanSpec
 import app.hfd.core.playback.Reciter
 import app.hfd.core.playback.Reciters
+import app.hfd.core.prayer.PrayerCalculator
+import app.hfd.core.prayer.PrayerMethod
+import app.hfd.core.reminders.ReminderConfig
 import kotlinx.serialization.Serializable
+import java.time.LocalTime
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,7 +42,33 @@ data class AppSettings(
     val dailyGoalMin: Int = 15,
     /** Recitations heard in the Learn steps "listen" and "repeat". */
     val learnRepeats: Int = 3,
+    // Reminders. Times are minutes after midnight.
+    val remindKursi: Boolean = false,
+    val remindMulk: Boolean = false,
+    val mulkAt: Int = 22 * 60 + 30,
+    val remindKahf: Boolean = false,
+    val kahfAt: Int = 10 * 60,
+    val remindReviews: Boolean = false,
+    val reviewsAt: Int = 19 * 60,
+    /** Where prayer times are computed (only stored on the phone), rounded to ~1 km. */
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val prayerMethod: PrayerMethod = PrayerMethod.MWL,
 ) {
+    val reminders: ReminderConfig
+        get() = ReminderConfig(
+            kursi = remindKursi,
+            mulk = remindMulk,
+            mulkAt = LocalTime.of(mulkAt / 60, mulkAt % 60),
+            kahf = remindKahf,
+            kahfAt = LocalTime.of(kahfAt / 60, kahfAt % 60),
+            reviews = remindReviews,
+            reviewsAt = LocalTime.of(reviewsAt / 60, reviewsAt % 60),
+        )
+
+    val prayerCalculator: PrayerCalculator?
+        get() = if (latitude != null && longitude != null) PrayerCalculator(latitude, longitude, prayerMethod) else null
+
     val reciterInfo: Reciter get() = Reciters.byId(reciter)
 
     fun translationFor(uiLanguage: String): TranslationLang = when (translation) {
@@ -88,6 +118,16 @@ class Settings(context: Context) {
             basmala = prefs.getBoolean("basmala", d.basmala),
             dailyGoalMin = prefs.getInt("dailyGoalMin", d.dailyGoalMin).takeIf { it in AppSettings.GOALS } ?: d.dailyGoalMin,
             learnRepeats = prefs.getInt("learnRepeats", d.learnRepeats).takeIf { it in AppSettings.LEARN_REPEATS } ?: d.learnRepeats,
+            remindKursi = prefs.getBoolean("remindKursi", d.remindKursi),
+            remindMulk = prefs.getBoolean("remindMulk", d.remindMulk),
+            mulkAt = prefs.getInt("mulkAt", d.mulkAt).coerceIn(0, 24 * 60 - 1),
+            remindKahf = prefs.getBoolean("remindKahf", d.remindKahf),
+            kahfAt = prefs.getInt("kahfAt", d.kahfAt).coerceIn(0, 24 * 60 - 1),
+            remindReviews = prefs.getBoolean("remindReviews", d.remindReviews),
+            reviewsAt = prefs.getInt("reviewsAt", d.reviewsAt).coerceIn(0, 24 * 60 - 1),
+            latitude = prefs.getString("latitude", null)?.toDoubleOrNull(),
+            longitude = prefs.getString("longitude", null)?.toDoubleOrNull(),
+            prayerMethod = enumOr(prefs.getString("prayerMethod", null), d.prayerMethod),
         )
     }
 
@@ -106,6 +146,16 @@ class Settings(context: Context) {
             .putBoolean("basmala", s.basmala)
             .putInt("dailyGoalMin", s.dailyGoalMin)
             .putInt("learnRepeats", s.learnRepeats)
+            .putBoolean("remindKursi", s.remindKursi)
+            .putBoolean("remindMulk", s.remindMulk)
+            .putInt("mulkAt", s.mulkAt)
+            .putBoolean("remindKahf", s.remindKahf)
+            .putInt("kahfAt", s.kahfAt)
+            .putBoolean("remindReviews", s.remindReviews)
+            .putInt("reviewsAt", s.reviewsAt)
+            .putString("latitude", s.latitude?.toString())
+            .putString("longitude", s.longitude?.toString())
+            .putString("prayerMethod", s.prayerMethod.name)
             .apply()
     }
 

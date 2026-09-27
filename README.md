@@ -7,6 +7,16 @@ Offline-first, no accounts, no analytics, no ads. English and French UI.
 Styled like Nothing OS (black and white, one red accent, dot-matrix type), with the Qur'an text
 given room and calm.
 
+<p>
+<img src="docs/screenshots/dark-01-home.png" width="24%" alt="Home">
+<img src="docs/screenshots/dark-09-kursi-text.png" width="24%" alt="Āyat al-Kursī, reading view and player">
+<img src="docs/screenshots/light-07-learn.png" width="24%" alt="Learn">
+<img src="docs/screenshots/light-05-stats.png" width="24%" alt="Stats">
+</p>
+
+(All screens, light and dark, in [docs/screenshots](docs/screenshots); rendered by CI with
+Robolectric.)
+
 ## Install
 
 **https://github.com/kream0/hfd/releases/latest/download/hfd.apk**
@@ -25,7 +35,7 @@ that the app updates itself from new releases. Android 8.0 or newer.
 - **List by occasion:** morning, evening, after prayer, at night, before sleep, Friday, any time,
   then long sūras. Home suggests what fits the time of day (and al-Kahf on Fridays).
 - **Reading view:** Tanzil's Uthmani text, verbatim, in Amiri Quran, right-to-left, large, with
-  ḥarakāt, waqf marks and the ۝ āya-end medallion with Arabic-Indic numbers. Each sūra's basmala
+  ḥarakāt, waqf marks and āya numbers in Arabic-Indic digits between ornate brackets ﴿٤﴾. Each sūra's basmala
   is shown above its first āya. Optional translation of meanings under each āya (Hamidullah in
   French, Saheeh International in English; *Auto* follows the app language). Text size S–XL.
 - **Per-āya player:** playback is built as an explicit plan, a flat list of items such as
@@ -70,6 +80,12 @@ that the app updates itself from new releases. Android 8.0 or newer.
   Progress → Backup* exports / imports a JSON file (imports merge, nothing is overwritten).
   The app reopens exactly where you left it: tab, faḍīla, Learn step or test position, and the
   player's āya, repetition and position.
+- **Reminders** (optional, *Settings → Reminders*): Āyat al-Kursī 15 minutes after each
+  prayer (prayer times computed on the phone from a coarse location you set once, with the
+  MWL, UOIF, ISNA, Egyptian, Umm al-Qurā or Karachi method; checked against adhan-js), as-Sajda
+  and al-Mulk before sleep, al-Kahf on Friday, and āyāt due for review. Each opens the faḍīla,
+  or plays it with *Listen*. Scheduled with WorkManager, so a reminder can arrive a few minutes
+  late while the phone sleeps.
 - **Updates:** on every start the app checks the repo's latest published release. A newer APK
   is downloaded in the background, its SHA-256 checked against the release's `version.json`,
   then the app offers *Install* (Android shows its own confirmation; the first time it asks to
@@ -77,7 +93,8 @@ that the app updates itself from new releases. Android 8.0 or newer.
   auto-download switch. Pre-releases and test builds are never offered.
 - **Never lose progress:** settings and progress are included in Android's Auto Backup.
 
-Roadmap: v1.0.0 reminders.
+Later: word-by-word highlighting (Quran.com / QUL timings), the Glyph Matrix on the back of
+the phone (āya number and repetition).
 
 ## Releasing
 

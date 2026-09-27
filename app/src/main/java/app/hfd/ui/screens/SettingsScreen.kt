@@ -79,6 +79,10 @@ fun SettingsScreen() {
             ListeningSection(settings)
         }
 
+        SettingsSection(stringResource(R.string.settings_reminders)) {
+            RemindersSection(settings)
+        }
+
         SettingsSection(stringResource(R.string.settings_reading)) {
             ReadingSection(settings)
         }

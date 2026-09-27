@@ -7,7 +7,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.hfd.core.prayer.PrayerMethod
 import app.hfd.core.progress.Event
 import app.hfd.core.progress.Mode
 import app.hfd.core.srs.Rating
@@ -87,6 +92,12 @@ class ScreenshotTest {
             }
             Graph.progress.record(Event.Rate(now - day, "112:3", Rating.HARD, Mode.LEARN, 30_000))
         }
+        // Some reminders on, with a location (London), so their settings show.
+        ui {
+            Graph.settings.update {
+                it.copy(remindKursi = true, remindMulk = true, remindKahf = true, latitude = 51.51, longitude = -0.13, prayerMethod = PrayerMethod.MWL)
+            }
+        }
 
         for (theme in listOf("dark", "light")) {
             ui {
@@ -100,6 +111,10 @@ class ScreenshotTest {
             shot("$theme-02-fadail")
             ui { vm.openFadila("kursi-greatest") }
             shot("$theme-03-kursi")
+            // The reading view: āya text, āya-end markers, translation.
+            rule.onNodeWithTag("reading").performScrollToIndex(1)
+            shot("$theme-09-kursi-text")
+            rule.onNodeWithTag("reading").performScrollToIndex(0)
             ui { vm.openFadila("muawwidhatayn") }
             shot("$theme-04-falaq-nas")
             ui {
@@ -109,6 +124,8 @@ class ScreenshotTest {
             shot("$theme-05-stats")
             ui { vm.selectTab(Tab.SETTINGS) }
             shot("$theme-06-settings")
+            rule.onNodeWithText("Āyāt due for review").performScrollTo()
+            shot("$theme-10-reminders")
             ui { vm.learn(Graph.content.content.value!!.fadila("ikhlas-third")!!) }
             shot("$theme-07-learn")
             ui { vm.review() }

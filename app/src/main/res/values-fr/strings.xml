@@ -229,5 +229,34 @@
     <string name="backup_exported">Sauvegarde enregistrée</string>
     <string name="backup_imported">Sauvegarde importée · %1$d nouveaux événements</string>
     <string name="backup_failed">Sauvegarde illisible : %1$s</string>
+    <string name="channel_reminders">Rappels</string>
+    <string name="channel_reminders_desc">Āyat al-Kursī après les prières, al-Mulk avant de dormir, al-Kahf le vendredi, révisions</string>
+    <string name="reminder_kursi_title">Āyat al-Kursī · après %1$s</string>
+    <string name="reminder_mulk_title">As-Sajda et al-Mulk avant de dormir</string>
+    <string name="reminder_kahf_title">Al-Kahf · c\'est vendredi</string>
+    <string name="reminder_reviews_text">Récitez-les de mémoire tant qu\'elles sont fraîches.</string>
+    <string name="prayer_fajr">Fajr</string>
+    <string name="prayer_dhuhr">Dhuhr</string>
+    <string name="prayer_asr">Asr</string>
+    <string name="prayer_maghrib">Maghrib</string>
+    <string name="prayer_isha">Isha</string>
+
+    <string name="settings_reminders">Rappels</string>
+    <string name="remind_kursi">Āyat al-Kursī après chaque prière</string>
+    <string name="remind_kursi_body">15 minutes après chaque heure de prière, calculée sur le téléphone pour votre position.</string>
+    <string name="remind_mulk">As-Sajda et al-Mulk avant de dormir</string>
+    <string name="remind_kahf">Al-Kahf le vendredi</string>
+    <string name="remind_reviews">Āyāt à réviser</string>
+    <string name="remind_at">À %1$s</string>
+    <string name="location">Position pour les heures de prière</string>
+    <string name="location_none">Non définie : les rappels d\'Āyat al-Kursī en ont besoin.</string>
+    <string name="location_set">%1$s · %2$s</string>
+    <string name="location_use">Utiliser ma position</string>
+    <string name="location_failed">Position introuvable. La localisation est-elle activée ?</string>
+    <string name="location_denied">Autorisation de localisation refusée</string>
+    <string name="prayer_method">Méthode de calcul</string>
+    <string name="prayer_today">Aujourd\'hui : %1$s</string>
+    <string name="time_title">Heure</string>
     <string name="offline_partial">%d %% hors ligne · tout enregistrer</string>
+    <string name="notifications_denied">Notifications de HFD désactivées : les rappels ne peuvent pas s\'afficher.</string>
 </resources>

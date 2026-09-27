@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0
+Optional reminders: Āyat al-Kursī after each prayer, as-Sajda and al-Mulk before sleep, al-Kahf on Friday, āyāt due for review.
+- *Settings → Reminders*: each one on its own, with its time. Āyat al-Kursī comes 15 minutes after each prayer time, computed on the phone from a location you set once (MWL, UOIF, ISNA, Egyptian, Umm al-Qurā or Karachi method).
+- A reminder opens its faḍīla, or plays it straight away with *Listen*. The review reminder only comes when something is due.
+- Reminders can arrive a few minutes late while the phone is asleep.
+
 ## 0.4.0
 Progress per āya: Learn, Review and Test with spaced repetition (FSRS), stats, streak, backup.
 - Learn an āya step by step: listen, repeat in the pauses, first word only, recite from memory, reveal and rate; then recite from the start of the range.

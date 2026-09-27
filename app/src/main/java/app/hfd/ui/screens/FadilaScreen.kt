@@ -45,6 +45,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -138,7 +139,7 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
             val title = f.title.text
             val bottomSpace = with(LocalDensity.current) { panelPx.toDp() } + 24.dp
             val now = System.currentTimeMillis()
-            LazyColumn(Modifier.fillMaxSize(), state = listState) {
+            LazyColumn(Modifier.fillMaxSize().testTag("reading"), state = listState) {
                 item(key = "intro") { Intro(f, app) }
                 readingItems(
                     content = c,

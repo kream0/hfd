@@ -228,5 +228,34 @@
     <string name="backup_exported">Backup saved</string>
     <string name="backup_imported">Backup imported · %1$d new events</string>
     <string name="backup_failed">Couldn\'t read that backup: %1$s</string>
+    <string name="channel_reminders">Reminders</string>
+    <string name="channel_reminders_desc">Āyat al-Kursī after prayers, al-Mulk before sleep, al-Kahf on Friday, reviews</string>
+    <string name="reminder_kursi_title">Āyat al-Kursī · after %1$s</string>
+    <string name="reminder_mulk_title">As-Sajda and al-Mulk before sleep</string>
+    <string name="reminder_kahf_title">Al-Kahf · it\'s Friday</string>
+    <string name="reminder_reviews_text">Recite them from memory while they\'re fresh.</string>
+    <string name="prayer_fajr">Fajr</string>
+    <string name="prayer_dhuhr">Dhuhr</string>
+    <string name="prayer_asr">Asr</string>
+    <string name="prayer_maghrib">Maghrib</string>
+    <string name="prayer_isha">Isha</string>
+
+    <string name="settings_reminders">Reminders</string>
+    <string name="remind_kursi">Āyat al-Kursī after each prayer</string>
+    <string name="remind_kursi_body">15 minutes after each prayer time, computed on the phone for your location.</string>
+    <string name="remind_mulk">As-Sajda and al-Mulk before sleep</string>
+    <string name="remind_kahf">Al-Kahf on Friday</string>
+    <string name="remind_reviews">Āyāt due for review</string>
+    <string name="remind_at">At %1$s</string>
+    <string name="location">Location for prayer times</string>
+    <string name="location_none">Not set: Āyat al-Kursī reminders need it.</string>
+    <string name="location_set">%1$s · %2$s</string>
+    <string name="location_use">Use my location</string>
+    <string name="location_failed">Couldn\'t get a location. Is location on?</string>
+    <string name="location_denied">Location permission denied</string>
+    <string name="prayer_method">Calculation method</string>
+    <string name="prayer_today">Today: %1$s</string>
+    <string name="time_title">Time</string>
     <string name="offline_partial">%d%% offline · save all</string>
+    <string name="notifications_denied">Notifications are off for HFD: reminders can\'t show.</string>
 </resources>
