@@ -6,10 +6,11 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.hfd.core.prayer.PrayerMethod
@@ -142,7 +143,10 @@ class ScreenshotTest {
             shot("$theme-05-stats")
             ui { vm.selectTab(Tab.SETTINGS) }
             shot("$theme-06-settings")
-            rule.onNodeWithText("Āyāt due for review").performScrollTo()
+            // performScrollTo() waits for an animated scroll that the hand-driven clock never
+            // advances; ScrollBy only starts it, and shot() runs the clock.
+            val top = rule.onNodeWithText("Āyat al-Kursī after each prayer").fetchSemanticsNode().boundsInRoot.top
+            rule.onNodeWithTag("settings").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, top - 300f) }
             shot("$theme-10-reminders")
             ui { vm.learn(Graph.content.content.value!!.fadila("ikhlas-third")!!) }
             shot("$theme-07-learn")

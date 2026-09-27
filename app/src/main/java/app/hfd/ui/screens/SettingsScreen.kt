@@ -23,6 +23,7 @@ import kotlinx.coroutines.withContext
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.AppSettings
@@ -67,6 +68,7 @@ fun SettingsScreen() {
             .fillMaxSize()
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
+            .testTag("settings")
             .padding(bottom = 24.dp),
     ) {
         ScreenHeader(stringResource(R.string.tab_settings).uppercase())

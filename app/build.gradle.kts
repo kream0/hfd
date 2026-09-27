@@ -1,3 +1,5 @@
+import java.time.Duration
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -99,7 +101,7 @@ android {
             all {
                 it.systemProperty("hfd.screenshots", rootProject.file("docs/screenshots").absolutePath)
                 // A stalled test fails instead of holding the runner (the shots so far are kept).
-                it.timeout.set(java.time.Duration.ofMinutes(8))
+                it.timeout.set(Duration.ofMinutes(8))
             }
         }
     }
