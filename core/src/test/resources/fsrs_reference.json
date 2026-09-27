@@ -1,0 +1,343 @@
+{
+ "A": [
+  {
+   "rating": "good",
+   "at": 1767254400000,
+   "state": "learning",
+   "step": 1,
+   "stability": 2.3065,
+   "difficulty": 2.118103970459016,
+   "due": 1767255000000
+  },
+  {
+   "rating": "good",
+   "at": 1767255000000,
+   "state": "review",
+   "step": null,
+   "stability": 2.3065,
+   "difficulty": 2.111214235785395,
+   "due": 1767427800000
+  },
+  {
+   "rating": "good",
+   "at": 1767427800000,
+   "state": "review",
+   "step": null,
+   "stability": 10.971048263078135,
+   "difficulty": 2.1043313908464483,
+   "due": 1768378200000
+  },
+  {
+   "rating": "good",
+   "at": 1768378200000,
+   "state": "review",
+   "step": null,
+   "stability": 46.316858440073425,
+   "difficulty": 2.0974554287524403,
+   "due": 1772352600000
+  },
+  {
+   "rating": "again",
+   "at": 1772352600000,
+   "state": "relearning",
+   "step": 0,
+   "stability": 2.9338452901880046,
+   "difficulty": 7.387715706030851,
+   "due": 1772353200000
+  },
+  {
+   "rating": "good",
+   "at": 1772353200000,
+   "state": "review",
+   "step": null,
+   "stability": 2.9338452901880046,
+   "difficulty": 7.375556359621658,
+   "due": 1772612400000
+  },
+  {
+   "rating": "hard",
+   "at": 1772612400000,
+   "state": "review",
+   "step": null,
+   "stability": 5.85981081282548,
+   "difficulty": 8.243000381740053,
+   "due": 1773130800000
+  },
+  {
+   "rating": "easy",
+   "at": 1773130800000,
+   "state": "review",
+   "step": null,
+   "stability": 18.20855057710452,
+   "difficulty": 7.641121354796629,
+   "due": 1774686000000
+  },
+  {
+   "rating": "good",
+   "at": 1774686000000,
+   "state": "review",
+   "step": null,
+   "stability": 38.3609224415191,
+   "difficulty": 7.62870860273867,
+   "due": 1777969200000
+  }
+ ],
+ "B": [
+  {
+   "rating": "again",
+   "at": 1767254400000,
+   "state": "learning",
+   "step": 0,
+   "stability": 0.212,
+   "difficulty": 6.4133,
+   "due": 1767254460000
+  },
+  {
+   "rating": "hard",
+   "at": 1767254460000,
+   "state": "learning",
+   "step": 0,
+   "stability": 0.212,
+   "difficulty": 7.604209769076838,
+   "due": 1767254790000
+  },
+  {
+   "rating": "easy",
+   "at": 1767254790000,
+   "state": "review",
+   "step": null,
+   "stability": 0.42437996387663374,
+   "difficulty": 6.788876687023917,
+   "due": 1767341190000
+  },
+  {
+   "rating": "good",
+   "at": 1767600390000,
+   "state": "review",
+   "step": null,
+   "stability": 4.059323231690825,
+   "difficulty": 6.777316179633732,
+   "due": 1767945990000
+  },
+  {
+   "rating": "good",
+   "at": 1767859590000,
+   "state": "review",
+   "step": null,
+   "stability": 9.90718310009368,
+   "difficulty": 6.765767232750936,
+   "due": 1768723590000
+  },
+  {
+   "rating": "again",
+   "at": 1768723590000,
+   "state": "relearning",
+   "step": 0,
+   "stability": 1.3613142720788722,
+   "difficulty": 8.922158051484889,
+   "due": 1768724190000
+  },
+  {
+   "rating": "again",
+   "at": 1768724190000,
+   "state": "relearning",
+   "step": 0,
+   "stability": 0.4736107768592087,
+   "difficulty": 9.63094905014517,
+   "due": 1768724790000
+  },
+  {
+   "rating": "good",
+   "at": 1768724790000,
+   "state": "review",
+   "step": null,
+   "stability": 0.5227162363428938,
+   "difficulty": 9.616546470391864,
+   "due": 1768811190000
+  },
+  {
+   "rating": "good",
+   "at": 1768811190000,
+   "state": "review",
+   "step": null,
+   "stability": 1.1885366100798729,
+   "difficulty": 9.60215829321831,
+   "due": 1768897590000
+  },
+  {
+   "rating": "hard",
+   "at": 1772353590000,
+   "state": "review",
+   "step": null,
+   "stability": 3.7056652570154975,
+   "difficulty": 9.721122504911616,
+   "due": 1772699190000
+  }
+ ],
+ "C": [
+  {
+   "rating": "easy",
+   "at": 1767254400000,
+   "state": "review",
+   "step": null,
+   "stability": 8.2956,
+   "difficulty": 1.0,
+   "due": 1767945600000
+  },
+  {
+   "rating": "good",
+   "at": 1767261600000,
+   "state": "review",
+   "step": null,
+   "stability": 8.2956,
+   "difficulty": 1.0,
+   "due": 1767952800000
+  },
+  {
+   "rating": "hard",
+   "at": 1767952800000,
+   "state": "review",
+   "step": null,
+   "stability": 26.704183359371363,
+   "difficulty": 4.010608969296839,
+   "due": 1770285600000
+  },
+  {
+   "rating": "again",
+   "at": 1767956400000,
+   "state": "relearning",
+   "step": 0,
+   "stability": 7.638147209414655,
+   "difficulty": 8.016556265363716,
+   "due": 1767957000000
+  },
+  {
+   "rating": "good",
+   "at": 1767956700000,
+   "state": "review",
+   "step": null,
+   "stability": 7.638147209414655,
+   "difficulty": 8.00376807839519,
+   "due": 1768647900000
+  },
+  {
+   "rating": "easy",
+   "at": 1768647900000,
+   "state": "review",
+   "step": null,
+   "stability": 24.646454381600773,
+   "difficulty": 7.321948763899248,
+   "due": 1770807900000
+  }
+ ],
+ "D": [
+  {
+   "rating": "hard",
+   "at": 1767254400000,
+   "state": "learning",
+   "step": 0,
+   "stability": 1.2931,
+   "difficulty": 5.112170705601056,
+   "due": 1767254730000
+  },
+  {
+   "rating": "hard",
+   "at": 1767254730000,
+   "state": "learning",
+   "step": 0,
+   "stability": 1.2931,
+   "difficulty": 6.7404595108297,
+   "due": 1767255060000
+  },
+  {
+   "rating": "hard",
+   "at": 1767255060000,
+   "state": "learning",
+   "step": 0,
+   "stability": 1.2931,
+   "difficulty": 7.821393497998797,
+   "due": 1767255390000
+  },
+  {
+   "rating": "good",
+   "at": 1767255390000,
+   "state": "learning",
+   "step": 1,
+   "stability": 1.3358997622047517,
+   "difficulty": 7.808800473797637,
+   "due": 1767255990000
+  },
+  {
+   "rating": "good",
+   "at": 1767255990000,
+   "state": "review",
+   "step": null,
+   "stability": 1.3771622371865915,
+   "difficulty": 7.7962200426206785,
+   "due": 1767342390000
+  },
+  {
+   "rating": "good",
+   "at": 1767342390000,
+   "state": "review",
+   "step": null,
+   "stability": 3.1553060688096535,
+   "difficulty": 7.783652191874896,
+   "due": 1767601590000
+  },
+  {
+   "rating": "good",
+   "at": 1767601590000,
+   "state": "review",
+   "step": null,
+   "stability": 7.509471802974643,
+   "difficulty": 7.77109690897986,
+   "due": 1768292790000
+  },
+  {
+   "rating": "good",
+   "at": 1768292790000,
+   "state": "review",
+   "step": null,
+   "stability": 17.27471752268772,
+   "difficulty": 7.758554181367719,
+   "due": 1769761590000
+  }
+ ],
+ "retrievability": {
+  "stability": 2.3065,
+  "difficulty": 2.111214235785395,
+  "lastReview": 1767255000000,
+  "due": 1767427800000,
+  "samples": [
+   {
+    "at": 1767258600000,
+    "r": 1.0
+   },
+   {
+    "at": 1767345000000,
+    "r": 0.9468474993825461
+   },
+   {
+    "at": 1767431400000,
+    "r": 0.9094932559773545
+   },
+   {
+    "at": 1767690600000,
+    "r": 0.8388614268145294
+   },
+   {
+    "at": 1768122600000,
+    "r": 0.7743669167614039
+   },
+   {
+    "at": 1769850600000,
+    "r": 0.6675263338730357
+   },
+   {
+    "at": 1775898600000,
+    "r": 0.5589067446271925
+   }
+  ]
+ }
+}
