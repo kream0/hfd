@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HFD</string>
+    <string name="later">Later</string>
+
+    <string name="tab_home">Home</string>
+    <string name="tab_settings">Settings</string>
+
+    <string name="home_soon_title">BISMILLAH</string>
+    <string name="home_soon_body">The faḍāʾil verses and sūras arrive in the next version: text, audio per āya and progress tracking.</string>
+
+    <string name="settings_updates">Updates</string>
+    <string name="settings_about">About</string>
+    <string name="settings_about_body">HFD %1$s\nLearn the verses with established virtues, by ear.\nFonts: Doto, Space Grotesk, Space Mono (OFL) · Playback: AndroidX Media3</string>
+
+    <string name="update_test_build">test build #%1$d</string>
+    <string name="update_unreachable">Couldn\'t reach GitHub</string>
+    <string name="update_latest">You\'re on the latest version</string>
+    <string name="update_download_failed">Download failed</string>
+    <string name="update_allow_install">Allow HFD to install updates, then tap Install again</string>
+    <string name="update_installer_error">Couldn\'t start the installer: %1$s</string>
+    <string name="update_cancelled">Update cancelled</string>
+    <string name="update_failed">Update failed: %1$s</string>
+    <string name="update_ready_title">Update ready · v%1$s</string>
+    <string name="update_ready_subtitle">A new HFD release is downloaded</string>
+    <string name="update_install_now">Install now</string>
+    <string name="update_install">Install</string>
+    <string name="update_get">Get</string>
+    <string name="update_check">Check</string>
+    <string name="update_status_up_to_date">Up to date · checked %1$s</string>
+    <string name="update_status_never">Not checked yet</string>
+    <string name="update_status_checking">Checking…</string>
+    <string name="update_status_available">v%1$s available</string>
+    <string name="update_status_downloading">Downloading v%1$s · %2$d%%</string>
+    <string name="update_status_ready">v%1$s ready to install</string>
+    <string name="update_status_failed">Update check failed: %1$s</string>
+    <string name="update_auto_title">Auto-download updates</string>
+    <string name="update_auto_body">When a new release is published, download it in the background, then ask before installing</string>
+</resources>

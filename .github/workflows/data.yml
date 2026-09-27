@@ -1,0 +1,46 @@
+name: Data
+
+# Runs where the internet is reachable (the dev sandbox can't reach tanzil.net, sunnah.com,
+# dorar.net or everyayah.com):
+#  - fetch: downloads the Tanzil text, metadata and translations and commits them to the branch
+#  - verify: prints what every cited source says, for checking the faḍāʾil references by hand
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'tools/**'
+      - 'app/src/main/assets/fadail.json'
+      - '.github/workflows/data.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Fetch from Tanzil
+        run: bash tools/fetch-data.sh
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/assets/quran tools/data.lock
+          if git diff --cached --quiet; then echo "Data unchanged"; exit 0; fi
+          git commit -m "Update bundled Qur'an data from Tanzil"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Print cited sources
+        run: python3 tools/verify-sources.py

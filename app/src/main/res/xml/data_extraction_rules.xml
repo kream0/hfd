@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+. Only settings and progress are backed up / transferred: audio files are
+     re-downloadable and the Qur'an text ships inside the APK. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="sharedpref" path="hfd_settings.xml" />
+        <include domain="file" path="progress/" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="hfd_settings.xml" />
+        <include domain="file" path="progress/" />
+    </device-transfer>
+</data-extraction-rules>

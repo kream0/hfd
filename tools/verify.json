@@ -1,0 +1,27 @@
+{
+  "urls": [
+    "https://sunnah.com/bukhari:4474",
+    "https://sunnah.com/muslim:810",
+    "https://sunnah.com/muslim:809a",
+    "https://sunnah.com/tirmidhi:2892",
+    "https://sunnah.com/tirmidhi:2887"
+  ],
+  "dorar": [
+    "آية الكرسي دبر كل صلاة مكتوبة لم يمنعه من دخول الجنة",
+    "من قرأ سورة الكهف يوم الجمعة أضاء له من النور ما بين الجمعتين",
+    "لا ينام حتى يقرأ الم تنزيل وتبارك الذي بيده الملك",
+    "من قرأ سورة الواقعة كل ليلة لم تصبه فاقة",
+    "إن لكل شيء قلبا وقلب القرآن يس",
+    "حين يصبح ثلاث مرات أعوذ بالله السميع العليم من الشيطان الرجيم فقرأ ثلاث آيات من آخر سورة الحشر"
+  ],
+  "everyayah": {
+    "pages": ["https://everyayah.com/data/recitations.js", "https://everyayah.com/recitations_ayat.html"],
+    "folders": [
+      "Alafasy_128kbps", "Alafasy_64kbps",
+      "Husary_128kbps", "Husary_64kbps", "Husary_Muallim_128kbps",
+      "Minshawy_Murattal_128kbps", "Minshawy_Mujawwad_192kbps",
+      "Abdul_Basit_Murattal_192kbps", "Abdul_Basit_Murattal_64kbps"
+    ],
+    "files": ["001001.mp3", "002255.mp3", "114006.mp3", "bismillah.mp3", "audhubillah.mp3"]
+  }
+}

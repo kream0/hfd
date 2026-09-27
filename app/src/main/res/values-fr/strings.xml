@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="later">Plus tard</string>
+
+    <string name="tab_home">Accueil</string>
+    <string name="tab_settings">Réglages</string>
+
+    <string name="home_soon_title">BISMILLAH</string>
+    <string name="home_soon_body">Les versets et sourates aux mérites établis arrivent dans la prochaine version : texte, audio par āya et suivi de progression.</string>
+
+    <string name="settings_updates">Mises à jour</string>
+    <string name="settings_about">À propos</string>
+    <string name="settings_about_body">HFD %1$s\nApprendre à l\'oreille les versets aux mérites établis.\nPolices : Doto, Space Grotesk, Space Mono (OFL) · Lecture : AndroidX Media3</string>
+
+    <string name="update_test_build">version de test n°%1$d</string>
+    <string name="update_unreachable">GitHub injoignable</string>
+    <string name="update_latest">Vous avez la dernière version</string>
+    <string name="update_download_failed">Échec du téléchargement</string>
+    <string name="update_allow_install">Autorisez HFD à installer les mises à jour, puis touchez Installer à nouveau</string>
+    <string name="update_installer_error">Impossible de lancer l\'installation : %1$s</string>
+    <string name="update_cancelled">Mise à jour annulée</string>
+    <string name="update_failed">Échec de la mise à jour : %1$s</string>
+    <string name="update_ready_title">Mise à jour prête · v%1$s</string>
+    <string name="update_ready_subtitle">Une nouvelle version de HFD est téléchargée</string>
+    <string name="update_install_now">Installer</string>
+    <string name="update_install">Installer</string>
+    <string name="update_get">Obtenir</string>
+    <string name="update_check">Vérifier</string>
+    <string name="update_status_up_to_date">À jour · vérifié le %1$s</string>
+    <string name="update_status_never">Pas encore vérifié</string>
+    <string name="update_status_checking">Vérification…</string>
+    <string name="update_status_available">v%1$s disponible</string>
+    <string name="update_status_downloading">Téléchargement de la v%1$s · %2$d %%</string>
+    <string name="update_status_ready">v%1$s prête à installer</string>
+    <string name="update_status_failed">Échec de la vérification : %1$s</string>
+    <string name="update_auto_title">Téléchargement auto des mises à jour</string>
+    <string name="update_auto_body">Quand une nouvelle version est publiée, la télécharger en arrière-plan, puis demander avant d\'installer</string>
+</resources>
