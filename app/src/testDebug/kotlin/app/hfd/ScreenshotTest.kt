@@ -1,14 +1,12 @@
 package app.hfd
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.hfd.core.progress.Event
 import app.hfd.core.progress.Mode
@@ -39,12 +37,17 @@ class ScreenshotTest {
 
     private val out = File(System.getProperty("hfd.screenshots") ?: "build/screenshots").apply { mkdirs() }
 
+    /** Draws the activity's window into a bitmap (software canvas, native graphics). */
     private fun shot(name: String) {
         rule.waitForIdle()
         Thread.sleep(300)
         rule.waitForIdle()
-        val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
-        FileOutputStream(File(out, "$name.png")).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        rule.runOnUiThread {
+            val view = rule.activity.window.decorView
+            val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+            view.draw(Canvas(bitmap))
+            FileOutputStream(File(out, "$name.png")).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        }
     }
 
     private fun ui(block: () -> Unit) {
