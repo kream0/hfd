@@ -52,8 +52,13 @@ jobs:
                 if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then MODE=skip; else MODE=create; fi
               else
                 # Branch push: release if VERSION names a version that isn't released yet.
-                V=$(gh api -H "Accept: application/vnd.github.raw" \
-                  "repos/$GITHUB_REPOSITORY/contents/VERSION?ref=$GITHUB_SHA" 2>/dev/null | tr -d '[:space:]' || true)
+                # (gh prints the 404 body on stdout, so only trust the output when it succeeds.)
+                if V=$(gh api -H "Accept: application/vnd.github.raw" \
+                  "repos/$GITHUB_REPOSITORY/contents/VERSION?ref=$GITHUB_SHA" 2>/dev/null); then
+                  V=$(printf '%s' "$V" | tr -d '[:space:]')
+                else
+                  V=""
+                fi
                 if [ -n "$V" ] && ! gh release view "v$V" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
                   TAG="v$V"; MODE=create
                 fi
