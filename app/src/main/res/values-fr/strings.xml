@@ -5,8 +5,6 @@
     <string name="tab_home">Accueil</string>
     <string name="tab_settings">Réglages</string>
 
-    <string name="home_soon_title">BISMILLAH</string>
-    <string name="home_soon_body">Les versets et sourates aux mérites établis arrivent dans la prochaine version : texte, audio par āya et suivi de progression.</string>
 
     <string name="settings_updates">Mises à jour</string>
     <string name="settings_about">À propos</string>
@@ -35,4 +33,54 @@
     <string name="update_status_failed">Échec de la vérification : %1$s</string>
     <string name="update_auto_title">Téléchargement auto des mises à jour</string>
     <string name="update_auto_body">Quand une nouvelle version est publiée, la télécharger en arrière-plan, puis demander avant d\'installer</string>
+    <string name="tab_fadail">Faḍāʾil</string>
+    <string name="loading">Chargement…</string>
+
+    <string name="occasion_morning">Matin</string>
+    <string name="occasion_evening">Soir</string>
+    <string name="occasion_night">La nuit</string>
+    <string name="occasion_before_sleep">Avant de dormir</string>
+    <string name="occasion_after_prayer">Après la prière</string>
+    <string name="occasion_friday">Vendredi</string>
+    <string name="occasion_any">À tout moment</string>
+    <string name="group_long">Longues sourates</string>
+    <string name="group_weak">Récits faibles</string>
+
+    <string name="grade_sahih">Ṣaḥīḥ</string>
+    <string name="grade_hasan">Ḥasan</string>
+    <string name="grade_daif">Ḍaʿīf · faible</string>
+    <string name="grade_mawdu">Mawḍūʿ · inventé</string>
+    <string name="label_long">Long</string>
+    <plurals name="ayat_count">
+        <item quantity="one">%d āya</item>
+        <item quantity="many">%d āyāt</item>
+        <item quantity="other">%d āyāt</item>
+    </plurals>
+
+    <string name="detail_virtue">Mérite</string>
+    <string name="detail_sources">Sources</string>
+    <string name="detail_grading">Authenticité</string>
+    <string name="detail_graded_by">%1$s · %2$s</string>
+    <string name="detail_text">Texte</string>
+    <string name="detail_weak_warning">Ce récit n\'est pas authentiquement établi. Il est affiché parce que « Afficher les récits faibles » est activé.</string>
+    <string name="detail_back">Retour</string>
+    <string name="sura_header">Sourate %1$d · %2$s · %3$s</string>
+
+    <string name="home_now">Suggéré maintenant · %1$s</string>
+    <string name="home_daily">Chaque jour</string>
+    <string name="home_all">Tous les faḍāʾil</string>
+
+    <string name="settings_reading">Lecture</string>
+    <string name="settings_arabic_size">Taille du texte coranique</string>
+    <string name="settings_arabic_size_body">Taille du texte arabe dans la lecture</string>
+    <string name="settings_translation">Traduction des sens</string>
+    <string name="settings_translation_body">Une ligne sous chaque āya. Auto suit la langue de l\'appli</string>
+    <string name="translation_auto">Auto</string>
+    <string name="translation_fr">Français</string>
+    <string name="translation_en">English</string>
+    <string name="settings_weak">Afficher les récits faibles</string>
+    <string name="settings_weak_body">Lister aussi les faḍāʾil dont le ḥadīth est faible (ḍaʿīf) ou inventé (mawḍūʿ), dans un groupe à part et clairement signalés</string>
+    <string name="settings_sources">Sources et licences</string>
+    <string name="settings_sources_body">Texte du Coran : Tanzil Project (tanzil.net), texte uthmani v1.1, CC BY 3.0, utilisé tel quel.\nTraductions des sens : Muhammad Hamidullah (français) et Saheeh International (anglais), depuis tanzil.net.\nPolice du texte coranique : Amiri Quran (OFL).\nRéférences des ḥadīth : sunnah.com, dorar.net.\nRécitations : everyayah.com.</string>
+    <string name="settings_tanzil_link">Ouvrir tanzil.net</string>
 </resources>

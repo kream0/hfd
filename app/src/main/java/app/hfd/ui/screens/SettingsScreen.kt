@@ -1,6 +1,15 @@
 package app.hfd.ui.screens
 
 import android.app.Activity
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextAlign
+import app.hfd.core.quran.AyahRef
+import app.hfd.data.AppSettings
+import app.hfd.data.TranslationChoice
+import app.hfd.ui.components.Segmented
+import app.hfd.ui.components.SettingBlock
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -43,8 +52,25 @@ fun SettingsScreen() {
     ) {
         ScreenHeader(stringResource(R.string.tab_settings).uppercase())
 
+        SettingsSection(stringResource(R.string.settings_reading)) {
+            ReadingSection(settings)
+        }
+
         SettingsSection(stringResource(R.string.settings_updates)) {
             UpdatesSection(settings.autoUpdate)
+        }
+
+        SettingsSection(stringResource(R.string.settings_sources)) {
+            val uri = LocalUriHandler.current
+            Text(
+                stringResource(R.string.settings_sources_body),
+                style = Type.label,
+                color = P.textDim,
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
+            Box(Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
+                PillButton(stringResource(R.string.settings_tanzil_link), { runCatching { uri.openUri("https://tanzil.net") } })
+            }
         }
 
         SettingsSection(stringResource(R.string.settings_about)) {
@@ -55,6 +81,46 @@ fun SettingsScreen() {
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun ReadingSection(settings: AppSettings) {
+    val presets = AppSettings.ARABIC_PRESETS
+    SettingBlock(stringResource(R.string.settings_arabic_size), stringResource(R.string.settings_arabic_size_body)) {
+        Segmented(
+            options = listOf("S", "M", "L", "XL"),
+            selected = presets.indices.minByOrNull { kotlin.math.abs(presets[it] - settings.arabicSize) } ?: 1,
+            onSelect = { i -> Graph.settings.update { it.copy(arabicSize = presets[i]) } },
+        )
+        val content by Graph.content.content.collectAsStateWithLifecycle()
+        content?.quran?.text(AyahRef(1, 1))?.let { basmala ->
+            Text(
+                basmala,
+                style = Type.quran(settings.arabicSize).copy(textAlign = TextAlign.Center),
+                color = P.text,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            )
+        }
+    }
+    SettingLine(stringResource(R.string.settings_translation), stringResource(R.string.settings_translation_body)) {
+        NothingSwitch(settings.showTranslation, { on -> Graph.settings.update { it.copy(showTranslation = on) } })
+    }
+    if (settings.showTranslation) {
+        Box(Modifier.padding(horizontal = 20.dp)) {
+            Segmented(
+                options = listOf(
+                    stringResource(R.string.translation_auto),
+                    stringResource(R.string.translation_fr),
+                    stringResource(R.string.translation_en),
+                ),
+                selected = settings.translation.ordinal,
+                onSelect = { i -> Graph.settings.update { it.copy(translation = TranslationChoice.entries[i]) } },
+            )
+        }
+    }
+    SettingLine(stringResource(R.string.settings_weak), stringResource(R.string.settings_weak_body)) {
+        NothingSwitch(settings.showWeak, { on -> Graph.settings.update { it.copy(showWeak = on) } })
     }
 }
 

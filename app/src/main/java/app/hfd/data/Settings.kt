@@ -16,7 +16,7 @@ data class AppSettings(
     /** Show weak (ḍaʿīf) and fabricated (mawḍūʿ) narrations, clearly labelled. */
     val showWeak: Boolean = false,
     /** Qur'an text size, in sp. */
-    val arabicSize: Int = 30,
+    val arabicSize: Int = 28,
 ) {
     fun translationFor(uiLanguage: String): TranslationLang = when (translation) {
         TranslationChoice.FR -> TranslationLang.FR
@@ -25,7 +25,9 @@ data class AppSettings(
     }
 
     companion object {
-        val ARABIC_SIZES = 22..44
+        val ARABIC_SIZES = 20..48
+        /** Choices offered in Settings (S, M, L, XL). */
+        val ARABIC_PRESETS = listOf(24, 28, 32, 38)
     }
 }
 

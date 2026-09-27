@@ -6,8 +6,6 @@
     <string name="tab_home">Home</string>
     <string name="tab_settings">Settings</string>
 
-    <string name="home_soon_title">BISMILLAH</string>
-    <string name="home_soon_body">The faḍāʾil verses and sūras arrive in the next version: text, audio per āya and progress tracking.</string>
 
     <string name="settings_updates">Updates</string>
     <string name="settings_about">About</string>
@@ -36,4 +34,53 @@
     <string name="update_status_failed">Update check failed: %1$s</string>
     <string name="update_auto_title">Auto-download updates</string>
     <string name="update_auto_body">When a new release is published, download it in the background, then ask before installing</string>
+    <string name="tab_fadail">Faḍāʾil</string>
+    <string name="loading">Loading…</string>
+
+    <string name="occasion_morning">Morning</string>
+    <string name="occasion_evening">Evening</string>
+    <string name="occasion_night">At night</string>
+    <string name="occasion_before_sleep">Before sleep</string>
+    <string name="occasion_after_prayer">After prayer</string>
+    <string name="occasion_friday">Friday</string>
+    <string name="occasion_any">Any time</string>
+    <string name="group_long">Long sūras</string>
+    <string name="group_weak">Weak narrations</string>
+
+    <string name="grade_sahih">Ṣaḥīḥ</string>
+    <string name="grade_hasan">Ḥasan</string>
+    <string name="grade_daif">Ḍaʿīf · weak</string>
+    <string name="grade_mawdu">Mawḍūʿ · fabricated</string>
+    <string name="label_long">Long</string>
+    <plurals name="ayat_count">
+        <item quantity="one">%d āya</item>
+        <item quantity="other">%d āyāt</item>
+    </plurals>
+
+    <string name="detail_virtue">Virtue</string>
+    <string name="detail_sources">Sources</string>
+    <string name="detail_grading">Authenticity</string>
+    <string name="detail_graded_by">%1$s · %2$s</string>
+    <string name="detail_text">Text</string>
+    <string name="detail_weak_warning">This narration is not authentically established. It is shown because “Show weak narrations” is on.</string>
+    <string name="detail_back">Back</string>
+    <string name="sura_header">Sūra %1$d · %2$s · %3$s</string>
+
+    <string name="home_now">Suggested now · %1$s</string>
+    <string name="home_daily">Every day</string>
+    <string name="home_all">All faḍāʾil</string>
+
+    <string name="settings_reading">Reading</string>
+    <string name="settings_arabic_size">Qur\'an text size</string>
+    <string name="settings_arabic_size_body">Size of the Arabic text in the reading view</string>
+    <string name="settings_translation">Translation of meanings</string>
+    <string name="settings_translation_body">A line under each āya. Auto follows the app language</string>
+    <string name="translation_auto">Auto</string>
+    <string name="translation_fr">Français</string>
+    <string name="translation_en">English</string>
+    <string name="settings_weak">Show weak narrations</string>
+    <string name="settings_weak_body">Also list faḍāʾil whose ḥadīth is weak (ḍaʿīf) or fabricated (mawḍūʿ), in their own group and clearly labelled</string>
+    <string name="settings_sources">Sources and licences</string>
+    <string name="settings_sources_body">Qur\'an text: Tanzil Project (tanzil.net), Uthmani text v1.1, CC BY 3.0, used verbatim.\nTranslations of meanings: Muhammad Hamidullah (French) and Saheeh International (English), from tanzil.net.\nFont of the Qur\'an text: Amiri Quran (OFL).\nḤadīth references: sunnah.com, dorar.net.\nRecitations: everyayah.com.</string>
+    <string name="settings_tanzil_link">Open tanzil.net</string>
 </resources>

@@ -4,7 +4,9 @@ import android.app.Activity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,6 +49,8 @@ import app.hfd.ui.components.LocalSheets
 import app.hfd.ui.components.SheetAction
 import app.hfd.ui.components.SheetHost
 import app.hfd.ui.components.SheetSpec
+import app.hfd.ui.screens.FadailScreen
+import app.hfd.ui.screens.FadilaScreen
 import app.hfd.ui.screens.HomeScreen
 import app.hfd.ui.screens.SettingsScreen
 import app.hfd.ui.theme.P
@@ -83,15 +87,31 @@ fun AppRoot(app: AppViewModel) {
             Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) {
                     when (app.tab) {
-                        Tab.HOME -> HomeScreen()
+                        Tab.HOME -> HomeScreen(onOpen = app::openFadila, onAll = { app.selectTab(Tab.FADAIL) })
+                        Tab.FADAIL -> FadailScreen(onOpen = app::openFadila)
                         Tab.SETTINGS -> SettingsScreen()
                     }
+                    FadilaOverlay(app)
                 }
                 BottomNav(tab = app.tab, onTab = app::selectTab)
             }
             ToastHost(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 6.dp))
             SheetHost(sheet, onShow = { sheet = it }) { sheet = null }
         }
+    }
+}
+
+/** Faḍīla detail slides over the current tab, keeping the bottom navigation visible. */
+@Composable
+private fun FadilaOverlay(app: AppViewModel) {
+    var last by remember { mutableStateOf<String?>(null) }
+    app.fadila?.let { last = it }
+    AnimatedVisibility(
+        visible = app.fadila != null,
+        enter = slideInHorizontally { it / 3 } + fadeIn(),
+        exit = slideOutHorizontally { it / 3 } + fadeOut(),
+    ) {
+        last?.let { id -> FadilaScreen(id, onBack = { app.fadila = null }) }
     }
 }
 

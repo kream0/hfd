@@ -149,11 +149,21 @@
      "number": "6464",
      "narrator": "Abū Umāma al-Bāhilī",
      "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%A2%D9%8A%D8%A9%20%D8%A7%D9%84%D9%83%D8%B1%D8%B3%D9%8A%20%D9%81%D9%8A%20%D8%AF%D8%A8%D8%B1%20%D9%83%D9%84%20%D8%B5%D9%84%D8%A7%D8%A9%20%D9%85%D9%83%D8%AA%D9%88%D8%A8%D8%A9"
+    },
+    {
+     "collection": "as-Silsila aṣ-Ṣaḥīḥa (al-Albānī)",
+     "number": "972",
+     "narrator": "Abū Umāma al-Bāhilī",
+     "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%A2%D9%8A%D8%A9%20%D8%A7%D9%84%D9%83%D8%B1%D8%B3%D9%8A%20%D9%81%D9%8A%20%D8%AF%D8%A8%D8%B1%20%D9%83%D9%84%20%D8%B5%D9%84%D8%A7%D8%A9%20%D9%85%D9%83%D8%AA%D9%88%D8%A8%D8%A9%20%D9%84%D9%85%20%D9%8A%D9%85%D9%86%D8%B9%D9%87%20%D9%85%D9%86%20%D8%AF%D8%AE%D9%88%D9%84%20%D8%A7%D9%84%D8%AC%D9%86%D8%A9"
     }
    ],
    "grading": {
     "grade": "sahih",
-    "by": "al-Albānī"
+    "by": "al-Albānī",
+    "note": {
+     "fr": "Rapporté par an-Nasāʾī (as-Sunan al-Kubrā) ; son numéro n'a pas pu être vérifié ici, il n'est donc pas cité. Al-Albānī : authentique par l'ensemble de ses voies (aṣ-Ṣaḥīḥa 972).",
+     "en": "Reported by an-Nasāʾī (as-Sunan al-Kubrā); its number couldn't be checked here, so it isn't cited. Al-Albānī: authentic through its combined routes (aṣ-Ṣaḥīḥa 972)."
+    }
    },
    "occasions": [
     "after_prayer"
@@ -331,8 +341,8 @@
     "grade": "sahih",
     "by": "al-Albānī",
     "note": {
-     "fr": "Al-Ḥākim : chaîne authentique. Certains savants le tiennent pour une parole d'Abū Saʿīd (mawqūf).",
-     "en": "Al-Ḥākim: sound chain. Some scholars hold it to be Abū Saʿīd's own words (mawqūf)."
+     "fr": "Al-Ḥākim : chaîne authentique. Certains savants contestent l'attribution au Prophète ﷺ, le récit étant aussi rapporté comme parole d'Abū Saʿīd (mawqūf).",
+     "en": "Al-Ḥākim: sound chain. Some scholars question its attribution to the Prophet ﷺ, since it is also reported as Abū Saʿīd's own words (mawqūf)."
     }
    },
    "occasions": [
@@ -429,8 +439,8 @@
     "grade": "sahih",
     "by": "al-Albānī",
     "note": {
-     "fr": "Darussalam juge cette chaîne faible (Layth ibn Abī Sulaym) ; al-Albānī l'authentifie par ses autres voies.",
-     "en": "Darussalam grades this chain weak (Layth ibn Abī Sulaym); al-Albānī authenticates it through its other routes."
+     "fr": "Darussalam juge cette chaîne faible (Layth ibn Abī Sulaym) ; al-Albānī l'authentifie par ses autres voies (aṣ-Ṣaḥīḥa 585, Ṣaḥīḥ at-Tirmidhī).",
+     "en": "Darussalam grades this chain weak (Layth ibn Abī Sulaym); al-Albānī authenticates it through its other routes (aṣ-Ṣaḥīḥa 585, Ṣaḥīḥ at-Tirmidhī)."
     }
    },
    "occasions": [
@@ -576,7 +586,11 @@
    ],
    "grading": {
     "grade": "hasan",
-    "by": "al-Albānī"
+    "by": "al-Albānī",
+    "note": {
+     "fr": "At-Tirmidhī : ḥasan ṣaḥīḥ gharīb. Al-Albānī : ḥasan (Ṣaḥīḥ Abī Dāwūd), ṣaḥīḥ (Ṣaḥīḥ al-Jāmiʿ 4406).",
+     "en": "At-Tirmidhī: ḥasan ṣaḥīḥ gharīb. Al-Albānī: ḥasan (Ṣaḥīḥ Abī Dāwūd), ṣaḥīḥ (Ṣaḥīḥ al-Jāmiʿ 4406)."
+    }
    },
    "occasions": [
     "morning",
@@ -673,7 +687,11 @@
    ],
    "grading": {
     "grade": "sahih",
-    "by": "al-Albānī"
+    "by": "al-Albānī",
+    "note": {
+     "fr": "Al-Albānī : ṣaḥīḥ (Ṣaḥīḥ Abī Dāwūd 5055), ḥasan (Ṣaḥīḥ al-Jāmiʿ 292). Darussalam : ḥasan (at-Tirmidhī 3403).",
+     "en": "Al-Albānī: ṣaḥīḥ (Ṣaḥīḥ Abī Dāwūd 5055), ḥasan (Ṣaḥīḥ al-Jāmiʿ 292). Darussalam: ḥasan (at-Tirmidhī 3403)."
+    }
    },
    "occasions": [
     "before_sleep"
@@ -715,8 +733,8 @@
     "grade": "daif",
     "by": "al-Albānī",
     "note": {
-     "fr": "At-Tirmidhī : gharīb (chaîne unique).",
-     "en": "At-Tirmidhī: gharīb (a single chain)."
+     "fr": "At-Tirmidhī : gharīb, connu par cette seule chaîne. Al-Albānī : faible (Khālid ibn Ṭahmān).",
+     "en": "At-Tirmidhī: gharīb, known only through this chain. Al-Albānī: weak (Khālid ibn Ṭahmān)."
     }
    },
    "occasions": [
@@ -758,8 +776,8 @@
     "grade": "mawdu",
     "by": "al-Albānī",
     "note": {
-     "fr": "Inventé selon al-Albānī ; faible selon Darussalam ; at-Tirmidhī : gharīb.",
-     "en": "Fabricated per al-Albānī; weak per Darussalam; at-Tirmidhī: gharīb."
+     "fr": "Inventé selon al-Albānī ; faible selon Darussalam. At-Tirmidhī : gharīb, avec un transmetteur inconnu (Hārūn Abū Muḥammad).",
+     "en": "Fabricated per al-Albānī; weak per Darussalam. At-Tirmidhī: gharīb, with an unknown narrator (Hārūn Abū Muḥammad)."
     }
    },
    "occasions": [
