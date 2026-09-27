@@ -57,10 +57,21 @@ fun GradeChip(grade: Grade, modifier: Modifier = Modifier) {
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun rangesLabel(f: Fadila): String {
-    // Whole sūras read better as their numbers ("112 · 113 · 114") than as āya ranges.
-    val refs = if ("sura" in f.tags) f.ranges.joinToString(" · ") { it.sura.toString() }
+    // Whole sūras read better as their numbers ("32 · 67", "112–114") than as āya ranges.
+    val refs = if ("sura" in f.tags) suraList(f.ranges.map { it.sura })
     else f.ranges.joinToString(" · ") { it.toString() }
-    return refs + "  ·  " + pluralStringResource(R.plurals.ayat_count, f.size, f.size)
+    return refs + " · " + pluralStringResource(R.plurals.ayat_count, f.size, f.size)
+}
+
+/** "32 · 67", "113 · 114", and runs of three or more as "112–114". */
+private fun suraList(suras: List<Int>): String {
+    val runs = mutableListOf<IntRange>()
+    for (s in suras) {
+        val last = runs.lastOrNull()
+        if (last != null && s == last.last + 1) runs[runs.lastIndex] = last.first..s else runs += s..s
+    }
+    return runs.flatMap { r -> if (r.count() >= 3) listOf("${r.first}–${r.last}") else r.map { it.toString() } }
+        .joinToString(" · ")
 }
 
 @Composable
