@@ -37,11 +37,16 @@ class ScreenshotTest {
 
     private val out = File(System.getProperty("hfd.screenshots") ?: "build/screenshots").apply { mkdirs() }
 
-    /** Draws the activity's window into a bitmap (software canvas, native graphics). */
+    /**
+     * Lets the UI settle (the test clock is advanced by hand: infinite dot animations would
+     * otherwise keep Compose busy forever), then draws the window into a bitmap.
+     */
     private fun shot(name: String) {
-        rule.waitForIdle()
-        Thread.sleep(300)
-        rule.waitForIdle()
+        repeat(4) {
+            rule.mainClock.advanceTimeBy(250)
+            Thread.sleep(100)
+            rule.waitForIdle()
+        }
         rule.runOnUiThread {
             val view = rule.activity.window.decorView
             val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
@@ -52,6 +57,7 @@ class ScreenshotTest {
 
     private fun ui(block: () -> Unit) {
         rule.runOnUiThread(block)
+        rule.mainClock.advanceTimeBy(100)
         rule.waitForIdle()
     }
 
@@ -59,8 +65,15 @@ class ScreenshotTest {
     fun screens() {
         val vm = AppViewModel()
         var dark by mutableStateOf(true)
+        rule.mainClock.autoAdvance = false
         rule.setContent { HfdTheme(dark = dark) { AppRoot(vm) } }
-        rule.waitUntil(30_000) { Graph.content.content.value != null && Graph.progress.loaded.value }
+        val deadline = System.currentTimeMillis() + 60_000
+        while (!(Graph.content.content.value != null && Graph.progress.loaded.value)) {
+            check(System.currentTimeMillis() < deadline) { "Content didn't load" }
+            rule.mainClock.advanceTimeBy(100)
+            Thread.sleep(50)
+            rule.waitForIdle()
+        }
 
         // A little history so progress rings, strength marks and stats have something to show.
         ui {
