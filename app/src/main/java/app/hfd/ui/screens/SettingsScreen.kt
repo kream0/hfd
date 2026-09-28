@@ -266,9 +266,6 @@ private fun ReadingSection(settings: AppSettings) {
             )
         }
     }
-    SettingLine(stringResource(R.string.settings_weak), stringResource(R.string.settings_weak_body)) {
-        NothingSwitch(settings.showWeak, { on -> Graph.settings.update { it.copy(showWeak = on) } })
-    }
 }
 
 @Composable

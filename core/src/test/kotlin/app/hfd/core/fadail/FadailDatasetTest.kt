@@ -103,14 +103,4 @@ class FadailDatasetTest {
         assertTrue(Occasion.NIGHT !in waqia.occasions(showWeak = false))
         assertTrue(Occasion.NIGHT in waqia.occasions(showWeak = true))
     }
-
-    @Test
-    fun remindersOpenExistingPassagesWithAMatchingNarration() {
-        for (k in app.hfd.core.reminders.ReminderKind.entries) {
-            val id = k.fadilaId ?: continue
-            val f = Assets.fadail.fadail.singleOrNull { it.id == id }
-            assertTrue("$k → $id", f != null)
-            assertTrue("$k has a sound narration for ${k.occasion}", k.occasion in f!!.occasions(showWeak = false))
-        }
-    }
 }

@@ -28,8 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.hfd.R
 import app.hfd.core.fadail.Fadila
-import app.hfd.core.fadail.Grade
-import app.hfd.ui.label
 import app.hfd.ui.text
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
@@ -46,11 +44,6 @@ fun Chip(text: String, modifier: Modifier = Modifier, warn: Boolean = false, fil
     ) {
         Text(text.uppercase(), style = Type.label.copy(fontSize = 10.sp), color = if (filled) Color.White else color, maxLines = 1)
     }
-}
-
-@Composable
-fun GradeChip(grade: Grade, modifier: Modifier = Modifier) {
-    Chip(stringResource(grade.label), modifier, warn = !grade.acceptable)
 }
 
 /** "2:255 · 1 āya" style summary of where a faḍīla's text is. */

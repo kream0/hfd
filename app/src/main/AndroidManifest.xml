@@ -6,8 +6,6 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- Only for computing prayer times (Āyat al-Kursī reminders); never leaves the phone. -->
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Recite mode: the recitation is recognised on the phone; audio is never stored or sent. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

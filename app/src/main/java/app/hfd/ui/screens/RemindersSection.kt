@@ -1,11 +1,8 @@
 package app.hfd.ui.screens
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -36,33 +33,15 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
-import app.hfd.core.prayer.PrayerMethod
 import app.hfd.data.AppSettings
-import app.hfd.reminders.Reminders
 import app.hfd.ui.components.LocalSheets
 import app.hfd.ui.components.NothingSwitch
-import app.hfd.ui.components.PillButton
-import app.hfd.ui.components.Segmented
-import app.hfd.ui.components.SettingBlock
-import app.hfd.ui.components.SettingLine
 import app.hfd.ui.components.SheetSpec
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private fun hhmm(minutes: Int) = String.format(Locale.US, "%02d:%02d", minutes / 60, minutes % 60)
-
-private val METHOD_LABELS = mapOf(
-    PrayerMethod.MWL to "MWL",
-    PrayerMethod.UOIF to "UOIF",
-    PrayerMethod.ISNA to "ISNA",
-    PrayerMethod.EGYPT to "EGY",
-    PrayerMethod.UMM_AL_QURA to "MKH",
-    PrayerMethod.KARACHI to "KHI",
-)
 
 @Composable
 fun RemindersSection(settings: AppSettings) {
@@ -79,17 +58,6 @@ fun RemindersSection(settings: AppSettings) {
         ) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
-    SettingLine(stringResource(R.string.remind_kursi), stringResource(R.string.remind_kursi_body)) {
-        NothingSwitch(settings.remindKursi, { on -> toggle(on) { it.copy(remindKursi = on) } })
-    }
-    if (settings.remindKursi) LocationBlock(settings)
-
-    ReminderLine(stringResource(R.string.remind_mulk), settings.remindMulk, settings.mulkAt,
-        onToggle = { on -> toggle(on) { it.copy(remindMulk = on) } },
-        onTime = { sheets(timeSheet(context, { it.mulkAt }, { s, m -> s.copy(mulkAt = m) })) })
-    ReminderLine(stringResource(R.string.remind_kahf), settings.remindKahf, settings.kahfAt,
-        onToggle = { on -> toggle(on) { it.copy(remindKahf = on) } },
-        onTime = { sheets(timeSheet(context, { it.kahfAt }, { s, m -> s.copy(kahfAt = m) })) })
     ReminderLine(stringResource(R.string.remind_reviews), settings.remindReviews, settings.reviewsAt,
         onToggle = { on -> toggle(on) { it.copy(remindReviews = on) } },
         onTime = { sheets(timeSheet(context, { it.reviewsAt }, { s, m -> s.copy(reviewsAt = m) })) })
@@ -110,68 +78,6 @@ private fun ReminderLine(title: String, on: Boolean, at: Int, onToggle: (Boolean
         }
         Spacer(Modifier.width(12.dp))
         NothingSwitch(on, onToggle)
-    }
-}
-
-@Composable
-private fun LocationBlock(settings: AppSettings) {
-    val context = LocalContext.current
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) locate(context) else Graph.toast(R.string.location_denied)
-    }
-    val calc = settings.prayerCalculator
-    val status = if (settings.latitude != null && settings.longitude != null) {
-        stringResource(R.string.location_set, String.format(Locale.US, "%.2f, %.2f", settings.latitude, settings.longitude), METHOD_LABELS[settings.prayerMethod].orEmpty())
-    } else {
-        stringResource(R.string.location_none)
-    }
-    SettingLine(stringResource(R.string.location), status) {
-        PillButton(stringResource(R.string.location_use), {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                locate(context)
-            } else {
-                permission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-            }
-        })
-    }
-    val methods = METHOD_LABELS.keys.toList()
-    val today = calc?.day(LocalDate.now(), ZoneId.systemDefault())
-    val fmt = DateTimeFormatter.ofPattern("HH:mm")
-    SettingBlock(
-        stringResource(R.string.prayer_method),
-        today?.let { d -> stringResource(R.string.prayer_today, d.times.entries.joinToString(" · ") { (p, t) -> Reminders.prayerName(context, p) + " " + t.format(fmt) }) },
-    ) {
-        Segmented(methods.map { METHOD_LABELS.getValue(it) }, methods.indexOf(settings.prayerMethod).coerceAtLeast(0), { i ->
-            Graph.settings.update { it.copy(prayerMethod = methods[i]) }
-        })
-    }
-}
-
-/** One coarse fix, rounded to ~1 km, kept only on the phone for prayer times. */
-@SuppressLint("MissingPermission")
-private fun locate(context: Context) {
-    val lm = context.getSystemService(LocationManager::class.java)
-    fun save(loc: Location?) {
-        if (loc == null) {
-            Graph.toast(R.string.location_failed)
-            return
-        }
-        val lat = Math.round(loc.latitude * 100) / 100.0
-        val lng = Math.round(loc.longitude * 100) / 100.0
-        Graph.settings.update { it.copy(latitude = lat, longitude = lng) }
-    }
-    val providers = buildList {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(LocationManager.FUSED_PROVIDER)
-        add(LocationManager.NETWORK_PROVIDER)
-        add(LocationManager.GPS_PROVIDER)
-    }.filter { runCatching { lm.isProviderEnabled(it) }.getOrDefault(false) }
-    val last = providers.mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }.maxByOrNull { it.time }
-    if (last != null) {
-        save(last)
-    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && providers.isNotEmpty()) {
-        lm.getCurrentLocation(providers.first(), null, ContextCompat.getMainExecutor(context)) { save(it) }
-    } else {
-        save(null)
     }
 }
 

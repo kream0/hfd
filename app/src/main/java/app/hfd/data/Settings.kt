@@ -5,8 +5,6 @@ import app.hfd.core.playback.GapMode
 import app.hfd.core.playback.PlanSpec
 import app.hfd.core.playback.Reciter
 import app.hfd.core.playback.Reciters
-import app.hfd.core.prayer.PrayerCalculator
-import app.hfd.core.prayer.PrayerMethod
 import app.hfd.core.progress.LearnOrder
 import app.hfd.core.reminders.ReminderConfig
 import kotlinx.serialization.Serializable
@@ -25,8 +23,6 @@ data class AppSettings(
     /** Translation of meanings under each āya. */
     val showTranslation: Boolean = true,
     val translation: TranslationChoice = TranslationChoice.AUTO,
-    /** Show weak (ḍaʿīf) and fabricated (mawḍūʿ) narrations, clearly labelled. */
-    val showWeak: Boolean = false,
     /** Qur'an text size, in sp. */
     val arabicSize: Int = 28,
     /** everyayah.com recitation (see [Reciters]). */
@@ -47,32 +43,12 @@ data class AppSettings(
     val learnOrder: LearnOrder = LearnOrder.SHORTEST,
     /** Send diagnostics to the developer ([app.hfd.diag.Diag]). */
     val sendDiagnostics: Boolean = true,
-    // Reminders. Times are minutes after midnight.
-    val remindKursi: Boolean = false,
-    val remindMulk: Boolean = false,
-    val mulkAt: Int = 22 * 60 + 30,
-    val remindKahf: Boolean = false,
-    val kahfAt: Int = 10 * 60,
+    /** The review reminder; its time in minutes after midnight. */
     val remindReviews: Boolean = false,
     val reviewsAt: Int = 19 * 60,
-    /** Where prayer times are computed (only stored on the phone), rounded to ~1 km. */
-    val latitude: Double? = null,
-    val longitude: Double? = null,
-    val prayerMethod: PrayerMethod = PrayerMethod.MWL,
 ) {
     val reminders: ReminderConfig
-        get() = ReminderConfig(
-            kursi = remindKursi,
-            mulk = remindMulk,
-            mulkAt = LocalTime.of(mulkAt / 60, mulkAt % 60),
-            kahf = remindKahf,
-            kahfAt = LocalTime.of(kahfAt / 60, kahfAt % 60),
-            reviews = remindReviews,
-            reviewsAt = LocalTime.of(reviewsAt / 60, reviewsAt % 60),
-        )
-
-    val prayerCalculator: PrayerCalculator?
-        get() = if (latitude != null && longitude != null) PrayerCalculator(latitude, longitude, prayerMethod) else null
+        get() = ReminderConfig(reviews = remindReviews, reviewsAt = LocalTime.of(reviewsAt / 60, reviewsAt % 60))
 
     val reciterInfo: Reciter get() = Reciters.byId(reciter)
 
@@ -118,7 +94,6 @@ class Settings(context: Context) {
             autoUpdate = prefs.getBoolean("autoUpdate", d.autoUpdate),
             showTranslation = prefs.getBoolean("showTranslation", d.showTranslation),
             translation = enumOr(prefs.getString("translation", null), d.translation),
-            showWeak = prefs.getBoolean("showWeak", d.showWeak),
             arabicSize = prefs.getInt("arabicSize", d.arabicSize).coerceIn(AppSettings.ARABIC_SIZES),
             reciter = Reciters.byId(prefs.getString("reciter", null)).id
                 // Until 1.3.1 Alafasy was the default (saved with every other setting): move to the new one.
@@ -134,16 +109,8 @@ class Settings(context: Context) {
             learnRepeats = prefs.getInt("learnRepeats", d.learnRepeats).takeIf { it in AppSettings.LEARN_REPEATS } ?: d.learnRepeats,
             learnOrder = enumOr(prefs.getString("learnOrder", null), d.learnOrder),
             sendDiagnostics = prefs.getBoolean("sendDiagnostics", d.sendDiagnostics),
-            remindKursi = prefs.getBoolean("remindKursi", d.remindKursi),
-            remindMulk = prefs.getBoolean("remindMulk", d.remindMulk),
-            mulkAt = prefs.getInt("mulkAt", d.mulkAt).coerceIn(0, 24 * 60 - 1),
-            remindKahf = prefs.getBoolean("remindKahf", d.remindKahf),
-            kahfAt = prefs.getInt("kahfAt", d.kahfAt).coerceIn(0, 24 * 60 - 1),
             remindReviews = prefs.getBoolean("remindReviews", d.remindReviews),
             reviewsAt = prefs.getInt("reviewsAt", d.reviewsAt).coerceIn(0, 24 * 60 - 1),
-            latitude = prefs.getString("latitude", null)?.toDoubleOrNull(),
-            longitude = prefs.getString("longitude", null)?.toDoubleOrNull(),
-            prayerMethod = enumOr(prefs.getString("prayerMethod", null), d.prayerMethod),
         )
     }
 
@@ -152,7 +119,6 @@ class Settings(context: Context) {
             .putBoolean("autoUpdate", s.autoUpdate)
             .putBoolean("showTranslation", s.showTranslation)
             .putString("translation", s.translation.name)
-            .putBoolean("showWeak", s.showWeak)
             .putInt("arabicSize", s.arabicSize)
             .putString("reciter", s.reciter)
             .putInt("repeatEach", s.repeatEach)
@@ -164,16 +130,11 @@ class Settings(context: Context) {
             .putInt("learnRepeats", s.learnRepeats)
             .putString("learnOrder", s.learnOrder.name)
             .putBoolean("sendDiagnostics", s.sendDiagnostics)
-            .putBoolean("remindKursi", s.remindKursi)
-            .putBoolean("remindMulk", s.remindMulk)
-            .putInt("mulkAt", s.mulkAt)
-            .putBoolean("remindKahf", s.remindKahf)
-            .putInt("kahfAt", s.kahfAt)
             .putBoolean("remindReviews", s.remindReviews)
             .putInt("reviewsAt", s.reviewsAt)
-            .putString("latitude", s.latitude?.toString())
-            .putString("longitude", s.longitude?.toString())
-            .putString("prayerMethod", s.prayerMethod.name)
+            // Settings of removed features (1.6.0: passage reminders, the location they needed).
+            .remove("showWeak").remove("remindKursi").remove("remindMulk").remove("mulkAt")
+            .remove("remindKahf").remove("kahfAt").remove("latitude").remove("longitude").remove("prayerMethod")
             .putInt("defaults", DEFAULTS)
             .apply()
     }
@@ -183,7 +144,10 @@ class Settings(context: Context) {
 
     companion object {
         const val PREFS = "hfd_settings"
-        /** Version of the defaults the stored settings were saved under (1: an āya plays once; 2: Maher al-Muʿayqilī). */
-        private const val DEFAULTS = 2
+        /**
+         * Version of the defaults the stored settings were saved under (1: an āya plays once;
+         * 2: Maher al-Muʿayqilī; 3: removed features' settings, the location among them, cleared).
+         */
+        private const val DEFAULTS = 3
     }
 }

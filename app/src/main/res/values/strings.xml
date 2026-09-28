@@ -39,30 +39,14 @@
     <string name="tab_fadail">Faḍāʾil</string>
     <string name="loading">Loading…</string>
 
-    <string name="occasion_morning">Morning</string>
-    <string name="occasion_evening">Evening</string>
-    <string name="occasion_night">At night</string>
-    <string name="occasion_before_sleep">Before sleep</string>
-    <string name="occasion_after_prayer">After prayer</string>
-    <string name="occasion_friday">Friday</string>
-    <string name="occasion_any">Any time</string>
 
-    <string name="grade_sahih">Ṣaḥīḥ</string>
-    <string name="grade_hasan">Ḥasan</string>
-    <string name="grade_daif">Ḍaʿīf · weak</string>
-    <string name="grade_mawdu">Mawḍūʿ · fabricated</string>
     <string name="label_long">Long</string>
     <plurals name="ayat_count">
         <item quantity="one">%d āya</item>
         <item quantity="other">%d āyāt</item>
     </plurals>
 
-    <string name="detail_virtue">Virtue</string>
-    <string name="detail_sources">Sources</string>
-    <string name="detail_grading">Authenticity</string>
-    <string name="detail_graded_by">%1$s · %2$s</string>
     <string name="detail_text">Text</string>
-    <string name="detail_weak_warning">This narration is not authentically established. It is shown because “Show weak narrations” is on.</string>
     <string name="detail_back">Back</string>
     <string name="sura_header">Sūra %1$d · %2$s · %3$s</string>
 
@@ -86,8 +70,6 @@
     <string name="translation_auto">Auto</string>
     <string name="translation_fr">Français</string>
     <string name="translation_en">English</string>
-    <string name="settings_weak">Show weak narrations</string>
-    <string name="settings_weak_body">Also show the weak (ḍaʿīf) and fabricated (mawḍūʿ) narrations about each passage, clearly labelled</string>
     <string name="settings_sources">Sources and licences</string>
     <string name="settings_sources_body">Qur\'an text: Tanzil Project (tanzil.net), Uthmani text v1.1, CC BY 3.0, used verbatim.\nTranslations of meanings: Muhammad Hamidullah (French) and Saheeh International (English), from tanzil.net.\nFont of the Qur\'an text: Amiri Quran (OFL).\nḤadīth references: sunnah.com, dorar.net.\nRecitations: everyayah.com.</string>
     <string name="settings_tanzil_link">Open tanzil.net</string>
@@ -237,43 +219,17 @@
     <string name="backup_imported">Backup imported · %1$d new events</string>
     <string name="backup_failed">Couldn\'t read that backup: %1$s</string>
     <string name="channel_reminders">Reminders</string>
-    <string name="channel_reminders_desc">Āyat al-Kursī after prayers, al-Mulk before sleep, al-Kahf on Friday, reviews</string>
-    <string name="reminder_kursi_title">Āyat al-Kursī · after %1$s</string>
-    <string name="reminder_mulk_title">As-Sajda and al-Mulk before sleep</string>
-    <string name="reminder_kahf_title">Al-Kahf · it\'s Friday</string>
+    <string name="channel_reminders_desc">Āyāt due for review</string>
     <string name="reminder_reviews_text">Recite them from memory while they\'re fresh.</string>
-    <string name="prayer_fajr">Fajr</string>
-    <string name="prayer_dhuhr">Dhuhr</string>
-    <string name="prayer_asr">Asr</string>
-    <string name="prayer_maghrib">Maghrib</string>
-    <string name="prayer_isha">Isha</string>
 
     <string name="settings_reminders">Reminders</string>
-    <string name="remind_kursi">Āyat al-Kursī after each prayer</string>
-    <string name="remind_kursi_body">15 minutes after each prayer time, computed on the phone for your location.</string>
-    <string name="remind_mulk">As-Sajda and al-Mulk before sleep</string>
-    <string name="remind_kahf">Al-Kahf on Friday</string>
     <string name="remind_reviews">Āyāt due for review</string>
     <string name="remind_at">At %1$s</string>
-    <string name="location">Location for prayer times</string>
-    <string name="location_none">Not set: Āyat al-Kursī reminders need it.</string>
-    <string name="location_set">%1$s · %2$s</string>
-    <string name="location_use">Use my location</string>
-    <string name="location_failed">Couldn\'t get a location. Is location on?</string>
-    <string name="location_denied">Location permission denied</string>
-    <string name="prayer_method">Calculation method</string>
-    <string name="prayer_today">Today: %1$s</string>
     <string name="time_title">Time</string>
     <string name="offline_partial">%d%% offline · save all</string>
     <string name="notifications_denied">Notifications are off for HFD: reminders can\'t show.</string>
     <string name="fadail_count">%1$d passages</string>
-    <string name="detail_no_narration">No narration about this particular passage is cited here: it is recited as part of the reference wird.</string>
-    <plurals name="detail_hidden_weak">
-        <item quantity="one">%1$d weak narration hidden (Settings → Reading → Show weak narrations)</item>
-        <item quantity="other">%1$d weak narrations hidden (Settings → Reading → Show weak narrations)</item>
-    </plurals>
     <string name="stats_none">Nothing learnt yet: open a passage and tap Learn.</string>
-    <string name="detail_no_sound_narration">No authentic narration about this particular passage is known: it is recited as part of the reference wird.</string>
     <string name="recite">Recite</string>
     <string name="recite_title">Recite · %1$s</string>
     <string name="recite_model_needed">Reciting aloud uses Tarteel\'s Qur\'an speech model (%1$d MB), downloaded once. It runs on the phone: your voice is never recorded or sent.</string>

@@ -13,7 +13,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import app.hfd.core.prayer.PrayerMethod
 import app.hfd.core.progress.Event
 import app.hfd.core.progress.Mode
 import app.hfd.core.srs.Rating
@@ -111,12 +110,8 @@ class ScreenshotTest {
             }
             Graph.progress.record(Event.Rate(now - day, "112:3", Rating.HARD, Mode.LEARN, 30_000))
         }
-        // Some reminders on, with a location (London), so their settings show.
-        ui {
-            Graph.settings.update {
-                it.copy(remindKursi = true, remindMulk = true, remindKahf = true, latitude = 51.51, longitude = -0.13, prayerMethod = PrayerMethod.MWL)
-            }
-        }
+        // The review reminder on, so its setting shows.
+        ui { Graph.settings.update { it.copy(remindReviews = true) } }
 
         for (theme in listOf("dark", "light")) {
             ui {
@@ -146,7 +141,7 @@ class ScreenshotTest {
             // performScrollTo() waits for an animated scroll that the hand-driven clock never
             // advances; ScrollBy only starts it, and shot() runs the clock.
             // (positionInRoot: boundsInRoot is clipped to the viewport, empty for an off-screen node.)
-            val top = rule.onNodeWithText("Āyat al-Kursī after each prayer").fetchSemanticsNode().positionInRoot.y
+            val top = rule.onNodeWithText("Āyāt due for review").fetchSemanticsNode().positionInRoot.y
             rule.onNodeWithTag("settings").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, top - 300f) }
             shot("$theme-10-reminders")
             ui { vm.learn(Graph.content.content.value!!.fadila("ikhlas")!!) }

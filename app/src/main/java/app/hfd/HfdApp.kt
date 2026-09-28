@@ -14,7 +14,7 @@ class HfdApp : Application() {
         // Plan reminders now and whenever what they depend on changes.
         Graph.scope.launch {
             Graph.settings.state
-                .map { listOf(it.reminders, it.latitude, it.longitude, it.prayerMethod) }
+                .map { it.reminders }
                 .distinctUntilChanged()
                 .collect { runCatching { Reminders.reschedule(this@HfdApp) } }
         }

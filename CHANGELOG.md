@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.0
+Simpler: a passage shows its text and translation, and the only reminder left is for reviews.
+- The narrations, their sources and the "Show weak narrations" setting are gone from the passages.
+- The reminders for Āyat al-Kursī after prayer, al-Mulk before sleep and al-Kahf on Friday are gone, with the location they needed (it is deleted from the phone). The review reminder stays.
+
 ## 1.5.0
 Recite: the microphone reacts to a normal voice, and the app can send diagnostics so problems can be fixed from afar.
 - Recite listened for a voice louder than phones give it for speech recognition: it now starts at a normal speaking voice, and the ring around the microphone follows your voice.

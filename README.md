@@ -37,11 +37,9 @@ that the app updates itself from new releases. Android 8.0 or newer.
   al-Ikhlāṣ ×3, al-Falaq, an-Nās, and the closing (al-Fātiḥa and al-Baqara 1–5). A `:core`
   test pins this list. The reference's recitation counts (×7…) are kept in the data only: the
   app is for learning the passages, not for reciting the daily wird.
-- **Narrations, verified:** each passage lists the ḥadīth about it, with a short faithful
-  paraphrase (French / English), its sources (sunnah.com / dorar.net links) and its grading with
-  the grader. Ṣaḥīḥ and ḥasan show by default; weak (ḍaʿīf) and fabricated (mawḍūʿ) ones only
-  with *Settings → Reading → Show weak narrations*, clearly labelled. Where no narration about a
-  passage is known, the app says so rather than invent one.
+- **Narrations:** `fadail.json` still holds, per passage, the ḥadīth about it with verified
+  sources and gradings, but since 1.6.0 the app doesn't show them: it is for memorising, and a
+  passage shows its text and translation only.
 - **Learning path:** Home puts learning first: today's goal and the reviews due, then
   *Continue learning* (the passages begun, straight into Learn at the next new āya) and *Next
   to learn* (the passages not begun). Their order is a setting (tap the section's title, or
@@ -108,12 +106,10 @@ that the app updates itself from new releases. Android 8.0 or newer.
   Progress → Backup* exports / imports a JSON file (imports merge, nothing is overwritten).
   The app reopens exactly where you left it: tab, faḍīla, Learn step or test position, and the
   player's āya, repetition and position.
-- **Reminders** (optional, *Settings → Reminders*): Āyat al-Kursī 15 minutes after each
-  prayer (prayer times computed on the phone from a coarse location you set once, with the
-  MWL, UOIF, ISNA, Egyptian, Umm al-Qurā or Karachi method; checked against adhan-js), as-Sajda
-  and al-Mulk before sleep, al-Kahf on Friday, and āyāt due for review. Each opens the faḍīla,
-  or plays it with *Listen*. Scheduled with WorkManager, so a reminder can arrive a few minutes
-  late while the phone sleeps.
+- **Review reminder** (optional, *Settings → Reminders*): a notification at the time you choose
+  when āyāt are due, opening the review. Scheduled with WorkManager, so it can arrive a few
+  minutes late while the phone sleeps. (The reminders to recite a passage at its time, after
+  prayer, before sleep or on Friday, and the location they needed, were removed in 1.6.0.)
 - **Updates:** on every start the app checks the repo's latest published release. A newer APK
   is downloaded in the background, its SHA-256 checked against the release's `version.json`,
   then the app offers *Install* (Android shows its own confirmation; the first time it asks to

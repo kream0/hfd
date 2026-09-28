@@ -74,8 +74,8 @@
   (com.yassine.mob.ayatfadila), as listed with the app's own recitation (SoundCloud,
   "مصحف السور والآيات الفاضلة") and by its publisher (aljamaa.net, "سور وآيات فاضلــة");
   `FadailDatasetTest` pins that list in order. Don't add or drop passages without the owner.
-- Narrations in `fadail.json`: never invent a reference. Each source is checked against the
-  source text (verify job log, or the hadith dataset on raw.githubusercontent.com). Unverified
-  narrations get `verified: false` and stay hidden. Weak (ḍaʿīf / mawḍūʿ) ones only show behind
-  the setting. A passage with no known narration says so.
+- Narrations in `fadail.json`: the app no longer shows them (1.6.0, the owner: it's for
+  memorising; text and translation only), nor the weak-narration setting, nor reminders tied to
+  a passage's time (only the review reminder stays). If they come back: never invent a
+  reference, check each source against the source text, keep unverified ones hidden.
 - `:core` tests validate every range against sūra āya counts and require a source per narration.

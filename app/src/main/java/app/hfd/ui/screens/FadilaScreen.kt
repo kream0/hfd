@@ -2,16 +2,12 @@ package app.hfd.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -45,9 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -55,7 +49,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.fadail.Fadila
-import app.hfd.core.fadail.Virtue
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.SubRange
 import app.hfd.ui.components.Chip
@@ -64,7 +57,6 @@ import app.hfd.ui.components.Ic
 import app.hfd.ui.components.IconBtn
 import app.hfd.ui.components.LocalSheets
 import app.hfd.ui.components.PlayerPanel
-import app.hfd.ui.components.SectionLabel
 import app.hfd.ui.components.SheetAction
 import app.hfd.ui.components.SheetSpec
 import app.hfd.ui.components.autoAudio
@@ -72,7 +64,6 @@ import app.hfd.ui.components.rangesLabel
 import app.hfd.ui.components.readingIndex
 import app.hfd.ui.components.readingItems
 import app.hfd.ui.components.sessionFor
-import app.hfd.ui.label
 import app.hfd.ui.text
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
@@ -219,8 +210,6 @@ private fun Intro(f: Fadila, app: AppViewModel) {
     val now = System.currentTimeMillis()
     val p = Stats.fadila(progress, f, Graph.progress.fsrs, now)
     val lang = uiLanguage
-    val settings by Graph.settings.state.collectAsStateWithLifecycle()
-    val virtues = f.virtues(settings.showWeak)
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
         Text(
             f.title.ar.orEmpty(),
@@ -233,13 +222,8 @@ private fun Intro(f: Fadila, app: AppViewModel) {
         Spacer(Modifier.height(6.dp))
         Text(rangesLabel(f).uppercase(), style = Type.label, color = P.textDim, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(12.dp))
-        FlowRow(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            f.occasions(settings.showWeak).forEach { Chip(stringResource(it.label)) }
-            if (f.isLong) Chip(stringResource(R.string.label_long))
+        if (f.isLong) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Chip(stringResource(R.string.label_long)) }
         }
 
         // Memorisation: progress, next review, and the practice flows.
@@ -264,57 +248,6 @@ private fun Intro(f: Fadila, app: AppViewModel) {
             PillButton(stringResource(R.string.recite), { app.recite(f) }, icon = Ic.Mic)
             if (p.started > 0) PillButton(stringResource(R.string.test), { app.test(f) })
         }
-
-        Spacer(Modifier.height(18.dp))
-        SectionLabel(stringResource(R.string.detail_virtue))
-        val hidden = f.hiddenWeak(settings.showWeak)
-        if (virtues.isEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            val none = if (hidden > 0) R.string.detail_no_sound_narration else R.string.detail_no_narration
-            Text(stringResource(none), style = Type.body, color = P.textDim)
-        }
-        virtues.forEach { v -> Narration(v) }
-        if (hidden > 0) {
-            Spacer(Modifier.height(8.dp))
-            Text(pluralStringResource(R.plurals.detail_hidden_weak, hidden, hidden), style = Type.label, color = P.textDim)
-        }
         Spacer(Modifier.height(10.dp))
     }
-}
-
-/** One narration: what it says, where to read it, how it is graded. */
-@Composable
-private fun Narration(v: Virtue) {
-    val uri = LocalUriHandler.current
-    Spacer(Modifier.height(10.dp))
-    Row(Modifier.height(IntrinsicSize.Min)) {
-        Box(Modifier.width(2.dp).fillMaxHeight().background(if (v.grading.grade.acceptable) P.outline else P.accent))
-        Text(v.text.text, style = Type.body.copy(lineHeight = Type.body.lineHeight * 1.1f), color = P.text, modifier = Modifier.padding(start = 12.dp))
-    }
-    if (!v.grading.grade.acceptable) {
-        Spacer(Modifier.height(6.dp))
-        Text(stringResource(R.string.detail_weak_warning), style = Type.label, color = P.accent)
-    }
-    v.sources.forEach { s ->
-        Row(
-            Modifier.fillMaxWidth().clickable { runCatching { uri.openUri(s.url) } }.padding(vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text("${s.collection} ${s.number}", style = Type.title, color = P.text)
-                Text(s.narrator.uppercase(), style = Type.label, color = P.textDim)
-            }
-            Text("↗", style = Type.title, color = P.textDim)
-        }
-    }
-    Text(
-        stringResource(R.string.detail_graded_by, stringResource(v.grading.grade.label), v.grading.by),
-        style = Type.title,
-        color = if (v.grading.grade.acceptable) P.text else P.accent,
-    )
-    v.grading.note?.let {
-        Spacer(Modifier.height(4.dp))
-        Text(it.text, style = Type.body, color = P.textDim)
-    }
-    Spacer(Modifier.height(8.dp))
 }
