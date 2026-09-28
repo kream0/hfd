@@ -6,8 +6,9 @@
   (GitHub access: https://claude.ai/connect-github) instead of instructions.
 - They install and update from their phone (Nothing Phone (4a) Pro, Android 16). The in-app
   updater follows **published releases** only.
-- Release when a user-facing change is ready and they asked for it ("release it", "ship it"):
-  bump `VERSION`, add its section to `CHANGELOG.md`, push. Say which version went out.
+- Release on your own, without asking, once a user-facing change is ready and CI is green on
+  it (the owner said never to ask for release permission): bump `VERSION`, add its section to
+  `CHANGELOG.md`, push. Say which version went out.
 - Keep replies short: what changed, what to do on the phone (ideally nothing), known limits.
 - No pull requests unless asked. Work in small verified steps: run the JVM tests, re-read the
   diff, push, then check CI is green.
