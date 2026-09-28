@@ -411,10 +411,8 @@ def sura_timings(rid, sura, text, want):
         # accounted for at the recitation's pace.
         eb = next((e for e in range(b - 1, max(-1, b - 6), -1) if e in at), None)
         ea = next((e for e in range(b, min(len(exp), b + 5)) if e in at), None)
-        before = at[eb] + pace * sum(letters[eb:b]) if eb is not None else None
+        before = at[eb] if eb is not None else None  # (a word's time is its start)
         after = at[ea] - pace * sum(letters[b:ea]) if ea is not None else None
-        if eb is not None and eb < b - 1:
-            before = at[eb] + pace * letters[eb]  # the end of the last word heard, at least
         if after is None:
             if before is None:
                 return None
