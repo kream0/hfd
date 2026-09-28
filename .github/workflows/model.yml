@@ -25,8 +25,9 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
-      - name: Python dependencies (CPU torch)
+      - name: Python dependencies (CPU torch), ffmpeg
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
           pip install --quiet --index-url https://download.pytorch.org/whl/cpu torch
           pip install --quiet "transformers==4.46.3" huggingface_hub numpy
       - name: Convert and quantize
