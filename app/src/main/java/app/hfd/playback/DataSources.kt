@@ -16,6 +16,7 @@ import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import app.hfd.core.playback.EveryAyah
+import app.hfd.core.playback.Reciters
 import app.hfd.download.AudioStore
 import java.io.File
 import java.io.IOException
@@ -39,9 +40,10 @@ object StreamCache {
 
 /**
  * `hfd://ayah/<everyayah folder>/<SSSAAA>.mp3` → the file on the phone if it's there, otherwise
- * the everyayah.com URL (streamed through the cache, keyed so replays are instant).
+ * the everyayah.com URL, or for a whole-sūra recitation the āya's bytes of the sūra file
+ * (streamed through the cache, keyed so replays are instant).
  */
-class AyahResolver(private val store: AudioStore) : ResolvingDataSource.Resolver {
+class AyahResolver(private val store: AudioStore, private val timings: TimingsRepo) : ResolvingDataSource.Resolver {
     override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
         val uri = dataSpec.uri
         if (uri.scheme != Items.SCHEME || uri.host != Items.HOST_AYAH) return dataSpec
@@ -49,6 +51,22 @@ class AyahResolver(private val store: AudioStore) : ResolvingDataSource.Resolver
         if (segments.size != 2) throw IOException("Malformed āya uri: $uri")
         val key = "${segments[0]}/${segments[1]}"
         if (store.has(key)) return dataSpec.withUri(Uri.fromFile(File(store.root, key)))
+        val t = Reciters.byFolder(segments[0])?.let { timings.of(it) }
+        if (t != null) {
+            // The āya is a stretch of its sūra's file: positions asked for are within that stretch.
+            val ref = EveryAyah.refOf(segments[1]) ?: throw IOException("Malformed āya uri: $uri")
+            val bytes = t.bytes(ref) ?: throw IOException("No timing for $ref")
+            val url = t.url(ref) ?: throw IOException("No file for $ref")
+            val size = bytes.last - bytes.first + 1
+            if (dataSpec.position >= size) throw IOException("Position past the āya")
+            val length = if (dataSpec.length == C.LENGTH_UNSET.toLong()) size - dataSpec.position else min(dataSpec.length, size - dataSpec.position)
+            return dataSpec.buildUpon()
+                .setUri(Uri.parse(url))
+                .setPosition(bytes.first + dataSpec.position)
+                .setLength(length)
+                .setKey("rg:$key")
+                .build()
+        }
         return dataSpec.buildUpon()
             .setUri(Uri.parse(EveryAyah.BASE + key))
             .setKey("ea:$key")

@@ -2,10 +2,13 @@ package app.hfd.core.playback
 
 import app.hfd.core.quran.AyahRef
 
-/** A recitation on everyayah.com, one MP3 per āya. Folder names were checked on the server. */
+/**
+ * A recitation: on everyayah.com, one MP3 per āya (folder names checked on the server), or, with
+ * [timings], whole-sūra files from which each āya is fetched as a byte range.
+ */
 data class Reciter(
     val id: String,
-    /** Folder under https://everyayah.com/data/ */
+    /** Folder under https://everyayah.com/data/, and the folder of the downloaded āyāt on the phone. */
     val folder: String,
     val name: String,
     val nameAr: String,
@@ -13,6 +16,8 @@ data class Reciter(
     val style: String,
     /** For chips: "Alafasy", "Ḥuṣarī · Muʿallim"… */
     val short: String,
+    /** Asset with the āyāt's byte ranges ([AyahTimings]) for a whole-sūra recitation; null on everyayah.com. */
+    val timings: String? = null,
 )
 
 object Reciters {
@@ -37,6 +42,8 @@ object Reciters {
     val DEFAULT: Reciter = ALL.first()
 
     fun byId(id: String?): Reciter = ALL.firstOrNull { it.id == id } ?: DEFAULT
+
+    fun byFolder(folder: String): Reciter? = ALL.firstOrNull { it.folder == folder }
 }
 
 object EveryAyah {
@@ -44,6 +51,13 @@ object EveryAyah {
 
     /** "002255.mp3" for 2:255. */
     fun fileName(ref: AyahRef): String = "%03d%03d.mp3".format(ref.sura, ref.aya)
+
+    /** 2:255 for "002255.mp3". */
+    fun refOf(fileName: String): AyahRef? {
+        val digits = fileName.removeSuffix(".mp3")
+        if (digits.length != 6 || !digits.all { it.isDigit() }) return null
+        return AyahRef(digits.take(3).toInt(), digits.drop(3).toInt())
+    }
 
     fun url(reciter: Reciter, ref: AyahRef): String = BASE + reciter.folder + "/" + fileName(ref)
 

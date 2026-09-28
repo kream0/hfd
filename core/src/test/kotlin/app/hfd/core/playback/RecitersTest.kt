@@ -17,6 +17,20 @@ class RecitersTest {
     }
 
     @Test
+    fun wholeSuraRecitationsGiveEachAyaAsARange() {
+        assertEquals(AyahRef(2, 255), EveryAyah.refOf("002255.mp3"))
+        assertEquals(null, EveryAyah.refOf("bismillah.mp3"))
+        val t = AyahTimings(
+            schema = 1, reciter = "x", base = "https://example.org/r/",
+            suras = mapOf("112" to SuraAudio("112.mp3", 500_000)),
+            ayat = mapOf("112:1" to listOf(1_000L, 21_000L)),
+        )
+        assertEquals("https://example.org/r/112.mp3", t.url(AyahRef(112, 1)))
+        assertEquals(1_000L..20_999L, t.bytes(AyahRef(112, 1)))
+        assertTrue(AyahRef(112, 2) !in t)
+    }
+
+    @Test
     fun idsAreUnique() {
         assertEquals(Reciters.ALL.size, Reciters.ALL.map { it.id }.toSet().size)
     }

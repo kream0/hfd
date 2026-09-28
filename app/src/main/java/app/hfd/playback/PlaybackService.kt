@@ -18,6 +18,7 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -54,11 +55,12 @@ class PlaybackService : MediaSessionService() {
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
         val dataSourceFactory = ResolvingDataSource.Factory(
             RoutingDataSource.Factory(DefaultDataSource.Factory(this), SilenceDataSource.Factory(), remote),
-            AyahResolver(Graph.audio),
+            AyahResolver(Graph.audio, Graph.timings),
         )
 
         exo = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            // Constant-bitrate seeking: an āya cut from a sūra file has no Xing header to say how long it is.
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory, DefaultExtractorsFactory().setConstantBitrateSeekingEnabled(true)))
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)

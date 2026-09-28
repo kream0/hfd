@@ -12,6 +12,7 @@ import app.hfd.download.AudioDownloader
 import app.hfd.download.AudioStore
 import app.hfd.playback.NowPlaying
 import app.hfd.playback.PlaybackEngine
+import app.hfd.playback.TimingsRepo
 import app.hfd.playback.PlayerConnection
 import app.hfd.recite.ModelState
 import app.hfd.recite.ModelStore
@@ -54,7 +55,8 @@ object Graph {
     val updater: Updater by lazy { Updater(app, http, settings, scope) }
     val content: ContentRepo by lazy { ContentRepo(app, scope) }
     val audio: AudioStore by lazy { AudioStore(app, scope) }
-    val downloads: AudioDownloader by lazy { AudioDownloader(app, audio, http, scope) }
+    val timings: TimingsRepo by lazy { TimingsRepo(app) }
+    val downloads: AudioDownloader by lazy { AudioDownloader(app, audio, http, scope, timings) }
     val player: PlayerConnection by lazy { PlayerConnection(app) }
     val ranges: RangeStore by lazy { RangeStore(app) }
     val progress: ProgressRepo by lazy { ProgressRepo(app, scope) }

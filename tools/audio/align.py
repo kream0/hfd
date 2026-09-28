@@ -290,7 +290,8 @@ def pauses(pcm):
     e = np.sqrt(np.mean(pcm[:n * HOP].reshape(n, HOP) ** 2, axis=1) + 1e-12)
     db = 20 * np.log10(e)
     floor, loud = np.percentile(db, 5), np.percentile(db, 90)
-    quiet = db < floor + 0.3 * (loud - floor)
+    threshold = floor + 0.3 * (loud - floor)
+    quiet = db < threshold
     out, i = [], 0
     while i < n:
         if quiet[i]:
@@ -306,7 +307,7 @@ def pauses(pcm):
         out.insert(0, (0.0, 0.0))
     if out[-1][1] < n / 50:
         out.append((n / 50, n / 50))
-    return out, db
+    return out, db, threshold
 
 
 def split_long(chunks, db):
@@ -332,8 +333,10 @@ def sura_timings(rid, sura, text, want):
     fr, frate, spf, kbps = frames(data)
     pcm = decode(mp3)
     dur = len(pcm) / RATE
-    quiet, db = pauses(pcm)
+    quiet, db, threshold = pauses(pcm)
     smooth = np.convolve(db, np.ones(5) / 5, mode="same")  # 100 ms
+    # A pause between āyāt lasts longer than the closure of a consonant (ك, ت, د…).
+    broad = np.convolve(db, np.ones(12) / 12, mode="same")  # 240 ms
     speech = [(quiet[k][1], quiet[k + 1][0]) for k in range(len(quiet) - 1) if quiet[k + 1][0] - quiet[k][1] >= 0.12]
     speech = split_long(speech, db)
 
@@ -393,15 +396,18 @@ def sura_timings(rid, sura, text, want):
         debug.append(f"w{k} {w[0][0]:7.1f}-{w[-1][1]:7.1f} {len(w)} runs [{span}] " + " ".join(f"{x}@{starts[k] + t:.1f}" for x, t in heard[paths[k]])[:220])
 
     def valley(lo, hi):
-        """The quiet stretch around the quietest 100 ms in [lo, hi] (seconds)."""
-        i0, i1 = max(0, int(lo * 50)), min(len(smooth), max(int(lo * 50) + 1, int(hi * 50)))
-        m = i0 + int(np.argmin(smooth[i0:i1]))
-        floor = smooth[m] + 6
+        """The silence around the quietest quarter second in [lo, hi] (seconds); a point if none."""
+        i0, i1 = max(0, int(lo * 50)), min(len(broad), max(int(lo * 50) + 1, int(hi * 50)))
+        m = i0 + int(np.argmin(broad[i0:i1]))
+        # The quietest 100 ms there, then out through the silence (at most a second each way).
+        m = max(0, m - 3) + int(np.argmin(smooth[max(0, m - 3):m + 4]))
+        if smooth[m] >= threshold:
+            return m / 50, m / 50
         a = m
-        while a > 0 and smooth[a - 1] < floor and m - a < 100:
+        while a > 0 and smooth[a - 1] < threshold and m - a < 50:
             a -= 1
         b = m
-        while b + 1 < len(smooth) and smooth[b + 1] < floor and b - m < 100:
+        while b + 1 < len(smooth) and smooth[b + 1] < threshold and b - m < 50:
             b += 1
         return a / 50, (b + 1) / 50
 
@@ -420,7 +426,8 @@ def sura_timings(rid, sura, text, want):
             run = next((r for r in speech if r[1] >= before), speech[-1])
             nxt = next((r[0] for r in speech if r[0] > run[1]), dur)
             return run[1], nxt
-        lo = before + 0.1 if before is not None else after - 2.5
+        # Not before most of the last word heard has been said.
+        lo = before + max(0.2, 0.6 * pace * letters[eb]) if before is not None else after - 2.5
         lo = max(lo if ea == b else min(lo, after - 1.0), after - 8, 0)
         return valley(lo, max(after + 0.35, lo + 0.1))
 

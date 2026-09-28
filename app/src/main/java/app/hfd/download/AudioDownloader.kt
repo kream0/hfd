@@ -8,6 +8,7 @@ import android.util.Log
 import app.hfd.core.playback.EveryAyah
 import app.hfd.core.playback.Reciter
 import app.hfd.core.quran.AyahRef
+import app.hfd.playback.TimingsRepo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +41,8 @@ data class AudioTask(
 }
 
 /**
- * Downloads āya MP3s from everyayah.com (small files: a few hundred KB each). Same pattern as
+ * Downloads āya MP3s from everyayah.com (small files: a few hundred KB each), or an āya's bytes of
+ * a whole-sūra recitation ([TimingsRepo]). Same pattern as
  * ytune's downloader: `.part` files that resume with a Range request, retries with back-off,
  * waiting for the network to come back. Bookkeeping on the main thread, transfers on IO.
  */
@@ -49,6 +51,7 @@ class AudioDownloader(
     private val store: AudioStore,
     private val http: OkHttpClient,
     private val scope: CoroutineScope,
+    private val timings: TimingsRepo,
 ) {
     private val _tasks = MutableStateFlow<Map<String, AudioTask>>(emptyMap())
     /** Pending and failed downloads by [AudioStore.key]; finished ones leave the map. */
@@ -161,9 +164,17 @@ class AudioDownloader(
         target.parentFile?.mkdirs()
         val part = java.io.File(target.parentFile, target.name + ".part")
         var offset = part.length()
+        // A whole-sūra recitation: the āya is a byte range of its sūra's file.
+        val t = timings.of(task.reciter)
+        val range = t?.let { it.bytes(task.ref) ?: throw IOException("No timing for ${task.ref}") }
         val request = Request.Builder()
-            .url(EveryAyah.url(task.reciter, task.ref))
-            .apply { if (offset > 0) header("Range", "bytes=$offset-") }
+            .url(if (t != null) t.url(task.ref) ?: throw IOException("No file for ${task.ref}") else EveryAyah.url(task.reciter, task.ref))
+            .apply {
+                when {
+                    range != null -> header("Range", "bytes=${range.first + offset}-${range.last}")
+                    offset > 0 -> header("Range", "bytes=$offset-")
+                }
+            }
             .build()
         http.newCall(request).execute().use { response ->
             if (response.code == 416) {
@@ -171,12 +182,18 @@ class AudioDownloader(
             } else {
                 if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
                 val body = response.body ?: throw IOException("Empty response")
+                if (range != null) {
+                    // Only these bytes, of the very file the timings were made from.
+                    if (response.code != 206) throw IOException("No range support")
+                    val size = response.header("Content-Range")?.substringAfter('/')?.toLongOrNull()
+                    if (size != null && size != t?.sura(task.ref)?.size) throw IOException("The recitation's file changed")
+                }
                 val append = response.code == 206 && offset > 0
                 if (!append) offset = 0
-                val total = if (append) {
-                    response.header("Content-Range")?.substringAfter('/')?.toLongOrNull() ?: -1
-                } else {
-                    body.contentLength()
+                val total = when {
+                    range != null -> range.last - range.first + 1
+                    append -> response.header("Content-Range")?.substringAfter('/')?.toLongOrNull() ?: -1
+                    else -> body.contentLength()
                 }
                 FileOutputStream(part, append).use { out ->
                     body.byteStream().use { input ->
