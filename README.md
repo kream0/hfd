@@ -43,7 +43,9 @@ that the app updates itself from new releases. Android 8.0 or newer.
   passage is known, the app says so rather than invent one.
 - **Learning path:** Home puts learning first: today's goal and the reviews due, then
   *Continue learning* (the passages begun, straight into Learn at the next new āya) and *Next
-  to learn* (the passages not begun, shortest first: al-Kawthar, al-ʿAṣr, al-Ikhlāṣ…). A
+  to learn* (the passages not begun). Their order is a setting (tap the section's title, or
+  *Settings → Progress*): shortest first (al-Kawthar, al-ʿAṣr, al-Ikhlāṣ…), from the beginning
+  (al-Fātiḥa, al-Baqara 1–5, Āyat al-Kursī…) or from the end (an-Nās, al-Falaq, al-Ikhlāṣ…). A
   passage made only of shorter ones (the closing) is learnt through them.
 - **Reading view:** Tanzil's Uthmani text, verbatim, in Amiri Quran, right-to-left, large, with
   ḥarakāt, waqf marks and āya numbers in Arabic-Indic digits between ornate brackets ﴿٤﴾. Each sūra's basmala

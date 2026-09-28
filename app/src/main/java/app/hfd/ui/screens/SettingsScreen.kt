@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import app.hfd.core.progress.LearnOrder
 import app.hfd.data.Backup
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableLongStateOf
@@ -135,6 +136,13 @@ private fun ProgressSection(settings: AppSettings) {
         Segmented(options.map { "$it′" }, options.indexOf(settings.dailyGoalMin).coerceAtLeast(0), { i ->
             Graph.settings.update { it.copy(dailyGoalMin = options[i]) }
         })
+    }
+    SettingBlock(stringResource(R.string.learn_order), stringResource(R.string.learn_order_body)) {
+        Segmented(
+            LearnOrder.entries.map { stringResource(it.shortLabel) },
+            settings.learnOrder.ordinal,
+            { i -> Graph.settings.update { it.copy(learnOrder = LearnOrder.entries[i]) } },
+        )
     }
     SettingBlock(stringResource(R.string.settings_learn_repeats), stringResource(R.string.settings_learn_repeats_body)) {
         val options = AppSettings.LEARN_REPEATS
@@ -292,3 +300,10 @@ private fun UpdatesSection(autoUpdate: Boolean) {
         NothingSwitch(autoUpdate, { on -> Graph.settings.update { it.copy(autoUpdate = on) } })
     }
 }
+
+private val LearnOrder.shortLabel: Int
+    get() = when (this) {
+        LearnOrder.SHORTEST -> R.string.order_shortest_short
+        LearnOrder.START -> R.string.order_start_short
+        LearnOrder.END -> R.string.order_end_short
+    }

@@ -65,7 +65,15 @@
     <string name="sura_header">Sūra %1$d · %2$s · %3$s</string>
 
     <string name="home_learning">Continue learning</string>
-    <string name="home_next">Next to learn · shortest first</string>
+    <string name="home_next">Next to learn · %1$s</string>
+    <string name="learn_order">Next to learn</string>
+    <string name="learn_order_body">The order Home offers the passages you haven’t begun.</string>
+    <string name="order_shortest">shortest first</string>
+    <string name="order_start">from the beginning</string>
+    <string name="order_end">from the end</string>
+    <string name="order_shortest_short">Shortest</string>
+    <string name="order_start_short">From start</string>
+    <string name="order_end_short">From end</string>
     <string name="home_all">All faḍāʾil</string>
 
     <string name="settings_reading">Reading</string>

@@ -65,7 +65,15 @@
     <string name="sura_header">Sourate %1$d · %2$s · %3$s</string>
 
     <string name="home_learning">Continuer l’apprentissage</string>
-    <string name="home_next">À apprendre ensuite · les plus courts d’abord</string>
+    <string name="home_next">À apprendre ensuite · %1$s</string>
+    <string name="learn_order">À apprendre ensuite</string>
+    <string name="learn_order_body">L’ordre dans lequel l’accueil propose les passages pas encore commencés.</string>
+    <string name="order_shortest">les plus courts d’abord</string>
+    <string name="order_start">du début à la fin</string>
+    <string name="order_end">de la fin au début</string>
+    <string name="order_shortest_short">Plus courts</string>
+    <string name="order_start_short">Du début</string>
+    <string name="order_end_short">De la fin</string>
     <string name="home_all">Tous les faḍāʾil</string>
 
     <string name="settings_reading">Lecture</string>

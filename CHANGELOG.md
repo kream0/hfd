@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0
+Choose the order of "Next to learn": shortest first, from the beginning, or from the end.
+- Tap the section's title on Home, or go to *Settings → Progress*. "From the end" starts with an-Nās, al-Falaq, al-Ikhlāṣ, the usual way of learning the short sūras.
+- "Continue learning" follows the same order.
+
 ## 1.2.0
 Home is about learning: continue the passages you've begun, then the next ones, shortest first.
 - *Continue learning* goes straight into Learn at the next new āya; *Next to learn* offers the passages not begun yet, shortest first (al-Kawthar, al-ʿAṣr, al-Ikhlāṣ…). Reviews due stay at the top.

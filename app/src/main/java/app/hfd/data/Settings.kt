@@ -7,6 +7,7 @@ import app.hfd.core.playback.Reciter
 import app.hfd.core.playback.Reciters
 import app.hfd.core.prayer.PrayerCalculator
 import app.hfd.core.prayer.PrayerMethod
+import app.hfd.core.progress.LearnOrder
 import app.hfd.core.reminders.ReminderConfig
 import kotlinx.serialization.Serializable
 import java.time.LocalTime
@@ -42,6 +43,8 @@ data class AppSettings(
     val dailyGoalMin: Int = 15,
     /** Recitations heard in the Learn steps "listen" and "repeat". */
     val learnRepeats: Int = 3,
+    /** The order Home offers the passages to learn in. */
+    val learnOrder: LearnOrder = LearnOrder.SHORTEST,
     // Reminders. Times are minutes after midnight.
     val remindKursi: Boolean = false,
     val remindMulk: Boolean = false,

@@ -1,6 +1,7 @@
 package app.hfd.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,9 +34,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.fadail.Fadila
+import app.hfd.core.progress.LearnOrder
 import app.hfd.core.progress.LearnStep
 import app.hfd.core.progress.LearningPath
 import app.hfd.core.progress.Stats
+import app.hfd.core.quran.AyahRef
 import app.hfd.core.recite.Arabic
 import app.hfd.data.AppMode
 import app.hfd.ui.AppViewModel
@@ -41,10 +46,14 @@ import app.hfd.ui.Tab
 import app.hfd.ui.components.DotLoader
 import app.hfd.ui.components.DotRing
 import app.hfd.ui.components.FadilaRow
+import app.hfd.ui.components.Ic
+import app.hfd.ui.components.LocalSheets
 import app.hfd.ui.components.PillButton
 import app.hfd.ui.components.PillStyle
 import app.hfd.ui.components.ScreenHeader
 import app.hfd.ui.components.SectionLabel
+import app.hfd.ui.components.SheetAction
+import app.hfd.ui.components.SheetSpec
 import app.hfd.ui.text
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
@@ -140,21 +149,49 @@ fun HomeScreen(app: AppViewModel) {
             tests.forEach { f -> FadilaRow(f, progressOf(f), onClick = { app.test(f) }) }
         }
 
-        // Learning first: carry on with the passages begun, then the next ones, shortest first.
+        // Learning first: carry on with the passages begun, then the next ones, in the chosen order.
         // (Not the one the Continue card already resumes.)
         val resumed = if (s != null && s.mode == AppMode.LEARN && s.learn != null && s.learn.step != LearnStep.DONE) s.learn.fadilaId else null
-        val learning = remember(progress, all, resumed) { LearningPath.inProgress(all, progress).filter { it.id != resumed } }
+        val words = remember(c) { { ref: AyahRef -> Arabic.words(c.text(ref)).size } }
+        val order = settings.learnOrder
+        val learning = remember(progress, all, resumed, order) { LearningPath.inProgress(all, progress, words, order).filter { it.id != resumed } }
         if (learning.isNotEmpty()) {
             SectionLabel(stringResource(R.string.home_learning), Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp))
             learning.forEach { f -> FadilaRow(f, progressOf(f), onClick = { app.learn(f) }) }
         }
-        val next = remember(progress, all) {
-            LearningPath.next(all, progress, words = { ref -> Arabic.words(c.text(ref)).size })
-        }
+        val next = remember(progress, all, order) { LearningPath.next(all, progress, words, order) }
         if (next.isNotEmpty()) {
-            SectionLabel(stringResource(R.string.home_next), Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp))
+            // Tap the label to choose the order.
+            val sheets = LocalSheets.current
+            val context = LocalContext.current
+            Row(
+                Modifier.fillMaxWidth().clickable { sheets(learnOrderSheet(context, order)) }
+                    .padding(start = 20.dp, end = 12.dp, top = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SectionLabel(stringResource(R.string.home_next, stringResource(order.label)), Modifier.weight(1f))
+                Icon(Ic.ChevronDown, contentDescription = stringResource(R.string.learn_order), tint = P.textDim, modifier = Modifier.size(20.dp))
+            }
             next.forEach { f -> FadilaRow(f, progressOf(f), onClick = { app.openFadila(f.id) }) }
         }
         Box(Modifier.padding(20.dp)) { PillButton(stringResource(R.string.home_all), { app.selectTab(Tab.FADAIL) }) }
     }
 }
+
+val LearnOrder.label: Int
+    get() = when (this) {
+        LearnOrder.SHORTEST -> R.string.order_shortest
+        LearnOrder.START -> R.string.order_start
+        LearnOrder.END -> R.string.order_end
+    }
+
+/** Picks the order Home offers new passages in (also in Settings → Progress). */
+fun learnOrderSheet(context: android.content.Context, current: LearnOrder) = SheetSpec(
+    title = context.getString(R.string.learn_order),
+    subtitle = context.getString(R.string.learn_order_body),
+    actions = LearnOrder.entries.map { o ->
+        SheetAction(context.getString(o.label).replaceFirstChar { it.uppercase() }, icon = if (o == current) Ic.Check else null) {
+            Graph.settings.update { it.copy(learnOrder = o) }
+        }
+    },
+)
