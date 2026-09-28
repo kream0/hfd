@@ -471,8 +471,8 @@ def sura_timings(rid, sura, text, want):
             b += 1
         return a / 50, (b + 1) / 50
 
-    def cut_at(b):
-        """The quiet stretch before expected word b (between the words heard around it)."""
+    def cut_at(b, floor=0.0):
+        """The quiet stretch before expected word b (between the words heard around it), not before [floor]."""
         # The nearest words heard on each side; words between them that weren't heard are
         # accounted for at the recitation's pace.
         eb = next((e for e in range(b - 1, max(-1, b - 6), -1) if e in at), None)
@@ -488,14 +488,20 @@ def sura_timings(rid, sura, text, want):
             return run[1], nxt
         # Not before most of the last word heard has been said.
         lo = before + max(0.2, 0.6 * pace * letters[eb]) if before is not None else after - 2.5
-        lo = max(lo if ea == b else min(lo, after - 1.0), after - 8, 0)
-        return valley(lo, max(after + 0.35, lo + 0.1))
+        lo = max(lo if ea == b else min(lo, after - 1.0), after - 8, 0, floor)
+        # A word's DTW time runs a little late: the pause before it ends by then.
+        return valley(lo, max(after + 0.05, lo + 0.1))
 
     cuts = {}
-    for a in want:
-        for b in (first_word[a], first_word[a + 1]):
-            if b not in cuts:
-                cuts[b] = cut_at(b)
+    prev_b, prev_end = None, 0.0
+    for b in sorted({x for a in want for x in (first_word[a], first_word[a + 1])}):
+        # Consecutive boundaries apart by at least half the recitation of the words between
+        # (where a short āya wasn't heard, both would otherwise land on the same pause).
+        floor = prev_end + 0.5 * pace * sum(letters[prev_b:b]) if prev_b is not None else 0.0
+        c = cut_at(b, floor)
+        cuts[b] = c
+        if c is not None:
+            prev_b, prev_end = b, c[1]
 
     def slice_of(a, cut=cuts):
         c0, c1 = cut.get(first_word[a]), cut.get(first_word[a + 1])
@@ -544,14 +550,19 @@ def sura_timings(rid, sura, text, want):
             continue
         cur = cuts[b]
         mid = (cur[0] + cur[1]) / 2
-        i0, i1 = max(1, int((mid - 1.5) * 50)), min(len(broad) - 1, int((mid + 1.5) * 50))
-        idx = sorted((i for i in range(i0, i1) if broad[i] <= broad[i - 1] and broad[i] <= broad[i + 1]), key=lambda i: broad[i])
+        i0, i1 = max(1, int((mid - 2.0) * 50)), min(len(smooth) - 1, int((mid + 2.0) * 50))
+        idx = sorted((i for i in range(i0, i1) if smooth[i] <= smooth[i - 1] and smooth[i] <= smooth[i + 1]), key=lambda i: smooth[i])
         picked = []
         for i in idx:
-            if all(abs(i - j) >= 10 for j in picked):
+            if all(abs(i - j) >= 7 for j in picked):
                 picked.append(i)
-            if len(picked) == 6:
+            if len(picked) == 10:
                 break
+        # Also the quietest moment just before each word heard nearby.
+        for e in range(max(0, b - 4), min(len(exp), b + 4)):
+            if e in at and i0 / 50 <= at[e] <= i1 / 50:
+                j0 = max(0, int((at[e] - 0.45) * 50))
+                picked.append(j0 + int(np.argmin(smooth[j0:max(j0 + 1, int((at[e] + 0.05) * 50))])))
         options[b] = [cur] + [around(i) for i in picked]
         sides = [x for x in (aya_of[b - 1] if b > 0 else None, aya_of[b] if b < len(exp) else None) if x in want]
         for n, c in enumerate(options[b]):
