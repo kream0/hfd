@@ -338,12 +338,16 @@ def sura_timings(rid, sura, text, want):
     speech = split_long(speech, db)
 
     # Windows of whole speech runs, up to WINDOW_S, transcribed with each word's time.
+    # The opening runs (isti'ādha, basmala) alone: at the start of a longer window the model tends
+    # to drop the basmala, and the words' times after it slip.
     windows = []
-    for a, b in speech:
-        if windows and b - windows[-1][0][0] <= WINDOW_S:
-            windows[-1].append((a, b))
+    for k, (a, b) in enumerate(speech):
+        alone = k < 2 and b - a < 7
+        if windows and not alone and not windows[-1][0][2] and b - windows[-1][0][0] <= WINDOW_S:
+            windows[-1].append((a, b, False))
         else:
-            windows.append([(a, b)])
+            windows.append([(a, b, alone)])
+    windows = [[(a, b) for a, b, _ in w] for w in windows]
     paths, starts = [], []
     for k, w in enumerate(windows):
         p = os.path.join(WORK, f"{rid}-{sura:03d}-w{k:04d}.wav")
@@ -363,6 +367,9 @@ def sura_timings(rid, sura, text, want):
         first_word[a] = len(exp)
         exp += [skeleton(w) for w in words(text[(sura, a)])]
     first_word[count + 1] = len(exp)
+    letters = [max(1, len(x)) for x in exp]
+    # Seconds per letter, to place words that weren't heard next to ones that were.
+    pace = sum(b - a for a, b in speech) / max(1, sum(letters))
 
     # Follow the recitation window by window; each expected word matched gets a time.
     at = {}
@@ -383,7 +390,7 @@ def sura_timings(rid, sura, text, want):
             span = f"{pairs[0][1]}-{pairs[-1][1]}"
         else:
             span = "-"
-        debug.append(f"w{k} {w[0][0]:7.1f}-{w[-1][1]:7.1f} [{span}] {' '.join(x for x, _ in heard[paths[k]])[:110]}")
+        debug.append(f"w{k} {w[0][0]:7.1f}-{w[-1][1]:7.1f} {len(w)} runs [{span}] " + " ".join(f"{x}@{starts[k] + t:.1f}" for x, t in heard[paths[k]])[:220])
 
     def valley(lo, hi):
         """The quiet stretch around the quietest 100 ms in [lo, hi] (seconds)."""
@@ -400,8 +407,14 @@ def sura_timings(rid, sura, text, want):
 
     def cut_at(b):
         """The quiet stretch before expected word b (between the words heard around it)."""
-        before = next((at[e] for e in range(b - 1, max(-1, b - 6), -1) if e in at), None)
-        after = next((at[e] for e in range(b, min(len(exp), b + 5)) if e in at), None)
+        # The nearest words heard on each side; words between them that weren't heard are
+        # accounted for at the recitation's pace.
+        eb = next((e for e in range(b - 1, max(-1, b - 6), -1) if e in at), None)
+        ea = next((e for e in range(b, min(len(exp), b + 5)) if e in at), None)
+        before = at[eb] + pace * sum(letters[eb:b]) if eb is not None else None
+        after = at[ea] - pace * sum(letters[b:ea]) if ea is not None else None
+        if eb is not None and eb < b - 1:
+            before = at[eb] + pace * letters[eb]  # the end of the last word heard, at least
         if after is None:
             if before is None:
                 return None
@@ -410,7 +423,8 @@ def sura_timings(rid, sura, text, want):
             nxt = next((r[0] for r in speech if r[0] > run[1]), dur)
             return run[1], nxt
         lo = before + 0.1 if before is not None else after - 2.5
-        return valley(max(lo, after - 8, 0), after + 0.35)
+        lo = max(lo if ea == b else min(lo, after - 1.0), after - 8, 0)
+        return valley(lo, max(after + 0.35, lo + 0.1))
 
     out = {}
     report = []
@@ -464,8 +478,9 @@ def check(rid, text, ayat, infos):
             for j, h in enumerate(hyp, 1):
                 prev, d[j] = d[j], min(d[j] + 1, d[j - 1] + 1, prev + (sim(r, h) < 0.75))
         wer = d[len(hyp)] / max(1, len(ref))
-        head = any(sim(ref[0], h) >= 0.75 for h in hyp[:2]) if hyp else False
-        tail = any(sim(ref[-1], h) >= 0.75 for h in hyp[-2:]) if hyp else False
+        # (0.6: a letter misheard in a short word, وصل for فصل, isn't a wrong cut.)
+        head = any(sim(ref[0], h) >= 0.6 for h in hyp[:2]) if hyp else False
+        tail = any(sim(ref[-1], h) >= 0.6 for h in hyp[-2:]) if hyp else False
         if wer > 0.35 or not head or not tail:
             bad.append((s, a, wer, head, tail, heard[p]))
     print(f"\nChecked {len(paths)} āyāt: {len(paths) - len(bad)} fine, {len(bad)} to look at")
