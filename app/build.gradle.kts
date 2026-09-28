@@ -32,6 +32,22 @@ android {
         versionCode = releaseVersionCode ?: runNumber
         versionName = releaseVersionName ?: "0.dev.$runNumber"
         buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")
+
+        // Recite mode: whisper.cpp (speech recognition on the phone). 64-bit ARM phones only.
+        ndk { abiFilters += listOf("arm64-v8a") }
+        externalNativeBuild {
+            cmake {
+                // Always optimised: a debug build of whisper.cpp is far too slow to use.
+                arguments += listOf("-DCMAKE_BUILD_TYPE=Release", "-DANDROID_STL=c++_static")
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     signingConfigs {

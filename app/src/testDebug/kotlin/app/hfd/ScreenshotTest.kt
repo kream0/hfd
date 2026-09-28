@@ -153,6 +153,20 @@ class ScreenshotTest {
             shot("$theme-07-learn")
             ui { vm.review() }
             shot("$theme-08-review")
+            // Recite mode after three recognised chunks, the last one skipping "wa-lam".
+            ui {
+                vm.recite(Graph.content.content.value!!.fadila("ikhlas")!!)
+                Graph.recite.value!!.run {
+                    onHeard("قل هو الله أحد")
+                    onHeard("الله الصمد")
+                    onHeard("لم يلد يولد")
+                }
+            }
+            shot("$theme-11-recite")
+            ui {
+                Graph.closeRecite()
+                vm.flow = null
+            }
         }
         watchdog.interrupt()
     }

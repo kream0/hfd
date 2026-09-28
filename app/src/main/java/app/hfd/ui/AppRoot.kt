@@ -58,6 +58,7 @@ import app.hfd.ui.screens.FadailScreen
 import app.hfd.ui.screens.FadilaScreen
 import app.hfd.ui.screens.HomeScreen
 import app.hfd.ui.screens.LearnScreen
+import app.hfd.ui.screens.ReciteScreen
 import app.hfd.ui.screens.ReviewScreen
 import app.hfd.ui.screens.StatsScreen
 import app.hfd.ui.screens.SettingsScreen
@@ -130,6 +131,10 @@ private fun FlowOverlay(app: AppViewModel) {
             PracticeFlow.Learn -> LearnScreen(onClose = { app.flow = null })
             is PracticeFlow.Review -> ReviewScreen(testOf = null, only = f.only, onClose = { app.flow = null })
             is PracticeFlow.Test -> ReviewScreen(testOf = f.fadilaId, only = null, onClose = { app.flow = null })
+            is PracticeFlow.Recite -> ReciteScreen(onClose = {
+                Graph.closeRecite()
+                app.flow = null
+            })
             null -> Unit
         }
     }

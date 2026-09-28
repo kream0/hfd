@@ -265,4 +265,27 @@
     </plurals>
     <string name="stats_none">Nothing learnt yet: open a passage and tap Learn.</string>
     <string name="detail_no_sound_narration">No authentic narration about this particular passage is known: it is recited as part of the reference wird.</string>
+    <string name="recite">Recite</string>
+    <string name="recite_title">Recite · %1$s</string>
+    <string name="recite_model_needed">Reciting aloud uses Tarteel\'s Qur\'an speech model (%1$d MB), downloaded once. It runs on the phone: your voice is never recorded or sent.</string>
+    <string name="recite_download">Download (%1$d MB)</string>
+    <string name="recite_downloading">Downloading %1$d%%</string>
+    <string name="recite_download_failed">Download failed: %1$s</string>
+    <string name="recite_unavailable">Speech recognition isn\'t available on this phone.</string>
+    <string name="recite_mic_denied">Microphone permission denied</string>
+    <string name="recite_loading">Loading the speech model…</string>
+    <string name="recite_listening">Listening · recite from memory</string>
+    <string name="recite_recognising">Listening · recognising…</string>
+    <string name="recite_position">Āya %1$d of %2$d · %3$s · tap the microphone</string>
+    <string name="recite_start">Start reciting</string>
+    <string name="recite_stop">Stop</string>
+    <string name="recite_hint">Next word (counts as a mistake)</string>
+    <string name="recite_show_text">Show the text</string>
+    <string name="recite_hide_text">Hide the text</string>
+    <string name="recite_done">Recited</string>
+    <string name="recite_result">%1$s · %2$d / %3$d words right</string>
+    <string name="recite_mistakes">To work on: %1$s</string>
+    <string name="recite_again">Again</string>
+    <string name="stats_recited">Recited aloud</string>
+    <string name="stats_recited_value">%1$d recitations · %2$d%% of words right</string>
 </resources>

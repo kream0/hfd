@@ -267,4 +267,27 @@
     </plurals>
     <string name="stats_none">Rien d\'appris pour l\'instant : ouvrez un passage et touchez Apprendre.</string>
     <string name="detail_no_sound_narration">Aucun récit authentique propre à ce passage n\'est connu : il est récité dans le cadre du wird de référence.</string>
+    <string name="recite">Réciter</string>
+    <string name="recite_title">Réciter · %1$s</string>
+    <string name="recite_model_needed">La récitation à voix haute utilise le modèle de reconnaissance coranique de Tarteel (%1$d Mo), téléchargé une fois. Il fonctionne sur le téléphone : votre voix n\'est ni enregistrée ni envoyée.</string>
+    <string name="recite_download">Télécharger (%1$d Mo)</string>
+    <string name="recite_downloading">Téléchargement %1$d %%</string>
+    <string name="recite_download_failed">Échec du téléchargement : %1$s</string>
+    <string name="recite_unavailable">La reconnaissance vocale n\'est pas disponible sur ce téléphone.</string>
+    <string name="recite_mic_denied">Autorisation du micro refusée</string>
+    <string name="recite_loading">Chargement du modèle vocal…</string>
+    <string name="recite_listening">À l\'écoute · récitez de mémoire</string>
+    <string name="recite_recognising">À l\'écoute · reconnaissance…</string>
+    <string name="recite_position">Āya %1$d sur %2$d · %3$s · touchez le micro</string>
+    <string name="recite_start">Commencer à réciter</string>
+    <string name="recite_stop">Arrêter</string>
+    <string name="recite_hint">Mot suivant (compte comme une erreur)</string>
+    <string name="recite_show_text">Afficher le texte</string>
+    <string name="recite_hide_text">Masquer le texte</string>
+    <string name="recite_done">Récité</string>
+    <string name="recite_result">%1$s · %2$d / %3$d mots justes</string>
+    <string name="recite_mistakes">À retravailler : %1$s</string>
+    <string name="recite_again">Recommencer</string>
+    <string name="stats_recited">Récité à voix haute</string>
+    <string name="stats_recited_value">%1$d récitations · %2$d %% de mots justes</string>
 </resources>

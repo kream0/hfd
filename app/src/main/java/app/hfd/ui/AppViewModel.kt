@@ -26,6 +26,8 @@ sealed interface PracticeFlow {
     /** Review what's due, or only [only] (e.g. "test this āya"). */
     data class Review(val only: List<AyahRef>? = null) : PracticeFlow
     data class Test(val fadilaId: String) : PracticeFlow
+    /** Reciting a passage aloud, checked by speech recognition (Graph.recite). */
+    data class Recite(val fadilaId: String) : PracticeFlow
 }
 
 /** App-level navigation state; saved so the app reopens exactly where it was left. */
@@ -73,6 +75,8 @@ class AppViewModel : ViewModel() {
             PracticeFlow.Learn -> "learn"
             is PracticeFlow.Review -> "review"
             is PracticeFlow.Test -> "test:${f.fadilaId}"
+            // Not resumed after a restart: a recitation starts again from its first āya.
+            is PracticeFlow.Recite -> null
             null -> null
         }
         Graph.sessions.update { it.copy(openTab = _tab.name, openFadila = _fadila, openFlow = flowName) }
@@ -94,6 +98,13 @@ class AppViewModel : ViewModel() {
 
     fun review(only: List<AyahRef>? = null) {
         flow = PracticeFlow.Review(only)
+    }
+
+    /** Recite passage [f] aloud (its chosen sub-range), checked by speech recognition. */
+    fun recite(f: Fadila) {
+        val range = Graph.ranges.get(f.id, f.size)
+        Graph.openRecite(f.id, f.ayat.subList(range.from, range.to + 1))
+        flow = PracticeFlow.Recite(f.id)
     }
 
     fun test(f: Fadila) {

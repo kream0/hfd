@@ -2,6 +2,7 @@ package app.hfd
 
 import android.app.Application
 import androidx.annotation.StringRes
+import app.hfd.core.quran.AyahRef
 import app.hfd.data.ContentRepo
 import app.hfd.data.ProgressRepo
 import app.hfd.data.SessionStore
@@ -12,6 +13,9 @@ import app.hfd.download.AudioStore
 import app.hfd.playback.NowPlaying
 import app.hfd.playback.PlaybackEngine
 import app.hfd.playback.PlayerConnection
+import app.hfd.recite.ModelState
+import app.hfd.recite.ModelStore
+import app.hfd.recite.ReciteSession
 import app.hfd.update.Updater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +30,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
@@ -54,6 +59,30 @@ object Graph {
     val ranges: RangeStore by lazy { RangeStore(app) }
     val progress: ProgressRepo by lazy { ProgressRepo(app, scope) }
     val sessions: SessionStore by lazy { SessionStore(app) }
+    /** Speech model for the Recite mode (downloaded once). */
+    val speech: ModelStore by lazy { ModelStore(app, http, scope) }
+
+    private val _recite = MutableStateFlow<ReciteSession?>(null)
+    /** The recitation in progress (Recite mode), if any. */
+    val recite: StateFlow<ReciteSession?> = _recite.asStateFlow()
+
+    /** Starts reciting [refs] of passage [fadilaId] aloud; replaces any recitation in progress. */
+    fun openRecite(fadilaId: String, refs: List<AyahRef>) {
+        closeRecite()
+        val c = content.content.value ?: return
+        _recite.value = ReciteSession(
+            fadilaId,
+            ReciteSession.targets(refs) { c.quran.text(it) },
+            scope,
+            model = { (speech.state.value as? ModelState.Ready)?.file },
+            record = { progress.record(it) },
+        )
+    }
+
+    fun closeRecite() {
+        _recite.value?.close()
+        _recite.value = null
+    }
 
     /** Set by [app.hfd.playback.PlaybackService] while it runs (same process). */
     val engine = MutableStateFlow<PlaybackEngine?>(null)

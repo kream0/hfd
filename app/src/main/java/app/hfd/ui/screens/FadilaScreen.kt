@@ -262,6 +262,7 @@ private fun Intro(f: Fadila, app: AppViewModel) {
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PillButton(stringResource(R.string.learn), { app.learn(f) }, style = PillStyle.Filled)
+            PillButton(stringResource(R.string.recite), { app.recite(f) }, icon = Ic.Mic)
             if (p.started > 0) PillButton(stringResource(R.string.test), { app.test(f) })
         }
 

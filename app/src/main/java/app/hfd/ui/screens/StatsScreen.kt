@@ -75,6 +75,21 @@ fun StatsScreen(onOpen: (String) -> Unit) {
             BigNumber(progress.days.values.sumOf { it.listens }.toString(), stringResource(R.string.stats_listens), Modifier.weight(1f))
         }
 
+        // Recitations checked by speech recognition (Recite mode).
+        val recites = progress.ayat.values.sumOf { it.recites }
+        if (recites > 0) {
+            val words = progress.ayat.values.sumOf { it.recitedWords }
+            val right = words - progress.ayat.values.sumOf { it.recitedMistakes }
+            Spacer(Modifier.height(20.dp))
+            SectionLabel(stringResource(R.string.stats_recited), Modifier.padding(horizontal = 20.dp))
+            Text(
+                stringResource(R.string.stats_recited_value, recites, if (words == 0) 0 else right * 100 / words),
+                style = Type.title,
+                color = P.text,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+        }
+
         Spacer(Modifier.height(20.dp))
         SectionLabel(stringResource(R.string.stats_goal), Modifier.padding(horizontal = 20.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
