@@ -40,7 +40,7 @@ jobs:
       - name: Align Badr at-Turkī
         # SURAS: a trial on a few sūras (writes nothing); empty = all of the passages' sūras.
         env:
-          SURAS: '44 56 87 94 96'
+          SURAS: ''
         run: python3 tools/audio/align.py badr-alturki $SURAS
       - name: Commit timings
         run: |
