@@ -10,7 +10,7 @@ on:
       - '.github/workflows/levels.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   faint:
@@ -32,3 +32,13 @@ jobs:
             whisper.cpp/build/src/libwhisper.so -Wl,-rpath,$PWD/whisper.cpp/build/src:$PWD/whisper.cpp/build/ggml/src
           ls whisper.cpp/build/src whisper.cpp/build/ggml/src | head -20
       - run: python3 tools/levels/faint.py
+      - name: Reference clip for the app's self-test
+        run: |
+          python3 tools/levels/clip.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/assets/diag
+          if git diff --cached --quiet; then echo "Clip unchanged"; exit 0; fi
+          git commit -m "Reference clip for the recognition self-test (tools/levels/clip.py)"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
