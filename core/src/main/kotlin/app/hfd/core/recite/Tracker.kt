@@ -120,8 +120,9 @@ class Tracker(val targets: List<ReciteTarget>) {
                 else -> j--
             }
         }
-        // Too little in common: not this text (or not recognisable), don't move.
-        if (best == 0 || same < MIN_MATCH_FRACTION * m) return 0
+        // Too little in common, either way: not this text, or scraps the recogniser half heard
+        // (a four-letter word sharing two letters with the next words isn't them). Don't move.
+        if (best == 0 || same < MIN_MATCH_FRACTION * m || same < MIN_MATCH_FRACTION * best) return 0
         // Words up to the last one the chunk reached (a word cut at the end counts whole).
         val lastWord = owner[best - 1]
         for (w in position..lastWord) {
@@ -143,8 +144,8 @@ class Tracker(val targets: List<ReciteTarget>) {
     companion object {
         /** Words looked at beyond the current position, at least. */
         const val MIN_WINDOW = 12
-        /** Share of the chunk's letters that must match the text for it to be followed. */
-        const val MIN_MATCH_FRACTION = 0.5
+        /** Share of the chunk's letters, and of the text's letters it spans, that must match for it to be followed. */
+        const val MIN_MATCH_FRACTION = 0.6
         /** Share of a (long) word's letters that must match for it to count as right. */
         const val OK_FRACTION = 0.75
         private const val MATCH = 2

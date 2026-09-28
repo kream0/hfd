@@ -4,6 +4,7 @@ import app.hfd.core.progress.Event
 import app.hfd.core.quran.AyahRef
 import app.hfd.core.recite.Arabic
 import app.hfd.core.recite.AyahResult
+import app.hfd.core.recite.Level
 import app.hfd.core.recite.ReciteTarget
 import app.hfd.core.recite.Tracker
 import app.hfd.core.recite.WordStatus
@@ -72,7 +73,10 @@ class ReciteSession(
         // Recognition runs one chunk at a time, in order, while the next is being recorded.
         consumer = scope.launch {
             for (chunk in chunks) {
-                val text = withContext(recognizer) { loadedWhisper()?.transcribe(chunk) }
+                // The phone's speech microphone is faint: bring the voice to a normal level first.
+                val (pcm, gain) = Level.normalize(chunk)
+                Diag.log("recite.level", "gainDb" to (20 * kotlin.math.log10(gain.toDouble())).toFloat(), "seconds" to chunk.size / Whisper.SAMPLE_RATE.toFloat())
+                val text = withContext(recognizer) { loadedWhisper()?.transcribe(pcm) }
                 _ui.value = _ui.value.copy(pending = (_ui.value.pending - 1).coerceAtLeast(0))
                 if (text != null) onHeard(text)
             }

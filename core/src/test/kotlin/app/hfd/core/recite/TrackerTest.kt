@@ -75,6 +75,28 @@ class TrackerTest {
     }
 
     @Test
+    fun scrapsOfWordsDoNotMove() {
+        // What the phone's faint microphone gave for al-Baqara 1–5 before the level was raised.
+        val t = Tracker(listOf(target(2, 1), target(2, 2)))
+        for (scrap in listOf("فرق", "في", "منذر")) assertEquals(scrap, 0, t.feed(scrap))
+        assertEquals(0, t.position)
+        // The words themselves do.
+        assertEquals(1, t.feed("الم"))
+    }
+
+    @Test
+    fun faintSpeechIsBroughtToANormalLevel() {
+        // A voice at −50 dBFS (amplitude 0.0045 peak), as the diagnostics showed.
+        val quiet = FloatArray(16_000) { (0.0045 * kotlin.math.sin(it * 0.05)).toFloat() }
+        val (loud, gain) = Level.normalize(quiet)
+        assertTrue(gain > 20f)
+        assertTrue(loud.maxOf { kotlin.math.abs(it) } <= 0.98f)
+        // Already loud speech is left as it is; silence too.
+        assertEquals(1f, Level.normalize(FloatArray(1_000) { if (it % 2 == 0) 0.5f else -0.5f }).second)
+        assertEquals(1f, Level.normalize(FloatArray(1_000)).second)
+    }
+
+    @Test
     fun aHintCountsAsAMistake() {
         val t = Tracker(listOf(target(112, 1)))
         t.feed("قل هو")
