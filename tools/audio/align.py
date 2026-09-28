@@ -362,13 +362,16 @@ def sura_timings(rid, sura, text, want):
 
     # The text as recited: isti'ādha (optional), basmala (not al-Fātiḥa, not at-Tawba), āyāt.
     exp = [skeleton(w) for w in words(ISTIADHA)]
+    aya_of = [-1] * len(exp)
     if sura not in (1, 9):
         exp += [skeleton(w) for w in words(text[(1, 1)])]
+        aya_of += [0] * (len(exp) - len(aya_of))
     count = ayah_count(sura)
     first_word = {}
     for a in range(1, count + 1):
         first_word[a] = len(exp)
         exp += [skeleton(w) for w in words(text[(sura, a)])]
+        aya_of += [a] * (len(exp) - len(aya_of))
     first_word[count + 1] = len(exp)
     letters = [max(1, len(x)) for x in exp]
     # Seconds per letter, to place words that weren't heard next to ones that were.
@@ -400,6 +403,10 @@ def sura_timings(rid, sura, text, want):
         i0, i1 = max(0, int(lo * 50)), min(len(broad), max(int(lo * 50) + 1, int(hi * 50)))
         m = i0 + int(np.argmin(broad[i0:i1]))
         # The quietest 100 ms there, then out through the silence (at most a second each way).
+        return around(m)
+
+    def around(m):
+        """The silence around frame m (its quietest 100 ms nearby), at most a second each way."""
         m = max(0, m - 3) + int(np.argmin(smooth[max(0, m - 3):m + 4]))
         if smooth[m] >= threshold:
             return m / 50, m / 50
@@ -431,25 +438,97 @@ def sura_timings(rid, sura, text, want):
         lo = max(lo if ea == b else min(lo, after - 1.0), after - 8, 0)
         return valley(lo, max(after + 0.35, lo + 0.1))
 
+    cuts = {}
+    for a in want:
+        for b in (first_word[a], first_word[a + 1]):
+            if b not in cuts:
+                cuts[b] = cut_at(b)
+
+    def slice_of(a, cut=cuts):
+        c0, c1 = cut.get(first_word[a]), cut.get(first_word[a + 1])
+        if c0 is None or c1 is None:
+            return None
+        start = max((c0[0] + c0[1]) / 2, c0[1] - LEAD_S)
+        end = min((c1[0] + c1[1]) / 2, c1[0] + TAIL_S)
+        return (start, end) if end > start + 0.2 else None
+
+    def hear(segments):
+        """{key: (start, end)} → {key: text heard}."""
+        paths = {}
+        for key, (a0, a1) in segments.items():
+            p = os.path.join(WORK, f"{rid}-{sura:03d}-{key}.wav")
+            write_wav(p, pcm[int(a0 * RATE):int(a1 * RATE)])
+            paths[key] = p
+        got = transcribe(list(paths.values()))
+        return {key: got[p] for key, p in paths.items()}
+
+    def judge(a, heard_text):
+        return verdict(text, sura, a, heard_text)
+
+    # Listen to every cut; a boundary where an āya doesn't open or close on its own words is
+    # moved to the quiet point nearby that makes both sides read right.
+    first = hear({a: sl for a in want if (sl := slice_of(a))})
+    suspects = set()
+    for a in want:
+        v = judge(a, first[a]) if a in first else None
+        if v is None or not v[0]:
+            if v is None or not v[3]:
+                suspects.add(first_word[a])
+            if v is None or not v[4]:
+                suspects.add(first_word[a + 1])
+    trials, options = {}, {}
+    for b in sorted(suspects):
+        if cuts.get(b) is None:
+            continue
+        cur = cuts[b]
+        mid = (cur[0] + cur[1]) / 2
+        i0, i1 = max(1, int((mid - 1.5) * 50)), min(len(broad) - 1, int((mid + 1.5) * 50))
+        idx = sorted((i for i in range(i0, i1) if broad[i] <= broad[i - 1] and broad[i] <= broad[i + 1]), key=lambda i: broad[i])
+        picked = []
+        for i in idx:
+            if all(abs(i - j) >= 10 for j in picked):
+                picked.append(i)
+            if len(picked) == 6:
+                break
+        options[b] = [cur] + [around(i) for i in picked]
+        sides = [x for x in (aya_of[b - 1] if b > 0 else None, aya_of[b] if b < len(exp) else None) if x in want]
+        for n, c in enumerate(options[b]):
+            trial = dict(cuts)
+            trial[b] = c
+            for a in sides:
+                sl = slice_of(a, trial)
+                if sl:
+                    trials[(b, n, a)] = sl
+    heard_trials = hear({f"b{b}-{n}-{a}": sl for (b, n, a), sl in trials.items()}) if trials else {}
+    repaired = []
+    for b, opts in options.items():
+        sides = [x for x in (aya_of[b - 1] if b > 0 else None, aya_of[b] if b < len(exp) else None) if x in want]
+        def score(n):
+            total = 0.0
+            for a in sides:
+                key = f"b{b}-{n}-{a}"
+                total += judge(a, heard_trials[key])[1] if key in heard_trials else -5
+            return total
+        best = max(range(len(opts)), key=lambda n: (score(n), n == 0))
+        if best != 0 and score(best) > score(0):
+            repaired.append(f"boundary before {sura}:{aya_of[b] if b < len(exp) else 'end'}: {opts[0][0]:.2f} → {opts[best][0]:.2f}")
+            cuts[b] = opts[best]
+
     out = {}
     report = []
     for a in sorted(want):
-        c0, c1 = cut_at(first_word[a]), cut_at(first_word[a + 1])
-        if c0 is None or c1 is None:
+        sl = slice_of(a)
+        if sl is None:
             report.append(f"{sura}:{a} not found")
             continue
-        (s0, s1), (e0, e1) = c0, c1
-        start = max((s0 + s1) / 2, s1 - LEAD_S)
-        end = min((e0 + e1) / 2, e0 + TAIL_S)
-        if end <= start:
-            report.append(f"{sura}:{a} empty ({start:.2f}-{end:.2f})")
-            continue
+        start, end = sl
         # Frames covering [start, end], plus one before (the bit reservoir of the first).
         per = spf / frate
         i0 = max(0, int(start / per) - 1)
         i1 = min(len(fr) - 1, int(end / per) + 1)
         out[f"{sura}:{a}"] = [fr[i0][0], fr[i1][0] + fr[i1][1]]
         report.append(f"{sura}:{a} {start:8.2f} {end:8.2f}")
+    report = repaired + report
     if len(windows) <= 12:
         report = debug + report
     info = {"file": "%03d.mp3" % sura, "size": len(data), "seconds": round(dur, 1), "kbps": kbps}
@@ -458,6 +537,35 @@ def sura_timings(rid, sura, text, want):
 
 
 # ---------------------------------------------------------------- check
+
+def verdict(text, sura, a, heard):
+    """
+    Does [heard] read as āya sura:a, cut right? (ok, score, word error, opens right, closes right).
+    Opening right: its first word first, not the previous āya's last word before it; closing
+    likewise with the next āya's first word. 0.6: a letter misheard in a short word (وصل for فصل)
+    isn't a wrong cut.
+    """
+    ref = [skeleton(w) for w in words(text[(sura, a)])]
+    hyp = [x for x in (skeleton(w) for w in heard.split()) if x]
+    if not hyp or not ref:
+        return False, -3.0, 1.0, False, False
+    d = list(range(len(hyp) + 1))
+    for i, r in enumerate(ref, 1):
+        prev, d[0] = d[0], i
+        for j, h in enumerate(hyp, 1):
+            prev, d[j] = d[j], min(d[j] + 1, d[j - 1] + 1, prev + (sim(r, h) < 0.75))
+    wer = d[len(hyp)] / len(ref)
+    before = words(text[(sura, a - 1)])[-1] if a > 1 else (words(text[(1, 1)])[-1] if sura not in (1, 9) else None)
+    after = words(text[(sura, a + 1)])[0] if (sura, a + 1) in text else None
+
+    def close(x, w):
+        return w is not None and sim(x, skeleton(w)) >= 0.6
+
+    head = sim(hyp[0], ref[0]) >= 0.6 or (len(hyp) > 1 and sim(hyp[1], ref[0]) >= 0.6 and not close(hyp[0], before))
+    tail = sim(hyp[-1], ref[-1]) >= 0.6 or (len(hyp) > 1 and sim(hyp[-2], ref[-1]) >= 0.6 and not close(hyp[-1], after))
+    ok = wer <= 0.35 and head and tail
+    return ok, (head + tail) - wer, wer, head, tail
+
 
 def check(rid, text, ayat, infos):
     """Cut each āya as the app will, transcribe it and compare with its text."""
@@ -474,19 +582,8 @@ def check(rid, text, ayat, infos):
     heard = transcribe(paths)
     bad = []
     for p, (s, a) in zip(paths, refs):
-        ref = [skeleton(w) for w in words(text[(s, a)])]
-        hyp = [x for x in (skeleton(w) for w in heard[p].split()) if x]
-        # Word error, and whether the āya's own first and last words open and close the cut.
-        d = list(range(len(hyp) + 1))
-        for i, r in enumerate(ref, 1):
-            prev, d[0] = d[0], i
-            for j, h in enumerate(hyp, 1):
-                prev, d[j] = d[j], min(d[j] + 1, d[j - 1] + 1, prev + (sim(r, h) < 0.75))
-        wer = d[len(hyp)] / max(1, len(ref))
-        # (0.6: a letter misheard in a short word, وصل for فصل, isn't a wrong cut.)
-        head = any(sim(ref[0], h) >= 0.6 for h in hyp[:2]) if hyp else False
-        tail = any(sim(ref[-1], h) >= 0.6 for h in hyp[-2:]) if hyp else False
-        if wer > 0.35 or not head or not tail:
+        ok, _, wer, head, tail = verdict(text, s, a, heard[p])
+        if not ok:
             bad.append((s, a, wer, head, tail, heard[p]))
     print(f"\nChecked {len(paths)} āyāt: {len(paths) - len(bad)} fine, {len(bad)} to look at")
     for s, a, wer, head, tail, h in bad:
