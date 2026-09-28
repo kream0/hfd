@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.annotation.StringRes
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.ContentRepo
+import app.hfd.diag.Diag
 import app.hfd.data.ProgressRepo
 import app.hfd.data.SessionStore
 import app.hfd.data.RangeStore
@@ -106,6 +107,7 @@ object Graph {
 
     fun init(application: Application) {
         app = application
+        Diag.start(http, scope) { settings.current.sendDiagnostics }
         content.content // start loading the text in the background right away
         audio.files // and indexing the āya files on the phone
         progress.state // and rebuilding progress from its log

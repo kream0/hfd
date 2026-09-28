@@ -2,7 +2,8 @@
 
 A personal, sideloaded Android app for learning by ear the Qur'an verses and sūras that have
 established virtues (faḍāʾil): listen, repeat, test yourself and track progress per āya.
-Offline-first, no accounts, no analytics, no ads. English and French UI.
+Offline-first, no accounts, no ads. English and French UI. Diagnostics for the developer (see
+below) can be turned off in *Settings → About*.
 
 Styled like Nothing OS (black and white, one red accent, dot-matrix type), with the Qur'an text
 given room and calm.
@@ -119,6 +120,11 @@ that the app updates itself from new releases. Android 8.0 or newer.
   allow HFD to install apps). *Settings → Updates* has the version, *Check* and an
   auto-download switch. Pre-releases and test builds are never offered.
 - **Never lose progress:** settings and progress are included in Android's Auto Backup.
+- **Diagnostics** (*Settings → About → Send diagnostics*, on while the app has a single user who
+  asked for them): what the Recite mode hears and does (microphone levels, recognised text, the
+  model and native library), playback and download errors and crashes, as JSON lines posted
+  every ten seconds to a ntfy.sh topic (`diag/Diag.kt`); `.github/workflows/diag.yml` prints them.
+  Never audio, location or progress.
 
 Later: word-by-word highlighting (Quran.com / QUL timings), the Glyph Matrix on the back of
 the phone (āya number and repetition).

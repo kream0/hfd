@@ -1,5 +1,6 @@
 package app.hfd.recite
 
+import app.hfd.diag.Diag
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.CancellationException
@@ -64,6 +65,8 @@ class ModelStore(context: Context, private val http: OkHttpClient, private val s
 
     private suspend fun fetch() {
         _state.value = ModelState.Downloading(0f)
+        Diag.log("model.download", "url" to model.url)
+        val started = System.currentTimeMillis()
         try {
             withContext(Dispatchers.IO) {
                 dir.mkdirs()
@@ -103,10 +106,12 @@ class ModelStore(context: Context, private val http: OkHttpClient, private val s
                 }
             }
             _state.value = ModelState.Ready(target)
+            Diag.log("model.ready", "bytes" to target.length(), "ms" to System.currentTimeMillis() - started)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.w("ModelStore", "model download failed", e)
+            Diag.error("model.failed", e)
             _state.value = ModelState.Failed(e.message ?: "Download failed")
         }
     }

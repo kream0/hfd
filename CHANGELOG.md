@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.0
+Recite: the microphone reacts to a normal voice, and the app can send diagnostics so problems can be fixed from afar.
+- Recite listened for a voice louder than phones give it for speech recognition: it now starts at a normal speaking voice, and the ring around the microphone follows your voice.
+- *Settings → About → Send diagnostics* (on): what Recite hears and does, and playback errors, go to the developer. Never audio or location.
+
 ## 1.4.0
 Māhir al-Muʿayqilī is the default reciter, with eleven more to choose from.
 - New: al-Muʿayqilī, Yāsir ad-Dawsarī, as-Sudays, ash-Shuraym, al-Qaṭāmī, ash-Shāṭirī, al-ʿAjamī, al-Ḥudhayfī, al-Budayr, Muḥammad Ayyūb, ar-Rifāʿī (the reciter chip under the player, or Settings → Listening).

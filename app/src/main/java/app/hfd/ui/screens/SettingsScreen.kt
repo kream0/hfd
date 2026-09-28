@@ -46,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.BuildConfig
+import app.hfd.diag.Diag
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.ui.components.NothingSwitch
@@ -117,6 +118,9 @@ fun SettingsScreen() {
         }
 
         SettingsSection(stringResource(R.string.settings_about)) {
+            SettingLine(stringResource(R.string.settings_diagnostics), stringResource(R.string.settings_diagnostics_body, Diag.session)) {
+                NothingSwitch(settings.sendDiagnostics, { on -> Graph.settings.update { it.copy(sendDiagnostics = on) } })
+            }
             Text(
                 stringResource(R.string.settings_about_body, BuildConfig.VERSION_NAME),
                 style = Type.label,

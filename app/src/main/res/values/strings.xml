@@ -9,6 +9,8 @@
 
     <string name="settings_updates">Updates</string>
     <string name="settings_about">About</string>
+    <string name="settings_diagnostics">Send diagnostics</string>
+    <string name="settings_diagnostics_body">What the Recite mode hears and does, and playback errors, go to the developer to fix problems. Never audio or location. Session %1$s</string>
     <string name="settings_about_body">HFD %1$s\nLearn the verses with established virtues, by ear.\nFonts: Doto, Space Grotesk, Space Mono (OFL) · Playback: AndroidX Media3</string>
 
     <string name="update_test_build">test build #%1$d</string>

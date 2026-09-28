@@ -8,6 +8,8 @@
 
     <string name="settings_updates">Mises à jour</string>
     <string name="settings_about">À propos</string>
+    <string name="settings_diagnostics">Envoyer les diagnostics</string>
+    <string name="settings_diagnostics_body">Ce que le mode Réciter entend et fait, et les erreurs de lecture, partent au développeur pour corriger les problèmes. Jamais le son ni la position. Session %1$s</string>
     <string name="settings_about_body">HFD %1$s\nApprendre à l\'oreille les versets aux mérites établis.\nPolices : Doto, Space Grotesk, Space Mono (OFL) · Lecture : AndroidX Media3</string>
 
     <string name="update_test_build">version de test n°%1$d</string>

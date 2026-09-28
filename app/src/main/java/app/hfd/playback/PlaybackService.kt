@@ -25,6 +25,7 @@ import androidx.media3.session.MediaSessionService
 import app.hfd.Graph
 import app.hfd.MainActivity
 import app.hfd.R
+import app.hfd.diag.Diag
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
@@ -137,6 +138,7 @@ class PlaybackService : MediaSessionService() {
 
         override fun onPlayerError(error: PlaybackException) {
             val item = exo.currentMediaItem ?: return
+            Diag.error("player.error", error, "code" to error.errorCodeName, "item" to item.localConfiguration?.uri, "cause" to error.cause?.toString())
             // One retry in place (a dropped connection), then stop and say why.
             if (retriedId != item.mediaId) {
                 retriedId = item.mediaId

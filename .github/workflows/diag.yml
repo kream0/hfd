@@ -1,0 +1,38 @@
+name: Diagnostics
+
+# Prints what the app sent to its diagnostics topic (app/.../diag/Diag.kt → ntfy.sh, kept 12 h),
+# for reading with get_job_logs: the dev sandbox can't reach ntfy.sh. Touch .github/diag.trigger
+# (e.g. write the time into it) and push to read the latest.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - '.github/diag.trigger'
+      - '.github/workflows/diag.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  print:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Diagnostics of the last 12 hours
+        run: |
+          curl -sS "https://ntfy.sh/hfd-diag-6641caac476110c0b784/json?poll=1&since=12h" | python3 -c '
+          import json, sys, datetime
+          for raw in sys.stdin:
+              m = json.loads(raw)
+              if m.get("event") != "message":
+                  continue
+              for line in m.get("message", "").splitlines():
+                  try:
+                      d = json.loads(line)
+                  except ValueError:
+                      print("?", line); continue
+                  t = datetime.datetime.utcfromtimestamp(d.pop("t") / 1000).strftime("%H:%M:%S")
+                  s, e = d.pop("s", "?"), d.pop("e", "?")
+                  print(t, s, e, " ".join(f"{k}={v}" for k, v in d.items()))
+          '

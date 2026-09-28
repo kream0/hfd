@@ -8,6 +8,7 @@ import android.util.Log
 import app.hfd.core.playback.EveryAyah
 import app.hfd.core.playback.Reciter
 import app.hfd.core.quran.AyahRef
+import app.hfd.diag.Diag
 import app.hfd.playback.TimingsRepo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -152,6 +153,7 @@ class AudioDownloader(
                 throw e
             } catch (e: Exception) {
                 attempt++
+                Diag.error("download.error", e, "key" to key, "attempt" to attempt)
                 if (attempt >= 3) throw e
                 delay(1500L * attempt)
             }

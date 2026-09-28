@@ -61,6 +61,13 @@
   Read its report: every cut is transcribed; "to look at" lines are misreadings or bad cuts.
   If passages change, re-run it (the `:core` test requires every passage āya).
 
+## Debugging on the owner's phone
+- The app posts diagnostics (`app/src/main/java/app/hfd/diag/Diag.kt`: `Diag.log(event, …)`) to
+  a ntfy.sh topic, kept 12 h. The sandbox can't reach ntfy.sh: write the time into
+  `.github/diag.trigger` and push; `.github/workflows/diag.yml` prints the last 12 h (read it with
+  `get_job_logs`). Each app run has a session id (shown in Settings → About). Add events where you
+  need them; never log audio, location or anything personal beyond what's there.
+
 ## Content rules
 - Qur'an text: Tanzil Uthmani, rendered verbatim, never altered; keep Tanzil's notice.
 - The passages (and their counts, ×7…) must match the owner's reference app *سور وآيات فاضلة*

@@ -45,6 +45,8 @@ data class AppSettings(
     val learnRepeats: Int = 3,
     /** The order Home offers the passages to learn in. */
     val learnOrder: LearnOrder = LearnOrder.SHORTEST,
+    /** Send diagnostics to the developer ([app.hfd.diag.Diag]). */
+    val sendDiagnostics: Boolean = true,
     // Reminders. Times are minutes after midnight.
     val remindKursi: Boolean = false,
     val remindMulk: Boolean = false,
@@ -131,6 +133,7 @@ class Settings(context: Context) {
             dailyGoalMin = prefs.getInt("dailyGoalMin", d.dailyGoalMin).takeIf { it in AppSettings.GOALS } ?: d.dailyGoalMin,
             learnRepeats = prefs.getInt("learnRepeats", d.learnRepeats).takeIf { it in AppSettings.LEARN_REPEATS } ?: d.learnRepeats,
             learnOrder = enumOr(prefs.getString("learnOrder", null), d.learnOrder),
+            sendDiagnostics = prefs.getBoolean("sendDiagnostics", d.sendDiagnostics),
             remindKursi = prefs.getBoolean("remindKursi", d.remindKursi),
             remindMulk = prefs.getBoolean("remindMulk", d.remindMulk),
             mulkAt = prefs.getInt("mulkAt", d.mulkAt).coerceIn(0, 24 * 60 - 1),
@@ -160,6 +163,7 @@ class Settings(context: Context) {
             .putInt("dailyGoalMin", s.dailyGoalMin)
             .putInt("learnRepeats", s.learnRepeats)
             .putString("learnOrder", s.learnOrder.name)
+            .putBoolean("sendDiagnostics", s.sendDiagnostics)
             .putBoolean("remindKursi", s.remindKursi)
             .putBoolean("remindMulk", s.remindMulk)
             .putInt("mulkAt", s.mulkAt)

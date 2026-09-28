@@ -7,6 +7,7 @@ import app.hfd.core.recite.AyahResult
 import app.hfd.core.recite.ReciteTarget
 import app.hfd.core.recite.Tracker
 import app.hfd.core.recite.WordStatus
+import app.hfd.diag.Diag
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -81,14 +82,19 @@ class ReciteSession(
     /** Starts listening (the caller has the microphone permission). */
     fun start() {
         if (listenJob?.isActive == true || tracker.done) return
-        if (model() == null) return
+        val file = model()
+        Diag.log("recite.start", "fadila" to fadilaId, "ayat" to targets.size, "from" to targets.firstOrNull()?.ref?.key, "model" to file?.length(), "done" to tracker.done)
+        if (file == null) return
         _ui.value = _ui.value.copy(listening = true, error = null, loading = whisper == null)
         ayahStartedAt = System.currentTimeMillis()
         // Load the model now rather than on the first chunk.
         scope.launch {
             val w = withContext(recognizer) { loadedWhisper() }
             _ui.value = _ui.value.copy(loading = false, error = if (w == null) ERROR_MODEL else _ui.value.error)
-            if (w == null) recorder.stop()
+            if (w == null) {
+                Diag.log("recite.noModel")
+                recorder.stop()
+            }
         }
         listenJob = scope.launch {
             try {
@@ -99,6 +105,7 @@ class ReciteSession(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                Diag.error("recite.mic", e)
                 _ui.value = _ui.value.copy(error = ERROR_MIC)
             } finally {
                 _ui.value = _ui.value.copy(listening = false)
@@ -118,11 +125,14 @@ class ReciteSession(
     /** A chunk of recognised speech (also used by the screenshot test). */
     fun onHeard(text: String) {
         val clean = withoutOpening(text)
-        tracker.feed(clean)
+        val before = tracker.position
+        val moved = tracker.feed(clean)
+        Diag.log("recite.heard", "text" to text, "clean" to clean, "from" to before, "to" to tracker.position, "moved" to moved, "done" to tracker.done)
         afterProgress(text.ifBlank { null })
     }
 
     fun close() {
+        Diag.log("recite.close", "position" to tracker.position, "done" to tracker.done)
         recorder.stop()
         listenJob?.cancel()
         consumer.cancel()
@@ -138,6 +148,7 @@ class ReciteSession(
         val finished = tracker.finished()
         val now = System.currentTimeMillis()
         for (r in finished.drop(logged)) {
+            Diag.log("recite.ayah", "ref" to r.ref.key, "words" to r.words, "mistakes" to r.mistakes.joinToString(","), "rating" to r.rating.name)
             record(Event.Recite(now, r.ref.key, r.words, r.mistakes, r.rating, now - ayahStartedAt))
             ayahStartedAt = now
         }

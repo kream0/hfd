@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import app.hfd.diag.Diag
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
@@ -43,6 +45,7 @@ class Recorder {
             MediaRecorder.AudioSource.VOICE_RECOGNITION, rate,
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(minBuf, rate) * 2,
         )
+        Diag.log("mic.open", "state" to record.state, "minBuffer" to minBuf, "rate" to record.sampleRate, "source" to "VOICE_RECOGNITION")
         check(record.state == AudioRecord.STATE_INITIALIZED) { "microphone unavailable" }
         val frame = ShortArray(FRAME)
         val pre = ArrayDeque<FloatArray>()
@@ -52,6 +55,12 @@ class Recorder {
         var voicedFrames = 0
         var inSpeech = false
         stopRequested.set(false)
+        // A second of levels at a time, for the diagnostics.
+        var secFrames = 0
+        var secSum = 0.0
+        var secMax = 0f
+        var secVoiced = 0
+        var sent = 0
         try {
             record.startRecording()
             while (currentCoroutineContext().isActive && !stopRequested.get()) {
@@ -63,8 +72,20 @@ class Recorder {
                 val rms = sqrt(sum / n).toFloat()
                 // The noise floor follows the quietest moments, slowly.
                 noise = if (rms < noise) rms * 0.3f + noise * 0.7f else noise * 0.999f + rms * 0.001f
-                val voiced = rms > maxOf(noise * 3f, MIN_RMS)
-                _level.value = (rms / 0.1f).coerceIn(0f, 1f)
+                val voiced = rms > maxOf(noise * VOICE_OVER_NOISE, MIN_RMS)
+                // −60 dB → 0, −15 dB → 1: phone microphones for speech recognition are quiet.
+                _level.value = ((dB(rms) + 60f) / 45f).coerceIn(0f, 1f)
+                secFrames++
+                secSum += rms
+                secMax = maxOf(secMax, rms)
+                if (voiced) secVoiced++
+                if (secFrames == 50) {
+                    Diag.log(
+                        "mic.second", "avgDb" to dB((secSum / secFrames).toFloat()), "maxDb" to dB(secMax),
+                        "noiseDb" to dB(noise), "voiced" to secVoiced, "inSpeech" to inSpeech, "chunks" to sent,
+                    )
+                    secFrames = 0; secSum = 0.0; secMax = 0f; secVoiced = 0
+                }
                 if (!inSpeech) {
                     pre.addLast(f)
                     if (pre.size > PRE_ROLL_FRAMES) pre.removeFirst()
@@ -82,7 +103,8 @@ class Recorder {
                 if (voiced) { silentFrames = 0; voicedFrames++ } else silentFrames++
                 val long = chunk.size >= MAX_CHUNK_FRAMES
                 if (silentFrames >= PAUSE_FRAMES || long) {
-                    if (voicedFrames >= MIN_VOICED_FRAMES) emit(join(chunk))
+                    Diag.log("mic.chunk", "seconds" to chunk.size * FRAME / rate.toFloat(), "voiced" to voicedFrames, "sent" to (voicedFrames >= MIN_VOICED_FRAMES), "long" to long)
+                    if (voicedFrames >= MIN_VOICED_FRAMES) { sent++; emit(join(chunk)) }
                     chunk.clear()
                     inSpeech = false
                     _speaking.value = false
@@ -90,6 +112,12 @@ class Recorder {
             }
             // Stopped: what was being said still counts.
             if (inSpeech && voicedFrames >= MIN_VOICED_FRAMES) emit(join(chunk))
+            Diag.log("mic.stop", "chunks" to sent, "requested" to stopRequested.get())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Diag.error("mic.error", e)
+            throw e
         } finally {
             runCatching { record.stop() }
             record.release()
@@ -113,6 +141,10 @@ class Recorder {
         private const val MIN_VOICED_FRAMES = 10 // at least 200 ms of voice
         // 20 s at most: the model reads 30 s windows and slips beyond ~25 s (tools/model/evaluate.py).
         private const val MAX_CHUNK_FRAMES = 1000
-        private const val MIN_RMS = 0.008f
+        /** Voice: this much over the room's noise (×2.5 ≈ 8 dB), and above MIN_RMS (≈ −54 dB). */
+        private const val VOICE_OVER_NOISE = 2.5f
+        private const val MIN_RMS = 0.002f
+
+        private fun dB(rms: Float): Float = (20 * kotlin.math.log10(rms.coerceAtLeast(1e-6f).toDouble())).toFloat()
     }
 }
