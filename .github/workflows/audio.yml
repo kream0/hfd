@@ -38,9 +38,9 @@ jobs:
           curl -sSfL -o ggml-tiny-ar-quran-q8_0.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-tiny-ar-quran-q8_0.bin
           echo "ef01ab441b004f9e6f1ea98d397b43452b3a45efab7c3928ab37af655dde8b52  ggml-tiny-ar-quran-q8_0.bin" | sha256sum -c
       - name: Align Badr at-Turkī
-        # A trial on a few sūras first (writes nothing); empty = all of them.
+        # SURAS: a trial on a few sūras (writes nothing); empty = all of the passages' sūras.
         env:
-          SURAS: '1 2 36 67 103 108 112 113 114'
+          SURAS: ''
         run: python3 tools/audio/align.py badr-alturki $SURAS
       - name: Commit timings
         run: |

@@ -39,6 +39,7 @@ HOP = RATE // 50            # 20 ms analysis frames
 MIN_PAUSE = 13              # frames: a pause is at least 260 ms of quiet
 WINDOW_S = 20.0             # transcription windows (the model slips past ~25 s)
 LEAD_S, TAIL_S = 0.30, 0.45  # pause kept before / after an āya
+JOIN_S = 0.08               # overlap where two āyāt are recited without a pause
 
 
 # ---------------------------------------------------------------- text
@@ -448,8 +449,9 @@ def sura_timings(rid, sura, text, want):
         c0, c1 = cut.get(first_word[a]), cut.get(first_word[a + 1])
         if c0 is None or c1 is None:
             return None
-        start = max((c0[0] + c0[1]) / 2, c0[1] - LEAD_S)
-        end = min((c1[0] + c1[1]) / 2, c1[0] + TAIL_S)
+        # Joined āyāt (no silence, a point): overlap a little rather than clip a letter.
+        start = max((c0[0] + c0[1]) / 2, c0[1] - LEAD_S) if c0[1] > c0[0] else c0[0] - JOIN_S
+        end = min((c1[0] + c1[1]) / 2, c1[0] + TAIL_S) if c1[1] > c1[0] else c1[0] + JOIN_S
         return (start, end) if end > start + 0.2 else None
 
     def hear(segments):
