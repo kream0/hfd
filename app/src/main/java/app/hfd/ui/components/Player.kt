@@ -44,6 +44,7 @@ import app.hfd.data.SubRange
 import app.hfd.download.DlStatus
 import app.hfd.playback.PlaySession
 import app.hfd.playback.Sleep
+import app.hfd.playback.effectiveRepeatRange
 import app.hfd.ui.text
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
@@ -83,7 +84,7 @@ fun rangeLabel(f: Fadila, r: SubRange): String {
 }
 
 fun sessionFor(f: Fadila, title: String, r: SubRange): PlaySession =
-    PlaySession(f.id, title, f.ayat.subList(r.from, r.to + 1), r.from, r.to)
+    PlaySession(f.id, title, f.ayat.subList(r.from, r.to + 1), r.from, r.to, times = f.times)
 
 /** Offline state of a faḍīla's āyāt on the red → orange → yellow → green scale. */
 @Composable
@@ -230,7 +231,8 @@ fun PlayerPanel(f: Fadila, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             SettingChip(stringResource(R.string.chip_ayah, timesLabel(settings.repeatEach)), { sheets(repeatEachSheet(context)) }, settings.repeatEach != 1)
-            SettingChip(stringResource(R.string.chip_range, timesLabel(settings.repeatRange)), { sheets(repeatRangeSheet(context)) }, settings.repeatRange != 1)
+            val rangeTimes = effectiveRepeatRange(settings.repeatRange, f.times)
+            SettingChip(stringResource(R.string.chip_range, timesLabel(rangeTimes)), { sheets(repeatRangeSheet(context)) }, rangeTimes != 1)
             SettingChip(stringResource(R.string.chip_gap, gapLabel(settings.gap)), { sheets(gapSheet(context)) }, settings.gap != GapMode.NONE)
             SettingChip(speedLabel(settings.speed), { sheets(speedSheet(context)) }, settings.speed != 1f)
             SettingChip(settings.reciterInfo.short, { sheets(reciterSheet(context, settings.reciter)) })

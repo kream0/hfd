@@ -2,10 +2,7 @@ package app.hfd.core.progress
 
 import app.hfd.core.fadail.AyahRange
 import app.hfd.core.fadail.Fadila
-import app.hfd.core.fadail.Grade
-import app.hfd.core.fadail.Grading
 import app.hfd.core.fadail.Localized
-import app.hfd.core.fadail.Occasion
 import app.hfd.core.quran.AyahRef
 import app.hfd.core.srs.CardState
 import app.hfd.core.srs.Fsrs
@@ -113,11 +110,6 @@ class ProgressTest {
             id = "kursi-greatest",
             title = Localized("آية", "Āyat al-Kursī", "Āyat al-Kursī"),
             ranges = listOf(AyahRange(2, 255, 255)),
-            virtue = Localized(null, "x", "x"),
-            sources = emptyList(),
-            grading = Grading(Grade.SAHIH, "Muslim"),
-            occasions = listOf(Occasion.ANY),
-            verified = true,
         )
         val p = Stats.fadila(s, f, fsrs, at(3, 10))
         assertEquals(1, p.memorised)

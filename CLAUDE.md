@@ -44,7 +44,11 @@
 
 ## Content rules
 - Qur'an text: Tanzil Uthmani, rendered verbatim, never altered; keep Tanzil's notice.
-- `fadail.json`: never invent a reference. Each source is checked against the source text
-  (verify job log, or the hadith dataset on raw.githubusercontent.com). Unverified entries get
-  `verified: false` and stay hidden. Weak (ḍaʿīf / mawḍūʿ) entries only show behind the setting.
-- `:core` tests validate every range against sūra āya counts and require a source per entry.
+- The passages (and their counts, ×7…) must match the owner's reference app *سور وآيات فاضلة*
+  (com.yassine.mob.ayatfadila), as its publisher lists them (aljamaa.net, "سور وآيات فاضلــة");
+  `FadailDatasetTest` pins that list in order. Don't add or drop passages without the owner.
+- Narrations in `fadail.json`: never invent a reference. Each source is checked against the
+  source text (verify job log, or the hadith dataset on raw.githubusercontent.com). Unverified
+  narrations get `verified: false` and stay hidden. Weak (ḍaʿīf / mawḍūʿ) ones only show behind
+  the setting. A passage with no known narration says so.
+- `:core` tests validate every range against sūra āya counts and require a source per narration.

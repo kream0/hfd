@@ -40,12 +40,14 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -53,11 +55,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.fadail.Fadila
+import app.hfd.core.fadail.Virtue
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.SubRange
 import app.hfd.ui.components.Chip
 import app.hfd.ui.components.DotLoader
-import app.hfd.ui.components.GradeChip
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.IconBtn
 import app.hfd.ui.components.LocalSheets
@@ -114,6 +116,8 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
             userScrolledAt = System.currentTimeMillis()
         }
     }
+    // Reopened on a passage that no longer exists (saved before the list changed): go back.
+    LaunchedEffect(c, f) { if (c != null && f == null) onBack() }
     LaunchedEffect(current, c, f) {
         if (current == null || c == null || f == null) return@LaunchedEffect
         if (System.currentTimeMillis() - userScrolledAt < 6_000) return@LaunchedEffect
@@ -208,14 +212,15 @@ private fun ayahActions(context: android.content.Context, app: AppViewModel, f: 
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun Intro(f: Fadila, app: AppViewModel) {
-    val uri = LocalUriHandler.current
     val progress by Graph.progress.state.collectAsStateWithLifecycle()
     val now = System.currentTimeMillis()
     val p = Stats.fadila(progress, f, Graph.progress.fsrs, now)
     val lang = uiLanguage
+    val settings by Graph.settings.state.collectAsStateWithLifecycle()
+    val virtues = f.virtues(settings.showWeak)
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
         Text(
             f.title.ar.orEmpty(),
@@ -233,14 +238,9 @@ private fun Intro(f: Fadila, app: AppViewModel) {
             horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            f.occasions.forEach { Chip(stringResource(it.label)) }
-            GradeChip(f.grading.grade)
+            if (f.times > 1) Chip(stringResource(R.string.label_times, f.times))
+            f.occasions(settings.showWeak).forEach { Chip(stringResource(it.label)) }
             if (f.isLong) Chip(stringResource(R.string.label_long))
-        }
-
-        if (!f.grading.grade.acceptable) {
-            Spacer(Modifier.height(14.dp))
-            Text(stringResource(R.string.detail_weak_warning), style = Type.body, color = P.accent)
         }
 
         // Memorisation: progress, next review, and the practice flows.
@@ -267,40 +267,53 @@ private fun Intro(f: Fadila, app: AppViewModel) {
 
         Spacer(Modifier.height(18.dp))
         SectionLabel(stringResource(R.string.detail_virtue))
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.height(IntrinsicSize.Min)) {
-            Box(Modifier.width(2.dp).fillMaxHeight().background(P.outline))
-            Text(f.virtue.text, style = Type.body.copy(lineHeight = Type.body.lineHeight * 1.1f), color = P.text, modifier = Modifier.padding(start = 12.dp))
+        if (virtues.isEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.detail_no_narration), style = Type.body, color = P.textDim)
         }
-
-        Spacer(Modifier.height(18.dp))
-        SectionLabel(stringResource(R.string.detail_sources))
-        Spacer(Modifier.height(4.dp))
-        f.sources.forEach { s ->
-            Row(
-                Modifier.fillMaxWidth().clickable { runCatching { uri.openUri(s.url) } }.padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("${s.collection} ${s.number}", style = Type.title, color = P.text)
-                    Text(s.narrator.uppercase(), style = Type.label, color = P.textDim)
-                }
-                Text("↗", style = Type.title, color = P.textDim)
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-        SectionLabel(stringResource(R.string.detail_grading))
-        Spacer(Modifier.height(8.dp))
-        Text(
-            stringResource(R.string.detail_graded_by, stringResource(f.grading.grade.label), f.grading.by),
-            style = Type.title,
-            color = if (f.grading.grade.acceptable) P.text else P.accent,
-        )
-        f.grading.note?.let {
-            Spacer(Modifier.height(4.dp))
-            Text(it.text, style = Type.body, color = P.textDim)
+        virtues.forEach { v -> Narration(v) }
+        val hidden = f.hiddenWeak(settings.showWeak)
+        if (hidden > 0) {
+            Spacer(Modifier.height(8.dp))
+            Text(pluralStringResource(R.plurals.detail_hidden_weak, hidden, hidden), style = Type.label, color = P.textDim)
         }
         Spacer(Modifier.height(10.dp))
     }
+}
+
+/** One narration: what it says, where to read it, how it is graded. */
+@Composable
+private fun Narration(v: Virtue) {
+    val uri = LocalUriHandler.current
+    Spacer(Modifier.height(10.dp))
+    Row(Modifier.height(IntrinsicSize.Min)) {
+        Box(Modifier.width(2.dp).fillMaxHeight().background(if (v.grading.grade.acceptable) P.outline else P.accent))
+        Text(v.text.text, style = Type.body.copy(lineHeight = Type.body.lineHeight * 1.1f), color = P.text, modifier = Modifier.padding(start = 12.dp))
+    }
+    if (!v.grading.grade.acceptable) {
+        Spacer(Modifier.height(6.dp))
+        Text(stringResource(R.string.detail_weak_warning), style = Type.label, color = P.accent)
+    }
+    v.sources.forEach { s ->
+        Row(
+            Modifier.fillMaxWidth().clickable { runCatching { uri.openUri(s.url) } }.padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("${s.collection} ${s.number}", style = Type.title, color = P.text)
+                Text(s.narrator.uppercase(), style = Type.label, color = P.textDim)
+            }
+            Text("↗", style = Type.title, color = P.textDim)
+        }
+    }
+    Text(
+        stringResource(R.string.detail_graded_by, stringResource(v.grading.grade.label), v.grading.by),
+        style = Type.title,
+        color = if (v.grading.grade.acceptable) P.text else P.accent,
+    )
+    v.grading.note?.let {
+        Spacer(Modifier.height(4.dp))
+        Text(it.text, style = Type.body, color = P.textDim)
+    }
+    Spacer(Modifier.height(8.dp))
 }

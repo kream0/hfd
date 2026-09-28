@@ -44,8 +44,6 @@
     <string name="occasion_after_prayer">After prayer</string>
     <string name="occasion_friday">Friday</string>
     <string name="occasion_any">Any time</string>
-    <string name="group_long">Long sūras</string>
-    <string name="group_weak">Weak narrations</string>
 
     <string name="grade_sahih">Ṣaḥīḥ</string>
     <string name="grade_hasan">Ḥasan</string>
@@ -79,7 +77,7 @@
     <string name="translation_fr">Français</string>
     <string name="translation_en">English</string>
     <string name="settings_weak">Show weak narrations</string>
-    <string name="settings_weak_body">Also list faḍāʾil whose ḥadīth is weak (ḍaʿīf) or fabricated (mawḍūʿ), in their own group and clearly labelled</string>
+    <string name="settings_weak_body">Also show the weak (ḍaʿīf) and fabricated (mawḍūʿ) narrations about each passage, clearly labelled</string>
     <string name="settings_sources">Sources and licences</string>
     <string name="settings_sources_body">Qur\'an text: Tanzil Project (tanzil.net), Uthmani text v1.1, CC BY 3.0, used verbatim.\nTranslations of meanings: Muhammad Hamidullah (French) and Saheeh International (English), from tanzil.net.\nFont of the Qur\'an text: Amiri Quran (OFL).\nḤadīth references: sunnah.com, dorar.net.\nRecitations: everyayah.com.</string>
     <string name="settings_tanzil_link">Open tanzil.net</string>
@@ -258,4 +256,12 @@
     <string name="time_title">Time</string>
     <string name="offline_partial">%d%% offline · save all</string>
     <string name="notifications_denied">Notifications are off for HFD: reminders can\'t show.</string>
+    <string name="label_times">×%1$d</string>
+    <string name="fadail_wird">The reference wird · %1$d passages</string>
+    <string name="detail_no_narration">No narration about this particular passage is cited here: it is recited as part of the reference wird.</string>
+    <plurals name="detail_hidden_weak">
+        <item quantity="one">%1$d weak narration hidden (Settings → Reading → Show weak narrations)</item>
+        <item quantity="other">%1$d weak narrations hidden (Settings → Reading → Show weak narrations)</item>
+    </plurals>
+    <string name="stats_none">Nothing learnt yet: open a passage and tap Learn.</string>
 </resources>

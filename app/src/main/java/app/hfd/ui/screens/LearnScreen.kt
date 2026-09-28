@@ -94,6 +94,8 @@ fun LearnScreen(onClose: () -> Unit) {
     val c = content
     val s = session?.learn
     val f = s?.let { c?.fadila(it.fadilaId) }
+    // Saved for a passage that no longer exists (the list changed): nothing to resume.
+    LaunchedEffect(c, s, f) { if (c != null && s != null && f == null) onClose() }
     Column(Modifier.fillMaxSize().background(P.background).statusBarsPadding().navigationBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconBtn(Ic.Close, close, contentDescription = stringResource(R.string.close))

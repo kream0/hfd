@@ -1,5 +1,6 @@
 package app.hfd.core.reminders
 
+import app.hfd.core.fadail.Occasion
 import app.hfd.core.prayer.Prayer
 import app.hfd.core.prayer.PrayerCalculator
 import kotlinx.serialization.SerialName
@@ -9,16 +10,17 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
+/** [fadilaId]: the passage the reminder opens; [occasion]: which of its narrations it quotes. */
 @Serializable
-enum class ReminderKind(val fadilaId: String?) {
+enum class ReminderKind(val fadilaId: String?, val occasion: Occasion?) {
     /** Āyat al-Kursī after each obligatory prayer. */
-    @SerialName("kursi") KURSI_AFTER_PRAYER("kursi-after-prayer"),
-    /** As-Sajda and al-Mulk before sleep. */
-    @SerialName("mulk") MULK_BEFORE_SLEEP("sajda-mulk-sleep"),
+    @SerialName("kursi") KURSI_AFTER_PRAYER("kursi", Occasion.AFTER_PRAYER),
+    /** As-Sajda and al-Mulk before sleep (opens al-Mulk). */
+    @SerialName("mulk") MULK_BEFORE_SLEEP("mulk", Occasion.BEFORE_SLEEP),
     /** Al-Kahf on Friday. */
-    @SerialName("kahf") KAHF_FRIDAY("kahf-friday"),
+    @SerialName("kahf") KAHF_FRIDAY("kahf", Occasion.FRIDAY),
     /** Āyāt due for review. */
-    @SerialName("reviews") DUE_REVIEWS(null),
+    @SerialName("reviews") DUE_REVIEWS(null, null),
 }
 
 data class ReminderConfig(

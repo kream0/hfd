@@ -99,8 +99,12 @@ fun StatsScreen(onOpen: (String) -> Unit) {
             DotLoader(Modifier.padding(20.dp))
         } else {
             val lang = uiLanguage
-            c.fadail.filter { it.visible(settings.showWeak) }.forEach { f ->
-                val p = Stats.fadila(progress, f, Graph.progress.fsrs, now)
+            // The passages being learnt (all forty would mostly be empty rings).
+            val started = c.fadail.map { it to Stats.fadila(progress, it, Graph.progress.fsrs, now) }.filter { it.second.started > 0 }
+            if (started.isEmpty()) {
+                Text(stringResource(R.string.stats_none), style = Type.body, color = P.textDim, modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
+            }
+            started.forEach { (f, p) ->
                 Row(
                     Modifier.fillMaxWidth().clickable { onOpen(f.id) }.padding(horizontal = 20.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,

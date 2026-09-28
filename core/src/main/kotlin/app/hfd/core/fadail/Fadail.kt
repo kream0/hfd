@@ -65,27 +65,50 @@ enum class Occasion {
     @SerialName("any") ANY,
 }
 
+/** A narration about a passage: what it says, where to read it, how it is graded. */
+@Serializable
+data class Virtue(
+    /** Short, faithful paraphrase of what the ḥadīth says. */
+    val text: Localized,
+    val sources: List<Source>,
+    val grading: Grading,
+    /** When the narration says to recite the passage; drives home suggestions and reminders. */
+    val occasions: List<Occasion> = emptyList(),
+    /** Every reference was checked against the source text. Unverified narrations stay hidden. */
+    val verified: Boolean = false,
+) {
+    /** Shown: verified, and either sound or the user asked to see weak narrations. */
+    fun visible(showWeak: Boolean): Boolean = verified && (grading.grade.acceptable || showWeak)
+}
+
+/**
+ * A passage of the reference list (the app "سور وآيات فاضلة", see fadail.json), in its order.
+ * Every passage is listed; its narrations follow the grading rules of [Virtue.visible].
+ */
 @Serializable
 data class Fadila(
     /** Stable slug; progress and resume state refer to it. */
     val id: String,
     val title: Localized,
     val ranges: List<AyahRange>,
-    /** Short, faithful paraphrase of what the ḥadīth says. */
-    val virtue: Localized,
-    val sources: List<Source>,
-    val grading: Grading,
-    val occasions: List<Occasion>,
+    /** Recitations in a row, as the reference gives them (end of at-Tawba ×7…). */
+    val times: Int = 1,
+    /** Narrations about this passage; none when no specific one is known. */
+    val virtues: List<Virtue> = emptyList(),
     val tags: List<String> = emptyList(),
-    /** Every reference was checked against the source text. Unverified entries stay hidden. */
-    val verified: Boolean = false,
 ) {
     val ayat: List<AyahRef> get() = ranges.flatMap { it.ayat() }
     val size: Int get() = ranges.sumOf { it.size }
     val isLong: Boolean get() = TAG_LONG in tags
 
-    /** Shown in the list: verified, and either sound or the user asked to see weak narrations. */
-    fun visible(showWeak: Boolean): Boolean = verified && (grading.grade.acceptable || showWeak)
+    fun virtues(showWeak: Boolean): List<Virtue> = virtues.filter { it.visible(showWeak) }
+
+    /** Weak narrations left out while the setting is off. */
+    fun hiddenWeak(showWeak: Boolean): Int =
+        if (showWeak) 0 else virtues.count { it.verified && !it.grading.grade.acceptable }
+
+    /** When to recite it, from the narrations shown. */
+    fun occasions(showWeak: Boolean): Set<Occasion> = virtues(showWeak).flatMapTo(LinkedHashSet()) { it.occasions }
 
     companion object {
         const val TAG_LONG = "long"
@@ -93,8 +116,13 @@ data class Fadila(
 }
 
 @Serializable
-data class FadailFile(val schema: Int, val fadail: List<Fadila>) {
+data class FadailFile(
+    val schema: Int,
+    val fadail: List<Fadila>,
+    /** Where the list of passages comes from. */
+    val source: String = "",
+) {
     companion object {
-        const val SCHEMA = 1
+        const val SCHEMA = 2
     }
 }

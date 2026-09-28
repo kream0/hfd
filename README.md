@@ -26,14 +26,22 @@ that the app updates itself from new releases. Android 8.0 or newer.
 
 ## Features
 
-- **Faḍāʾil, verified:** 20 entries (Al-Fātiḥa, Āyat al-Kursī ×3, end of al-Baqara, end of
-  Āl ʿImrān, al-Kahf, al-Mulk, as-Sajda, the three Quls, al-Kāfirūn, al-Baqara and Āl ʿImrān),
-  each with its āya ranges, a short faithful paraphrase of the ḥadīth (French / English), its
-  sources (sunnah.com / dorar.net links) and grading with the grader. Ṣaḥīḥ and ḥasan show by
-  default; weak (ḍaʿīf) and fabricated (mawḍūʿ) narrations only appear in their own, clearly
-  labelled group when *Settings → Reading → Show weak narrations* is on.
-- **List by occasion:** morning, evening, after prayer, at night, before sleep, Friday, any time,
-  then long sūras. Home suggests what fits the time of day (and al-Kahf on Fridays).
+- **The passages of the reference app** *سور وآيات فاضلة* (the "wird at-taḥṣīn", as its
+  publisher lists them on aljamaa.net), in its order and with its counts: al-Fātiḥa; al-Baqara
+  1–5, Āyat al-Kursī, 284–286; Āl ʿImrān 1–9, 18–19, 26–27, 190–200; the end of at-Tawba ×7;
+  the end of al-Kahf, and al-Kahf in full (Friday); as-Sajda, Yā-Sīn, Ghāfir 1–3, ad-Dukhān,
+  the end of al-Fatḥ, al-Wāqiʿa, the musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa,
+  at-Taghābun), al-Mulk, al-Aʿlā, aḍ-Ḍuḥā, ash-Sharḥ, al-ʿAlaq, al-Qadr, az-Zalzala ×4,
+  at-Takāthur, al-ʿAṣr ×2, Quraysh, al-Māʿūn, al-Kawthar ×3, al-Kāfirūn ×4, an-Naṣr ×4,
+  al-Ikhlāṣ ×3, al-Falaq, an-Nās, and the closing (al-Fātiḥa and al-Baqara 1–5). A `:core`
+  test pins this list. The count is how often the passage plays while *Repeat the range* is ×1.
+- **Narrations, verified:** each passage lists the ḥadīth about it, with a short faithful
+  paraphrase (French / English), its sources (sunnah.com / dorar.net links) and its grading with
+  the grader. Ṣaḥīḥ and ḥasan show by default; weak (ḍaʿīf) and fabricated (mawḍūʿ) ones only
+  with *Settings → Reading → Show weak narrations*, clearly labelled. Where no narration about a
+  passage is known, the app says so rather than invent one.
+- **Suggestions:** Home suggests what fits the time of day (morning, evening, night, before
+  sleep, Friday) from the sound narrations, plus the daily ones.
 - **Reading view:** Tanzil's Uthmani text, verbatim, in Amiri Quran, right-to-left, large, with
   ḥarakāt, waqf marks and āya numbers in Arabic-Indic digits between ornate brackets ﴿٤﴾. Each sūra's basmala
   is shown above its first āya. Optional translation of meanings under each āya (Hamidullah in

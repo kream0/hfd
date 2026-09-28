@@ -17,7 +17,7 @@ object FadailValidator {
             if (!ID.matches(f.id)) errors += "$at id must be a lowercase slug"
             if (!seen.add(f.id)) errors += "$at duplicate id"
             if (f.title.ar.isNullOrBlank() || f.title.fr.isBlank() || f.title.en.isBlank()) errors += "$at title needs ar, fr and en"
-            if (f.virtue.fr.isBlank() || f.virtue.en.isBlank()) errors += "$at virtue needs fr and en"
+            if (f.times < 1) errors += "$at times must be at least 1"
             if (f.ranges.isEmpty()) errors += "$at no ranges"
             for (r in f.ranges) {
                 val max = counts[r.sura]
@@ -29,13 +29,16 @@ object FadailValidator {
             }
             val all = f.ayat
             if (all.size != all.toSet().size) errors += "$at ranges overlap"
-            if (f.sources.isEmpty()) errors += "$at needs at least one source"
-            for (s in f.sources) {
-                if (s.collection.isBlank() || s.number.isBlank() || s.narrator.isBlank()) errors += "$at incomplete source $s"
-                if (TRUSTED_HOSTS.none { s.url.startsWith(it) }) errors += "$at source url must be on sunnah.com or dorar.net: ${s.url}"
+            f.virtues.forEachIndexed { i, v ->
+                val vat = "$at virtue $i"
+                if (v.text.fr.isBlank() || v.text.en.isBlank()) errors += "$vat needs fr and en"
+                if (v.sources.isEmpty()) errors += "$vat needs at least one source"
+                for (s in v.sources) {
+                    if (s.collection.isBlank() || s.number.isBlank() || s.narrator.isBlank()) errors += "$vat incomplete source $s"
+                    if (TRUSTED_HOSTS.none { s.url.startsWith(it) }) errors += "$vat source url must be on sunnah.com or dorar.net: ${s.url}"
+                }
+                if (v.grading.by.isBlank()) errors += "$vat grading needs a grader"
             }
-            if (f.grading.by.isBlank()) errors += "$at grading needs a grader"
-            if (f.occasions.isEmpty()) errors += "$at needs an occasion"
         }
         return errors
     }

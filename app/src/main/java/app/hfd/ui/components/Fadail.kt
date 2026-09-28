@@ -91,9 +91,9 @@ fun FadilaRow(f: Fadila, progress: Float, onClick: () -> Unit, modifier: Modifie
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(rangesLabel(f).uppercase(), style = Type.label, color = P.textDim, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false))
-                if (!f.grading.grade.acceptable) {
+                if (f.times > 1) {
                     Spacer(Modifier.width(6.dp))
-                    GradeChip(f.grading.grade)
+                    Chip(stringResource(R.string.label_times, f.times))
                 }
                 if (f.isLong) {
                     Spacer(Modifier.width(6.dp))

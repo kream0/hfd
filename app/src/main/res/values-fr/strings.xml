@@ -43,8 +43,6 @@
     <string name="occasion_after_prayer">Après la prière</string>
     <string name="occasion_friday">Vendredi</string>
     <string name="occasion_any">À tout moment</string>
-    <string name="group_long">Longues sourates</string>
-    <string name="group_weak">Récits faibles</string>
 
     <string name="grade_sahih">Ṣaḥīḥ</string>
     <string name="grade_hasan">Ḥasan</string>
@@ -79,7 +77,7 @@
     <string name="translation_fr">Français</string>
     <string name="translation_en">English</string>
     <string name="settings_weak">Afficher les récits faibles</string>
-    <string name="settings_weak_body">Lister aussi les faḍāʾil dont le ḥadīth est faible (ḍaʿīf) ou inventé (mawḍūʿ), dans un groupe à part et clairement signalés</string>
+    <string name="settings_weak_body">Afficher aussi les récits faibles (ḍaʿīf) et inventés (mawḍūʿ) sur chaque passage, clairement signalés</string>
     <string name="settings_sources">Sources et licences</string>
     <string name="settings_sources_body">Texte du Coran : Tanzil Project (tanzil.net), texte uthmani v1.1, CC BY 3.0, utilisé tel quel.\nTraductions des sens : Muhammad Hamidullah (français) et Saheeh International (anglais), depuis tanzil.net.\nPolice du texte coranique : Amiri Quran (OFL).\nRéférences des ḥadīth : sunnah.com, dorar.net.\nRécitations : everyayah.com.</string>
     <string name="settings_tanzil_link">Ouvrir tanzil.net</string>
@@ -259,4 +257,13 @@
     <string name="time_title">Heure</string>
     <string name="offline_partial">%d %% hors ligne · tout enregistrer</string>
     <string name="notifications_denied">Notifications de HFD désactivées : les rappels ne peuvent pas s\'afficher.</string>
+    <string name="label_times">×%1$d</string>
+    <string name="fadail_wird">Le wird de référence · %1$d passages</string>
+    <string name="detail_no_narration">Aucun récit propre à ce passage n\'est cité ici : il est récité dans le cadre du wird de référence.</string>
+    <plurals name="detail_hidden_weak">
+        <item quantity="one">%1$d récit faible masqué (Réglages → Lecture → Afficher les récits faibles)</item>
+        <item quantity="many">%1$d récits faibles masqués (Réglages → Lecture → Afficher les récits faibles)</item>
+        <item quantity="other">%1$d récits faibles masqués (Réglages → Lecture → Afficher les récits faibles)</item>
+    </plurals>
+    <string name="stats_none">Rien d\'appris pour l\'instant : ouvrez un passage et touchez Apprendre.</string>
 </resources>

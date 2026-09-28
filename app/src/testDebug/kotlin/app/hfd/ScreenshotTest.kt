@@ -128,14 +128,14 @@ class ScreenshotTest {
             shot("$theme-01-home")
             ui { vm.selectTab(Tab.FADAIL) }
             shot("$theme-02-fadail")
-            ui { vm.openFadila("kursi-greatest") }
+            ui { vm.openFadila("kursi") }
             shot("$theme-03-kursi")
             // The reading view: āya text, āya-end markers, translation.
             rule.onNodeWithTag("reading").performScrollToIndex(1)
             shot("$theme-09-kursi-text")
             rule.onNodeWithTag("reading").performScrollToIndex(0)
-            ui { vm.openFadila("muawwidhatayn") }
-            shot("$theme-04-falaq-nas")
+            ui { vm.openFadila("tawba-end") }
+            shot("$theme-04-tawba-end")
             ui {
                 vm.fadila = null
                 vm.selectTab(Tab.STATS)
@@ -149,7 +149,7 @@ class ScreenshotTest {
             val top = rule.onNodeWithText("Āyat al-Kursī after each prayer").fetchSemanticsNode().positionInRoot.y
             rule.onNodeWithTag("settings").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, top - 300f) }
             shot("$theme-10-reminders")
-            ui { vm.learn(Graph.content.content.value!!.fadila("ikhlas-third")!!) }
+            ui { vm.learn(Graph.content.content.value!!.fadila("ikhlas")!!) }
             shot("$theme-07-learn")
             ui { vm.review() }
             shot("$theme-08-review")

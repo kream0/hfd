@@ -90,7 +90,8 @@ fun ReviewScreen(testOf: String?, only: List<AyahRef>?, onClose: () -> Unit) {
     val queue: List<AyahRef>? = remember(c, testOf, only) {
         when {
             c == null -> null
-            testOf != null -> c.fadila(testOf)?.ayat
+            // A passage that no longer exists (saved before the list changed): nothing to test.
+            testOf != null -> c.fadila(testOf)?.ayat ?: emptyList()
             only != null -> only
             else -> Stats.due(Graph.progress.state.value, System.currentTimeMillis(), Graph.progress.zone)
         }

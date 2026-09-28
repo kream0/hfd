@@ -1,12 +1,13 @@
 {
- "schema": 1,
+ "schema": 2,
+ "source": "Passages and counts: the app \"سور وآيات فاضلة\" (com.yassine.mob.ayatfadila) as its publisher lists them (aljamaa.net, \"سور وآيات فاضلــة\"); al-Kahf in full from the app's description. Narrations checked on sunnah.com / dorar.net.",
  "fadail": [
   {
    "id": "fatiha",
    "title": {
     "ar": "الفاتحة",
-    "fr": "Al-Fātiḥa · la plus grande sourate",
-    "en": "Al-Fātiḥa · the greatest sūra"
+    "fr": "Al-Fātiḥa",
+    "en": "Al-Fātiḥa"
    },
    "ranges": [
     {
@@ -15,38 +16,82 @@
      "to": 7
     }
    ],
-   "virtue": {
-    "fr": "Le Prophète ﷺ l'a désignée comme la plus grande sourate du Coran : les sept (versets) répétés et le Coran sublime qui lui a été donné.",
-    "en": "The Prophet ﷺ named it the greatest sūra in the Qur'an: the seven oft-repeated (āyāt) and the magnificent Qur'an he was given."
-   },
-   "sources": [
+   "virtues": [
     {
-     "collection": "Ṣaḥīḥ al-Bukhārī",
-     "number": "4474",
-     "narrator": "Abū Saʿīd ibn al-Muʿallā",
-     "url": "https://sunnah.com/bukhari:4474"
+     "text": {
+      "fr": "Le Prophète ﷺ l'a désignée comme la plus grande sourate du Coran : les sept (versets) répétés et le Coran sublime qui lui a été donné.",
+      "en": "The Prophet ﷺ named it the greatest sūra in the Qur'an: the seven oft-repeated (āyāt) and the magnificent Qur'an he was given."
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ al-Bukhārī",
+       "number": "4474",
+       "narrator": "Abū Saʿīd ibn al-Muʿallā",
+       "url": "https://sunnah.com/bukhari:4474"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Bukhārī (Ṣaḥīḥ)"
+     },
+     "occasions": [],
+     "verified": true
     }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "al-Bukhārī (Ṣaḥīḥ)"
-   },
-   "occasions": [
-    "any"
    ],
    "tags": [
     "daily",
-    "short",
     "sura"
-   ],
-   "verified": true
+   ]
   },
   {
-   "id": "kursi-greatest",
+   "id": "baqara-opening",
+   "title": {
+    "ar": "أول سورة البقرة",
+    "fr": "Début d'al-Baqara",
+    "en": "Opening of al-Baqara"
+   },
+   "ranges": [
+    {
+     "sura": 2,
+     "from": 1,
+     "to": 5
+    }
+   ],
+   "virtues": [
+    {
+     "text": {
+      "fr": "Ibn Masʿūd : qui récite dix āyāt d'al-Baqara, Shayṭān n'entre pas dans cette maison cette nuit-là jusqu'au matin : quatre du début, Āyat al-Kursī et les deux qui la suivent, et les trois dernières.",
+      "en": "Ibn Masʿūd: whoever recites ten āyāt of al-Baqara, Shayṭān does not enter that house that night until morning: four from its beginning, Āyat al-Kursī and the two after it, and its last three."
+     },
+     "sources": [
+      {
+       "collection": "Majmaʿ az-Zawāʾid (al-Haythamī)",
+       "number": "10/121",
+       "narrator": "ʿAbdullāh ibn Masʿūd",
+       "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%B9%D8%B4%D8%B1%20%D8%A2%D9%8A%D8%A7%D8%AA%20%D9%85%D9%86%20%D8%B3%D9%88%D8%B1%D8%A9%20%D8%A7%D9%84%D8%A8%D9%82%D8%B1%D8%A9%20%D9%81%D9%8A%20%D9%84%D9%8A%D9%84%D8%A9%20%D9%84%D9%85%20%D9%8A%D8%AF%D8%AE%D9%84%20%D8%B0%D9%84%D9%83%20%D8%A7%D9%84%D8%A8%D9%8A%D8%AA%20%D8%B4%D9%8A%D8%B7%D8%A7%D9%86"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "Ibn Ḥajar, al-Haythamī",
+      "note": {
+       "fr": "Parole d'Ibn Masʿūd (mawqūf). Transmetteurs dignes de confiance, mais chaîne interrompue : ash-Shaʿbī n'a pas entendu Ibn Masʿūd.",
+       "en": "Ibn Masʿūd's own words (mawqūf). Trustworthy narrators, but a broken chain: ash-Shaʿbī did not hear from Ibn Masʿūd."
+      }
+     },
+     "occasions": [
+      "night"
+     ],
+     "verified": true
+    }
+   ]
+  },
+  {
+   "id": "kursi",
    "title": {
     "ar": "آية الكرسي",
-    "fr": "Āyat al-Kursī · le plus grand verset",
-    "en": "Āyat al-Kursī · the greatest āya"
+    "fr": "Āyat al-Kursī",
+    "en": "Āyat al-Kursī"
    },
    "ranges": [
     {
@@ -55,124 +100,144 @@
      "to": 255
     }
    ],
-   "virtue": {
-    "fr": "Interrogé sur le plus grand verset du Livre d'Allah, Ubayy répondit par Āyat al-Kursī, et le Prophète ﷺ l'approuva : « Que la science te réjouisse, Abū l-Mundhir ! »",
-    "en": "Asked which āya of Allah's Book is the greatest, Ubayy answered with Āyat al-Kursī, and the Prophet ﷺ approved: \"May knowledge delight you, Abū l-Mundhir!\""
-   },
-   "sources": [
+   "virtues": [
     {
-     "collection": "Ṣaḥīḥ Muslim",
-     "number": "810",
-     "narrator": "Ubayy ibn Kaʿb",
-     "url": "https://sunnah.com/muslim:810"
-    }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "Muslim (Ṣaḥīḥ)"
-   },
-   "occasions": [
-    "any"
-   ],
-   "tags": [
-    "daily",
-    "short"
-   ],
-   "verified": true
-  },
-  {
-   "id": "kursi-sleep",
-   "title": {
-    "ar": "آية الكرسي عند النوم",
-    "fr": "Āyat al-Kursī au coucher",
-    "en": "Āyat al-Kursī at bedtime"
-   },
-   "ranges": [
-    {
-     "sura": 2,
-     "from": 255,
-     "to": 255
-    }
-   ],
-   "virtue": {
-    "fr": "Récitée en se couchant, un gardien envoyé par Allah te protège toute la nuit et Satan ne peut t'approcher jusqu'au matin. Le Prophète ﷺ confirma ces paroles : « Il t'a dit vrai, bien qu'il soit menteur. »",
-    "en": "Recited on going to bed, a guardian from Allah protects you all night and Shayṭān cannot come near you until morning. The Prophet ﷺ confirmed these words: \"He told you the truth, though he is a liar.\""
-   },
-   "sources": [
-    {
-     "collection": "Ṣaḥīḥ al-Bukhārī",
-     "number": "2311",
-     "narrator": "Abū Hurayra",
-     "url": "https://sunnah.com/bukhari:2311"
+     "text": {
+      "fr": "Interrogé sur le plus grand verset du Livre d'Allah, Ubayy répondit par Āyat al-Kursī, et le Prophète ﷺ l'approuva : « Que la science te réjouisse, Abū l-Mundhir ! »",
+      "en": "Asked which āya of Allah's Book is the greatest, Ubayy answered with Āyat al-Kursī, and the Prophet ﷺ approved: \"May knowledge delight you, Abū l-Mundhir!\""
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ Muslim",
+       "number": "810",
+       "narrator": "Ubayy ibn Kaʿb",
+       "url": "https://sunnah.com/muslim:810"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "Muslim (Ṣaḥīḥ)"
+     },
+     "occasions": [],
+     "verified": true
     },
     {
-     "collection": "Ṣaḥīḥ al-Bukhārī",
-     "number": "5010",
-     "narrator": "Abū Hurayra",
-     "url": "https://sunnah.com/bukhari:5010"
-    }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "al-Bukhārī (Ṣaḥīḥ)"
-   },
-   "occasions": [
-    "before_sleep"
-   ],
-   "tags": [
-    "daily",
-    "short"
-   ],
-   "verified": true
-  },
-  {
-   "id": "kursi-after-prayer",
-   "title": {
-    "ar": "آية الكرسي دبر الصلاة",
-    "fr": "Āyat al-Kursī après la prière",
-    "en": "Āyat al-Kursī after prayer"
-   },
-   "ranges": [
-    {
-     "sura": 2,
-     "from": 255,
-     "to": 255
-    }
-   ],
-   "virtue": {
-    "fr": "Celui qui récite Āyat al-Kursī après chaque prière obligatoire, rien ne l'empêche d'entrer au Paradis si ce n'est la mort.",
-    "en": "Whoever recites Āyat al-Kursī after every obligatory prayer, nothing keeps him from entering Paradise but death."
-   },
-   "sources": [
-    {
-     "collection": "Ṣaḥīḥ al-Jāmiʿ (al-Albānī)",
-     "number": "6464",
-     "narrator": "Abū Umāma al-Bāhilī",
-     "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%A2%D9%8A%D8%A9%20%D8%A7%D9%84%D9%83%D8%B1%D8%B3%D9%8A%20%D9%81%D9%8A%20%D8%AF%D8%A8%D8%B1%20%D9%83%D9%84%20%D8%B5%D9%84%D8%A7%D8%A9%20%D9%85%D9%83%D8%AA%D9%88%D8%A8%D8%A9"
+     "text": {
+      "fr": "Récitée en se couchant, un gardien envoyé par Allah te protège toute la nuit et Satan ne peut t'approcher jusqu'au matin. Le Prophète ﷺ confirma ces paroles : « Il t'a dit vrai, bien qu'il soit menteur. »",
+      "en": "Recited on going to bed, a guardian from Allah protects you all night and Shayṭān cannot come near you until morning. The Prophet ﷺ confirmed these words: \"He told you the truth, though he is a liar.\""
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ al-Bukhārī",
+       "number": "2311",
+       "narrator": "Abū Hurayra",
+       "url": "https://sunnah.com/bukhari:2311"
+      },
+      {
+       "collection": "Ṣaḥīḥ al-Bukhārī",
+       "number": "5010",
+       "narrator": "Abū Hurayra",
+       "url": "https://sunnah.com/bukhari:5010"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Bukhārī (Ṣaḥīḥ)"
+     },
+     "occasions": [
+      "before_sleep"
+     ],
+     "verified": true
     },
     {
-     "collection": "as-Silsila aṣ-Ṣaḥīḥa (al-Albānī)",
-     "number": "972",
-     "narrator": "Abū Umāma al-Bāhilī",
-     "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%A2%D9%8A%D8%A9%20%D8%A7%D9%84%D9%83%D8%B1%D8%B3%D9%8A%20%D9%81%D9%8A%20%D8%AF%D8%A8%D8%B1%20%D9%83%D9%84%20%D8%B5%D9%84%D8%A7%D8%A9%20%D9%85%D9%83%D8%AA%D9%88%D8%A8%D8%A9%20%D9%84%D9%85%20%D9%8A%D9%85%D9%86%D8%B9%D9%87%20%D9%85%D9%86%20%D8%AF%D8%AE%D9%88%D9%84%20%D8%A7%D9%84%D8%AC%D9%86%D8%A9"
+     "text": {
+      "fr": "Celui qui récite Āyat al-Kursī après chaque prière obligatoire, rien ne l'empêche d'entrer au Paradis si ce n'est la mort.",
+      "en": "Whoever recites Āyat al-Kursī after every obligatory prayer, nothing keeps him from entering Paradise but death."
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ al-Jāmiʿ (al-Albānī)",
+       "number": "6464",
+       "narrator": "Abū Umāma al-Bāhilī",
+       "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%A2%D9%8A%D8%A9%20%D8%A7%D9%84%D9%83%D8%B1%D8%B3%D9%8A%20%D9%81%D9%8A%20%D8%AF%D8%A8%D8%B1%20%D9%83%D9%84%20%D8%B5%D9%84%D8%A7%D8%A9%20%D9%85%D9%83%D8%AA%D9%88%D8%A8%D8%A9"
+      },
+      {
+       "collection": "as-Silsila aṣ-Ṣaḥīḥa (al-Albānī)",
+       "number": "972",
+       "narrator": "Abū Umāma al-Bāhilī",
+       "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%A2%D9%8A%D8%A9%20%D8%A7%D9%84%D9%83%D8%B1%D8%B3%D9%8A%20%D9%81%D9%8A%20%D8%AF%D8%A8%D8%B1%20%D9%83%D9%84%20%D8%B5%D9%84%D8%A7%D8%A9%20%D9%85%D9%83%D8%AA%D9%88%D8%A8%D8%A9%20%D9%84%D9%85%20%D9%8A%D9%85%D9%86%D8%B9%D9%87%20%D9%85%D9%86%20%D8%AF%D8%AE%D9%88%D9%84%20%D8%A7%D9%84%D8%AC%D9%86%D8%A9"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "Rapporté par an-Nasāʾī (as-Sunan al-Kubrā) ; son numéro n'a pas pu être vérifié ici, il n'est donc pas cité. Al-Albānī : authentique par l'ensemble de ses voies (aṣ-Ṣaḥīḥa 972).",
+       "en": "Reported by an-Nasāʾī (as-Sunan al-Kubrā); its number couldn't be checked here, so it isn't cited. Al-Albānī: authentic through its combined routes (aṣ-Ṣaḥīḥa 972)."
+      }
+     },
+     "occasions": [
+      "after_prayer"
+     ],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "Qui récite Ḥā-Mīm al-Muʾmin (Ghāfir) jusqu'à « vers Lui est le retour » et Āyat al-Kursī le matin est protégé par elles jusqu'au soir ; et le soir, jusqu'au matin.",
+      "en": "Whoever recites Ḥā-Mīm al-Muʾmin (Ghāfir) up to \"to Him is the return\" and Āyat al-Kursī in the morning is protected by them until evening; and in the evening, until morning."
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2879",
+       "narrator": "Abū Hurayra",
+       "url": "https://sunnah.com/tirmidhi:2879"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "al-Albānī, Darussalam",
+      "note": {
+       "fr": "At-Tirmidhī : gharīb ; la mémoire de ʿAbd ar-Raḥmān al-Mulaykī est critiquée.",
+       "en": "At-Tirmidhī: gharīb; the memory of ʿAbd ar-Raḥmān al-Mulaykī is criticised."
+      }
+     },
+     "occasions": [
+      "morning",
+      "evening"
+     ],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "Ibn Masʿūd : qui récite dix āyāt d'al-Baqara, Shayṭān n'entre pas dans cette maison cette nuit-là jusqu'au matin : quatre du début, Āyat al-Kursī et les deux qui la suivent, et les trois dernières.",
+      "en": "Ibn Masʿūd: whoever recites ten āyāt of al-Baqara, Shayṭān does not enter that house that night until morning: four from its beginning, Āyat al-Kursī and the two after it, and its last three."
+     },
+     "sources": [
+      {
+       "collection": "Majmaʿ az-Zawāʾid (al-Haythamī)",
+       "number": "10/121",
+       "narrator": "ʿAbdullāh ibn Masʿūd",
+       "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%B9%D8%B4%D8%B1%20%D8%A2%D9%8A%D8%A7%D8%AA%20%D9%85%D9%86%20%D8%B3%D9%88%D8%B1%D8%A9%20%D8%A7%D9%84%D8%A8%D9%82%D8%B1%D8%A9%20%D9%81%D9%8A%20%D9%84%D9%8A%D9%84%D8%A9%20%D9%84%D9%85%20%D9%8A%D8%AF%D8%AE%D9%84%20%D8%B0%D9%84%D9%83%20%D8%A7%D9%84%D8%A8%D9%8A%D8%AA%20%D8%B4%D9%8A%D8%B7%D8%A7%D9%86"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "Ibn Ḥajar, al-Haythamī",
+      "note": {
+       "fr": "Parole d'Ibn Masʿūd (mawqūf). Transmetteurs dignes de confiance, mais chaîne interrompue : ash-Shaʿbī n'a pas entendu Ibn Masʿūd.",
+       "en": "Ibn Masʿūd's own words (mawqūf). Trustworthy narrators, but a broken chain: ash-Shaʿbī did not hear from Ibn Masʿūd."
+      }
+     },
+     "occasions": [
+      "night"
+     ],
+     "verified": true
     }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "al-Albānī",
-    "note": {
-     "fr": "Rapporté par an-Nasāʾī (as-Sunan al-Kubrā) ; son numéro n'a pas pu être vérifié ici, il n'est donc pas cité. Al-Albānī : authentique par l'ensemble de ses voies (aṣ-Ṣaḥīḥa 972).",
-     "en": "Reported by an-Nasāʾī (as-Sunan al-Kubrā); its number couldn't be checked here, so it isn't cited. Al-Albānī: authentic through its combined routes (aṣ-Ṣaḥīḥa 972)."
-    }
-   },
-   "occasions": [
-    "after_prayer"
    ],
    "tags": [
-    "daily",
-    "short"
-   ],
-   "verified": true
+    "daily"
+   ]
   },
   {
    "id": "baqara-end",
@@ -184,40 +249,114 @@
    "ranges": [
     {
      "sura": 2,
-     "from": 285,
+     "from": 284,
      "to": 286
     }
    ],
-   "virtue": {
-    "fr": "Celui qui récite les deux derniers versets de la sourate al-Baqara la nuit, ils lui suffisent.",
-    "en": "Whoever recites the last two āyāt of Sūrat al-Baqara at night, they suffice him."
-   },
-   "sources": [
+   "virtues": [
     {
-     "collection": "Ṣaḥīḥ al-Bukhārī",
-     "number": "5009",
-     "narrator": "Abū Masʿūd al-Anṣārī",
-     "url": "https://sunnah.com/bukhari:5009"
+     "text": {
+      "fr": "Celui qui récite les deux derniers versets de la sourate al-Baqara la nuit, ils lui suffisent.",
+      "en": "Whoever recites the last two āyāt of Sūrat al-Baqara at night, they suffice him."
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ al-Bukhārī",
+       "number": "5009",
+       "narrator": "Abū Masʿūd al-Anṣārī",
+       "url": "https://sunnah.com/bukhari:5009"
+      },
+      {
+       "collection": "Ṣaḥīḥ Muslim",
+       "number": "807a",
+       "narrator": "Abū Masʿūd al-Anṣārī",
+       "url": "https://sunnah.com/muslim:807a"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Bukhārī, Muslim"
+     },
+     "occasions": [
+      "night"
+     ],
+     "verified": true
     },
     {
-     "collection": "Ṣaḥīḥ Muslim",
-     "number": "807a",
-     "narrator": "Abū Masʿūd al-Anṣārī",
-     "url": "https://sunnah.com/muslim:807a"
+     "text": {
+      "fr": "Ibn Masʿūd : qui récite dix āyāt d'al-Baqara, Shayṭān n'entre pas dans cette maison cette nuit-là jusqu'au matin : quatre du début, Āyat al-Kursī et les deux qui la suivent, et les trois dernières.",
+      "en": "Ibn Masʿūd: whoever recites ten āyāt of al-Baqara, Shayṭān does not enter that house that night until morning: four from its beginning, Āyat al-Kursī and the two after it, and its last three."
+     },
+     "sources": [
+      {
+       "collection": "Majmaʿ az-Zawāʾid (al-Haythamī)",
+       "number": "10/121",
+       "narrator": "ʿAbdullāh ibn Masʿūd",
+       "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%B9%D8%B4%D8%B1%20%D8%A2%D9%8A%D8%A7%D8%AA%20%D9%85%D9%86%20%D8%B3%D9%88%D8%B1%D8%A9%20%D8%A7%D9%84%D8%A8%D9%82%D8%B1%D8%A9%20%D9%81%D9%8A%20%D9%84%D9%8A%D9%84%D8%A9%20%D9%84%D9%85%20%D9%8A%D8%AF%D8%AE%D9%84%20%D8%B0%D9%84%D9%83%20%D8%A7%D9%84%D8%A8%D9%8A%D8%AA%20%D8%B4%D9%8A%D8%B7%D8%A7%D9%86"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "Ibn Ḥajar, al-Haythamī",
+      "note": {
+       "fr": "Parole d'Ibn Masʿūd (mawqūf). Transmetteurs dignes de confiance, mais chaîne interrompue : ash-Shaʿbī n'a pas entendu Ibn Masʿūd.",
+       "en": "Ibn Masʿūd's own words (mawqūf). Trustworthy narrators, but a broken chain: ash-Shaʿbī did not hear from Ibn Masʿūd."
+      }
+     },
+     "occasions": [
+      "night"
+     ],
+     "verified": true
     }
    ],
-   "grading": {
-    "grade": "sahih",
-    "by": "al-Bukhārī, Muslim"
-   },
-   "occasions": [
-    "night"
-   ],
    "tags": [
-    "daily",
-    "short"
-   ],
-   "verified": true
+    "daily"
+   ]
+  },
+  {
+   "id": "imran-opening",
+   "title": {
+    "ar": "أول آل عمران",
+    "fr": "Début d'Āl ʿImrān",
+    "en": "Opening of Āl ʿImrān"
+   },
+   "ranges": [
+    {
+     "sura": 3,
+     "from": 1,
+     "to": 9
+    }
+   ]
+  },
+  {
+   "id": "imran-shahida",
+   "title": {
+    "ar": "شهد الله",
+    "fr": "Āl ʿImrān 18–19 · « Shahida llāh »",
+    "en": "Āl ʿImrān 18–19 · \"Shahida llāh\""
+   },
+   "ranges": [
+    {
+     "sura": 3,
+     "from": 18,
+     "to": 19
+    }
+   ]
+  },
+  {
+   "id": "imran-malik",
+   "title": {
+    "ar": "قل اللهم مالك الملك",
+    "fr": "Āl ʿImrān 26–27 · « Qul allāhumma mālika l-mulk »",
+    "en": "Āl ʿImrān 26–27 · \"Qul allāhumma mālika l-mulk\""
+   },
+   "ranges": [
+    {
+     "sura": 3,
+     "from": 26,
+     "to": 27
+    }
+   ]
   },
   {
    "id": "imran-end",
@@ -233,84 +372,103 @@
      "to": 200
     }
    ],
-   "virtue": {
-    "fr": "Réveillé la nuit, le Prophète ﷺ essuya le sommeil de son visage, récita les dix derniers versets d'Āl ʿImrān, puis fit ses ablutions et pria.",
-    "en": "Waking in the night, the Prophet ﷺ wiped the sleep from his face, recited the last ten āyāt of Āl ʿImrān, then made wuḍūʾ and prayed."
-   },
-   "sources": [
+   "virtues": [
     {
-     "collection": "Ṣaḥīḥ al-Bukhārī",
-     "number": "183",
-     "narrator": "ʿAbdullāh ibn ʿAbbās",
-     "url": "https://sunnah.com/bukhari:183"
-    },
-    {
-     "collection": "Ṣaḥīḥ Muslim",
-     "number": "763b",
-     "narrator": "ʿAbdullāh ibn ʿAbbās",
-     "url": "https://sunnah.com/muslim:763b"
+     "text": {
+      "fr": "Réveillé la nuit, le Prophète ﷺ essuya le sommeil de son visage, récita les dix derniers versets d'Āl ʿImrān, puis fit ses ablutions et pria.",
+      "en": "Waking in the night, the Prophet ﷺ wiped the sleep from his face, recited the last ten āyāt of Āl ʿImrān, then made wuḍūʾ and prayed."
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ al-Bukhārī",
+       "number": "183",
+       "narrator": "ʿAbdullāh ibn ʿAbbās",
+       "url": "https://sunnah.com/bukhari:183"
+      },
+      {
+       "collection": "Ṣaḥīḥ Muslim",
+       "number": "763b",
+       "narrator": "ʿAbdullāh ibn ʿAbbās",
+       "url": "https://sunnah.com/muslim:763b"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Bukhārī, Muslim"
+     },
+     "occasions": [
+      "night"
+     ],
+     "verified": true
     }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "al-Bukhārī, Muslim"
-   },
-   "occasions": [
-    "night"
-   ],
-   "tags": [
-    "short"
-   ],
-   "verified": true
+   ]
   },
   {
-   "id": "kahf-first-ten",
+   "id": "tawba-end",
    "title": {
-    "ar": "أول سورة الكهف",
-    "fr": "Début d'al-Kahf · protection contre le Dajjāl",
-    "en": "Opening of al-Kahf · protection from the Dajjāl"
+    "ar": "خواتيم التوبة",
+    "fr": "Fin d'at-Tawba",
+    "en": "End of at-Tawba"
+   },
+   "ranges": [
+    {
+     "sura": 9,
+     "from": 128,
+     "to": 129
+    }
+   ],
+   "times": 7,
+   "virtues": [
+    {
+     "text": {
+      "fr": "Abū d-Dardāʾ : qui dit matin et soir, sept fois, « Ḥasbiya llāhu lā ilāha illā huwa, ʿalayhi tawakkaltu wa huwa rabbu l-ʿarshi l-ʿaẓīm » (fin d'at-Tawba), Allah lui suffit contre ce qui le préoccupe.",
+      "en": "Abū d-Dardāʾ: whoever says morning and evening, seven times, \"Ḥasbiya llāhu lā ilāha illā huwa, ʿalayhi tawakkaltu wa huwa rabbu l-ʿarshi l-ʿaẓīm\" (the end of at-Tawba), Allah suffices him against what worries him."
+     },
+     "sources": [
+      {
+       "collection": "Sunan Abī Dāwūd",
+       "number": "5081",
+       "narrator": "Abū d-Dardāʾ",
+       "url": "https://sunnah.com/abudawud:5081"
+      }
+     ],
+     "grading": {
+      "grade": "mawdu",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "Rapporté comme parole d'Abū d-Dardāʾ (mawqūf) ; Ibn Bāz : chaîne bonne ainsi. Al-Arnaʾūṭ : transmetteurs fiables, avec un ajout rejeté (« sincère ou non »). Al-Albānī : inventé.",
+       "en": "Reported as Abū d-Dardāʾ's own words (mawqūf); Ibn Bāz: a good chain as such. Al-Arnaʾūṭ: trustworthy narrators, with a rejected addition (\"sincere or not\"). Al-Albānī: fabricated."
+      }
+     },
+     "occasions": [
+      "morning",
+      "evening"
+     ],
+     "verified": true
+    }
+   ]
+  },
+  {
+   "id": "kahf-end",
+   "title": {
+    "ar": "خواتيم الكهف",
+    "fr": "Fin d'al-Kahf",
+    "en": "End of al-Kahf"
    },
    "ranges": [
     {
      "sura": 18,
-     "from": 1,
-     "to": 10
+     "from": 107,
+     "to": 110
     }
-   ],
-   "virtue": {
-    "fr": "Celui qui apprend par cœur dix versets du début de la sourate al-Kahf est protégé contre le Dajjāl.",
-    "en": "Whoever memorises ten āyāt from the beginning of Sūrat al-Kahf is protected from the Dajjāl."
-   },
-   "sources": [
-    {
-     "collection": "Ṣaḥīḥ Muslim",
-     "number": "809a",
-     "narrator": "Abū d-Dardāʾ",
-     "url": "https://sunnah.com/muslim:809a"
-    }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "Muslim (Ṣaḥīḥ)",
-    "note": {
-     "fr": "Dans une autre chaîne (Muslim 809b), Shuʿba dit : « de la fin d'al-Kahf ».",
-     "en": "In another chain (Muslim 809b) Shuʿba said: \"from the end of al-Kahf\"."
-    }
-   },
-   "occasions": [
-    "any"
-   ],
-   "tags": [
-    "memorise"
-   ],
-   "verified": true
+   ]
   },
   {
-   "id": "kahf-friday",
+   "id": "kahf",
    "title": {
-    "ar": "سورة الكهف يوم الجمعة",
-    "fr": "Al-Kahf le vendredi",
-    "en": "Al-Kahf on Friday"
+    "ar": "سورة الكهف",
+    "fr": "Al-Kahf",
+    "en": "Al-Kahf"
    },
    "ranges": [
     {
@@ -319,439 +477,103 @@
      "to": 110
     }
    ],
-   "virtue": {
-    "fr": "Celui qui récite la sourate al-Kahf le vendredi, une lumière brille pour lui d'un vendredi à l'autre.",
-    "en": "Whoever recites Sūrat al-Kahf on Friday, light shines for him from one Friday to the next."
-   },
-   "sources": [
+   "virtues": [
     {
-     "collection": "al-Mustadrak (al-Ḥākim)",
-     "number": "3436",
-     "narrator": "Abū Saʿīd al-Khudrī",
-     "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%B3%D9%88%D8%B1%D8%A9%20%D8%A7%D9%84%D9%83%D9%87%D9%81%20%D9%8A%D9%88%D9%85%20%D8%A7%D9%84%D8%AC%D9%85%D8%B9%D8%A9%20%D8%A3%D8%B6%D8%A7%D8%A1%20%D9%84%D9%87%20%D9%85%D9%86%20%D8%A7%D9%84%D9%86%D9%88%D8%B1%20%D9%85%D8%A7%20%D8%A8%D9%8A%D9%86%20%D8%A7%D9%84%D8%AC%D9%85%D8%B9%D8%AA%D9%8A%D9%86"
-    },
-    {
-     "collection": "Ṣaḥīḥ al-Jāmiʿ (al-Albānī)",
-     "number": "6470",
-     "narrator": "Abū Saʿīd al-Khudrī",
-     "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%B3%D9%88%D8%B1%D8%A9%20%D8%A7%D9%84%D9%83%D9%87%D9%81%20%D9%81%D9%8A%20%D9%8A%D9%88%D9%85%20%D8%A7%D9%84%D8%AC%D9%85%D8%B9%D8%A9%20%D8%A3%D8%B6%D8%A7%D8%A1%20%D9%84%D9%87%20%D9%85%D9%86%20%D8%A7%D9%84%D9%86%D9%88%D8%B1%20%D9%85%D8%A7%20%D8%A8%D9%8A%D9%86%20%D8%A7%D9%84%D8%AC%D9%85%D8%B9%D8%AA%D9%8A%D9%86"
+     "text": {
+      "fr": "Celui qui récite la sourate al-Kahf le vendredi, une lumière brille pour lui d'un vendredi à l'autre.",
+      "en": "Whoever recites Sūrat al-Kahf on Friday, light shines for him from one Friday to the next."
+     },
+     "sources": [
+      {
+       "collection": "al-Mustadrak (al-Ḥākim)",
+       "number": "3436",
+       "narrator": "Abū Saʿīd al-Khudrī",
+       "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%B3%D9%88%D8%B1%D8%A9%20%D8%A7%D9%84%D9%83%D9%87%D9%81%20%D9%8A%D9%88%D9%85%20%D8%A7%D9%84%D8%AC%D9%85%D8%B9%D8%A9%20%D8%A3%D8%B6%D8%A7%D8%A1%20%D9%84%D9%87%20%D9%85%D9%86%20%D8%A7%D9%84%D9%86%D9%88%D8%B1%20%D9%85%D8%A7%20%D8%A8%D9%8A%D9%86%20%D8%A7%D9%84%D8%AC%D9%85%D8%B9%D8%AA%D9%8A%D9%86"
+      },
+      {
+       "collection": "Ṣaḥīḥ al-Jāmiʿ (al-Albānī)",
+       "number": "6470",
+       "narrator": "Abū Saʿīd al-Khudrī",
+       "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%B3%D9%88%D8%B1%D8%A9%20%D8%A7%D9%84%D9%83%D9%87%D9%81%20%D9%81%D9%8A%20%D9%8A%D9%88%D9%85%20%D8%A7%D9%84%D8%AC%D9%85%D8%B9%D8%A9%20%D8%A3%D8%B6%D8%A7%D8%A1%20%D9%84%D9%87%20%D9%85%D9%86%20%D8%A7%D9%84%D9%86%D9%88%D8%B1%20%D9%85%D8%A7%20%D8%A8%D9%8A%D9%86%20%D8%A7%D9%84%D8%AC%D9%85%D8%B9%D8%AA%D9%8A%D9%86"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "Al-Ḥākim : chaîne authentique. Certains savants contestent l'attribution au Prophète ﷺ, le récit étant aussi rapporté comme parole d'Abū Saʿīd (mawqūf).",
+       "en": "Al-Ḥākim: sound chain. Some scholars question its attribution to the Prophet ﷺ, since it is also reported as Abū Saʿīd's own words (mawqūf)."
+      }
+     },
+     "occasions": [
+      "friday"
+     ],
+     "verified": true
     }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "al-Albānī",
-    "note": {
-     "fr": "Al-Ḥākim : chaîne authentique. Certains savants contestent l'attribution au Prophète ﷺ, le récit étant aussi rapporté comme parole d'Abū Saʿīd (mawqūf).",
-     "en": "Al-Ḥākim: sound chain. Some scholars question its attribution to the Prophet ﷺ, since it is also reported as Abū Saʿīd's own words (mawqūf)."
-    }
-   },
-   "occasions": [
-    "friday"
    ],
    "tags": [
     "sura",
     "long"
-   ],
-   "verified": true
+   ]
   },
   {
-   "id": "mulk",
+   "id": "sajda",
    "title": {
-    "ar": "سورة الملك",
-    "fr": "Al-Mulk · l'intercession",
-    "en": "Al-Mulk · the intercessor"
-   },
-   "ranges": [
-    {
-     "sura": 67,
-     "from": 1,
-     "to": 30
-    }
-   ],
-   "virtue": {
-    "fr": "Une sourate du Coran de trente versets intercède pour celui qui la récite jusqu'à ce qu'il soit pardonné : Tabārak alladhī bi-yadihi l-mulk.",
-    "en": "A sūra of the Qur'an of thirty āyāt intercedes for its reciter until he is forgiven: Tabārak alladhī bi-yadihi l-mulk."
-   },
-   "sources": [
-    {
-     "collection": "Sunan Abī Dāwūd",
-     "number": "1400",
-     "narrator": "Abū Hurayra",
-     "url": "https://sunnah.com/abudawud:1400"
-    },
-    {
-     "collection": "Jāmiʿ at-Tirmidhī",
-     "number": "2891",
-     "narrator": "Abū Hurayra",
-     "url": "https://sunnah.com/tirmidhi:2891"
-    }
-   ],
-   "grading": {
-    "grade": "hasan",
-    "by": "at-Tirmidhī, al-Albānī"
-   },
-   "occasions": [
-    "any"
-   ],
-   "tags": [
-    "sura"
-   ],
-   "verified": true
-  },
-  {
-   "id": "sajda-mulk-sleep",
-   "title": {
-    "ar": "السجدة والملك قبل النوم",
-    "fr": "As-Sajda et al-Mulk avant de dormir",
-    "en": "As-Sajda and al-Mulk before sleep"
+    "ar": "سورة السجدة",
+    "fr": "As-Sajda",
+    "en": "As-Sajda"
    },
    "ranges": [
     {
      "sura": 32,
      "from": 1,
      "to": 30
-    },
-    {
-     "sura": 67,
-     "from": 1,
-     "to": 30
     }
    ],
-   "virtue": {
-    "fr": "Le Prophète ﷺ ne dormait pas avant d'avoir récité Alif Lām Mīm Tanzīl (as-Sajda) et Tabārak alladhī bi-yadihi l-mulk.",
-    "en": "The Prophet ﷺ would not sleep until he had recited Alif Lām Mīm Tanzīl (as-Sajda) and Tabārak alladhī bi-yadihi l-mulk."
-   },
-   "sources": [
+   "virtues": [
     {
-     "collection": "Jāmiʿ at-Tirmidhī",
-     "number": "2892",
-     "narrator": "Jābir ibn ʿAbdillāh",
-     "url": "https://sunnah.com/tirmidhi:2892"
-    },
-    {
-     "collection": "as-Silsila aṣ-Ṣaḥīḥa (al-Albānī)",
-     "number": "585",
-     "narrator": "Jābir ibn ʿAbdillāh",
-     "url": "https://dorar.net/hadith/search?q=%D9%83%D8%A7%D9%86%20%D9%84%D8%A7%20%D9%8A%D9%86%D8%A7%D9%85%20%D8%AD%D8%AA%D9%89%20%D9%8A%D9%82%D8%B1%D8%A3%20%D8%A7%D9%84%D9%85%20%D8%AA%D9%86%D8%B2%D9%8A%D9%84%20%D8%A7%D9%84%D8%B3%D8%AC%D8%AF%D8%A9%20%D9%88%D8%AA%D8%A8%D8%A7%D8%B1%D9%83%20%D8%A7%D9%84%D8%B0%D9%8A%20%D8%A8%D9%8A%D8%AF%D9%87%20%D8%A7%D9%84%D9%85%D9%84%D9%83"
+     "text": {
+      "fr": "Le Prophète ﷺ ne dormait pas avant d'avoir récité Alif Lām Mīm Tanzīl (as-Sajda) et Tabārak alladhī bi-yadihi l-mulk.",
+      "en": "The Prophet ﷺ would not sleep until he had recited Alif Lām Mīm Tanzīl (as-Sajda) and Tabārak alladhī bi-yadihi l-mulk."
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2892",
+       "narrator": "Jābir ibn ʿAbdillāh",
+       "url": "https://sunnah.com/tirmidhi:2892"
+      },
+      {
+       "collection": "as-Silsila aṣ-Ṣaḥīḥa (al-Albānī)",
+       "number": "585",
+       "narrator": "Jābir ibn ʿAbdillāh",
+       "url": "https://dorar.net/hadith/search?q=%D9%83%D8%A7%D9%86%20%D9%84%D8%A7%20%D9%8A%D9%86%D8%A7%D9%85%20%D8%AD%D8%AA%D9%89%20%D9%8A%D9%82%D8%B1%D8%A3%20%D8%A7%D9%84%D9%85%20%D8%AA%D9%86%D8%B2%D9%8A%D9%84%20%D8%A7%D9%84%D8%B3%D8%AC%D8%AF%D8%A9%20%D9%88%D8%AA%D8%A8%D8%A7%D8%B1%D9%83%20%D8%A7%D9%84%D8%B0%D9%8A%20%D8%A8%D9%8A%D8%AF%D9%87%20%D8%A7%D9%84%D9%85%D9%84%D9%83"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "Darussalam juge cette chaîne faible (Layth ibn Abī Sulaym) ; al-Albānī l'authentifie par ses autres voies (aṣ-Ṣaḥīḥa 585, Ṣaḥīḥ at-Tirmidhī).",
+       "en": "Darussalam grades this chain weak (Layth ibn Abī Sulaym); al-Albānī authenticates it through its other routes (aṣ-Ṣaḥīḥa 585, Ṣaḥīḥ at-Tirmidhī)."
+      }
+     },
+     "occasions": [
+      "before_sleep"
+     ],
+     "verified": true
     }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "al-Albānī",
-    "note": {
-     "fr": "Darussalam juge cette chaîne faible (Layth ibn Abī Sulaym) ; al-Albānī l'authentifie par ses autres voies (aṣ-Ṣaḥīḥa 585, Ṣaḥīḥ at-Tirmidhī).",
-     "en": "Darussalam grades this chain weak (Layth ibn Abī Sulaym); al-Albānī authenticates it through its other routes (aṣ-Ṣaḥīḥa 585, Ṣaḥīḥ at-Tirmidhī)."
-    }
-   },
-   "occasions": [
-    "before_sleep"
    ],
    "tags": [
     "sura"
-   ],
-   "verified": true
+   ]
   },
   {
-   "id": "ikhlas-third",
-   "title": {
-    "ar": "سورة الإخلاص",
-    "fr": "Al-Ikhlāṣ · le tiers du Coran",
-    "en": "Al-Ikhlāṣ · a third of the Qur'an"
-   },
-   "ranges": [
-    {
-     "sura": 112,
-     "from": 1,
-     "to": 4
-    }
-   ],
-   "virtue": {
-    "fr": "« Qul huwa Allāhu aḥad » équivaut au tiers du Coran.",
-    "en": "\"Qul huwa Allāhu aḥad\" equals a third of the Qur'an."
-   },
-   "sources": [
-    {
-     "collection": "Ṣaḥīḥ al-Bukhārī",
-     "number": "5013",
-     "narrator": "Abū Saʿīd al-Khudrī",
-     "url": "https://sunnah.com/bukhari:5013"
-    },
-    {
-     "collection": "Ṣaḥīḥ Muslim",
-     "number": "811a",
-     "narrator": "Abū d-Dardāʾ",
-     "url": "https://sunnah.com/muslim:811a"
-    }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "al-Bukhārī, Muslim"
-   },
-   "occasions": [
-    "any"
-   ],
-   "tags": [
-    "daily",
-    "short",
-    "sura"
-   ],
-   "verified": true
-  },
-  {
-   "id": "muawwidhatayn",
-   "title": {
-    "ar": "المعوذتان",
-    "fr": "Al-Falaq et an-Nās · sans pareil",
-    "en": "Al-Falaq and an-Nās · without equal"
-   },
-   "ranges": [
-    {
-     "sura": 113,
-     "from": 1,
-     "to": 5
-    },
-    {
-     "sura": 114,
-     "from": 1,
-     "to": 6
-    }
-   ],
-   "virtue": {
-    "fr": "Des versets ont été révélés cette nuit, tels qu'on n'en a jamais vu de semblables : Qul aʿūdhu bi-rabbi l-falaq et Qul aʿūdhu bi-rabbi n-nās.",
-    "en": "Āyāt were revealed tonight the like of which have never been seen: Qul aʿūdhu bi-rabbi l-falaq and Qul aʿūdhu bi-rabbi n-nās."
-   },
-   "sources": [
-    {
-     "collection": "Ṣaḥīḥ Muslim",
-     "number": "814a",
-     "narrator": "ʿUqba ibn ʿĀmir",
-     "url": "https://sunnah.com/muslim:814a"
-    }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "Muslim (Ṣaḥīḥ)"
-   },
-   "occasions": [
-    "any"
-   ],
-   "tags": [
-    "daily",
-    "short",
-    "sura"
-   ],
-   "verified": true
-  },
-  {
-   "id": "three-quls-morning-evening",
-   "title": {
-    "ar": "المعوذات صباحا ومساء",
-    "fr": "Les trois Qul matin et soir",
-    "en": "The three Quls, morning and evening"
-   },
-   "ranges": [
-    {
-     "sura": 112,
-     "from": 1,
-     "to": 4
-    },
-    {
-     "sura": 113,
-     "from": 1,
-     "to": 5
-    },
-    {
-     "sura": 114,
-     "from": 1,
-     "to": 6
-    }
-   ],
-   "virtue": {
-    "fr": "Récite Qul huwa Allāhu aḥad et les deux Muʿawwidhāt trois fois le soir et le matin : elles te suffiront contre toute chose.",
-    "en": "Recite Qul huwa Allāhu aḥad and the two Muʿawwidhāt three times in the evening and the morning: they will suffice you against everything."
-   },
-   "sources": [
-    {
-     "collection": "Sunan Abī Dāwūd",
-     "number": "5082",
-     "narrator": "ʿAbdullāh ibn Khubayb",
-     "url": "https://sunnah.com/abudawud:5082"
-    },
-    {
-     "collection": "Jāmiʿ at-Tirmidhī",
-     "number": "3575",
-     "narrator": "ʿAbdullāh ibn Khubayb",
-     "url": "https://sunnah.com/tirmidhi:3575"
-    }
-   ],
-   "grading": {
-    "grade": "hasan",
-    "by": "al-Albānī",
-    "note": {
-     "fr": "At-Tirmidhī : ḥasan ṣaḥīḥ gharīb. Al-Albānī : ḥasan (Ṣaḥīḥ Abī Dāwūd), ṣaḥīḥ (Ṣaḥīḥ al-Jāmiʿ 4406).",
-     "en": "At-Tirmidhī: ḥasan ṣaḥīḥ gharīb. Al-Albānī: ḥasan (Ṣaḥīḥ Abī Dāwūd), ṣaḥīḥ (Ṣaḥīḥ al-Jāmiʿ 4406)."
-    }
-   },
-   "occasions": [
-    "morning",
-    "evening"
-   ],
-   "tags": [
-    "daily",
-    "short",
-    "sura"
-   ],
-   "verified": true
-  },
-  {
-   "id": "three-quls-sleep",
-   "title": {
-    "ar": "المعوذات عند النوم",
-    "fr": "Les trois Qul au coucher",
-    "en": "The three Quls at bedtime"
-   },
-   "ranges": [
-    {
-     "sura": 112,
-     "from": 1,
-     "to": 4
-    },
-    {
-     "sura": 113,
-     "from": 1,
-     "to": 5
-    },
-    {
-     "sura": 114,
-     "from": 1,
-     "to": 6
-    }
-   ],
-   "virtue": {
-    "fr": "Chaque nuit en se couchant, le Prophète ﷺ joignait les mains, soufflait dedans en récitant al-Ikhlāṣ, al-Falaq et an-Nās, puis les passait sur ce qu'il pouvait de son corps, en commençant par la tête et le visage. Il le faisait trois fois.",
-    "en": "Every night on going to bed, the Prophet ﷺ cupped his hands, blew into them reciting al-Ikhlāṣ, al-Falaq and an-Nās, then wiped them over as much of his body as he could, starting with his head and face. He did this three times."
-   },
-   "sources": [
-    {
-     "collection": "Ṣaḥīḥ al-Bukhārī",
-     "number": "5017",
-     "narrator": "ʿĀʾisha",
-     "url": "https://sunnah.com/bukhari:5017"
-    }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "al-Bukhārī (Ṣaḥīḥ)"
-   },
-   "occasions": [
-    "before_sleep"
-   ],
-   "tags": [
-    "daily",
-    "short",
-    "sura"
-   ],
-   "verified": true
-  },
-  {
-   "id": "kafirun-sleep",
-   "title": {
-    "ar": "سورة الكافرون قبل النوم",
-    "fr": "Al-Kāfirūn avant de dormir",
-    "en": "Al-Kāfirūn before sleep"
-   },
-   "ranges": [
-    {
-     "sura": 109,
-     "from": 1,
-     "to": 6
-    }
-   ],
-   "virtue": {
-    "fr": "Récite « Qul yā ayyuhā l-kāfirūn » puis dors à sa fin, car c'est un désaveu de l'associationnisme (shirk).",
-    "en": "Recite \"Qul yā ayyuhā l-kāfirūn\", then sleep at its end, for it is a declaration of freedom from shirk."
-   },
-   "sources": [
-    {
-     "collection": "Sunan Abī Dāwūd",
-     "number": "5055",
-     "narrator": "Nawfal al-Ashjaʿī",
-     "url": "https://sunnah.com/abudawud:5055"
-    },
-    {
-     "collection": "Jāmiʿ at-Tirmidhī",
-     "number": "3403",
-     "narrator": "Nawfal al-Ashjaʿī",
-     "url": "https://sunnah.com/tirmidhi:3403"
-    }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "al-Albānī",
-    "note": {
-     "fr": "Al-Albānī : ṣaḥīḥ (Ṣaḥīḥ Abī Dāwūd 5055), ḥasan (Ṣaḥīḥ al-Jāmiʿ 292). Darussalam : ḥasan (at-Tirmidhī 3403).",
-     "en": "Al-Albānī: ṣaḥīḥ (Ṣaḥīḥ Abī Dāwūd 5055), ḥasan (Ṣaḥīḥ al-Jāmiʿ 292). Darussalam: ḥasan (at-Tirmidhī 3403)."
-    }
-   },
-   "occasions": [
-    "before_sleep"
-   ],
-   "tags": [
-    "daily",
-    "short",
-    "sura"
-   ],
-   "verified": true
-  },
-  {
-   "id": "hashr-end",
-   "title": {
-    "ar": "خواتيم الحشر",
-    "fr": "Fin d'al-Ḥashr",
-    "en": "End of al-Ḥashr"
-   },
-   "ranges": [
-    {
-     "sura": 59,
-     "from": 22,
-     "to": 24
-    }
-   ],
-   "virtue": {
-    "fr": "Celui qui dit trois fois le matin « Aʿūdhu billāhi s-samīʿi l-ʿalīmi mina sh-shayṭāni r-rajīm » et récite les trois derniers versets d'al-Ḥashr, Allah charge soixante-dix mille anges de prier pour lui jusqu'au soir ; s'il meurt ce jour-là, il meurt martyr. De même le soir.",
-    "en": "Whoever says three times in the morning \"Aʿūdhu billāhi s-samīʿi l-ʿalīmi mina sh-shayṭāni r-rajīm\" and recites the last three āyāt of al-Ḥashr, Allah appoints seventy thousand angels to pray for him until evening; if he dies that day, he dies a martyr. The same in the evening."
-   },
-   "sources": [
-    {
-     "collection": "Jāmiʿ at-Tirmidhī",
-     "number": "2922",
-     "narrator": "Maʿqil ibn Yasār",
-     "url": "https://sunnah.com/tirmidhi:2922"
-    }
-   ],
-   "grading": {
-    "grade": "daif",
-    "by": "al-Albānī",
-    "note": {
-     "fr": "At-Tirmidhī : gharīb, connu par cette seule chaîne. Al-Albānī : faible (Khālid ibn Ṭahmān).",
-     "en": "At-Tirmidhī: gharīb, known only through this chain. Al-Albānī: weak (Khālid ibn Ṭahmān)."
-    }
-   },
-   "occasions": [
-    "morning",
-    "evening"
-   ],
-   "tags": [
-    "short"
-   ],
-   "verified": true
-  },
-  {
-   "id": "yasin-heart",
+   "id": "yasin",
    "title": {
     "ar": "سورة يس",
-    "fr": "Yā-Sīn, « cœur du Coran »",
-    "en": "Yā-Sīn, \"heart of the Qur'an\""
+    "fr": "Yā-Sīn",
+    "en": "Yā-Sīn"
    },
    "ranges": [
     {
@@ -760,41 +582,174 @@
      "to": 83
     }
    ],
-   "virtue": {
-    "fr": "Toute chose a un cœur, et le cœur du Coran est Yā-Sīn ; qui la récite, Allah lui inscrit comme s'il avait récité le Coran dix fois.",
-    "en": "Everything has a heart, and the heart of the Qur'an is Yā-Sīn; whoever recites it, Allah records for him as if he had recited the Qur'an ten times."
-   },
-   "sources": [
+   "virtues": [
     {
-     "collection": "Jāmiʿ at-Tirmidhī",
-     "number": "2887",
-     "narrator": "Anas ibn Mālik",
-     "url": "https://sunnah.com/tirmidhi:2887"
+     "text": {
+      "fr": "Toute chose a un cœur, et le cœur du Coran est Yā-Sīn ; qui la récite, Allah lui inscrit comme s'il avait récité le Coran dix fois.",
+      "en": "Everything has a heart, and the heart of the Qur'an is Yā-Sīn; whoever recites it, Allah records for him as if he had recited the Qur'an ten times."
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2887",
+       "narrator": "Anas ibn Mālik",
+       "url": "https://sunnah.com/tirmidhi:2887"
+      }
+     ],
+     "grading": {
+      "grade": "mawdu",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "Inventé selon al-Albānī ; faible selon Darussalam. At-Tirmidhī : gharīb, avec un transmetteur inconnu (Hārūn Abū Muḥammad).",
+       "en": "Fabricated per al-Albānī; weak per Darussalam. At-Tirmidhī: gharīb, with an unknown narrator (Hārūn Abū Muḥammad)."
+      }
+     },
+     "occasions": [],
+     "verified": true
     }
-   ],
-   "grading": {
-    "grade": "mawdu",
-    "by": "al-Albānī",
-    "note": {
-     "fr": "Inventé selon al-Albānī ; faible selon Darussalam. At-Tirmidhī : gharīb, avec un transmetteur inconnu (Hārūn Abū Muḥammad).",
-     "en": "Fabricated per al-Albānī; weak per Darussalam. At-Tirmidhī: gharīb, with an unknown narrator (Hārūn Abū Muḥammad)."
-    }
-   },
-   "occasions": [
-    "any"
    ],
    "tags": [
     "sura",
     "long"
-   ],
-   "verified": true
+   ]
   },
   {
-   "id": "waqia-poverty",
+   "id": "ghafir-opening",
+   "title": {
+    "ar": "أول غافر",
+    "fr": "Début de Ghāfir",
+    "en": "Opening of Ghāfir"
+   },
+   "ranges": [
+    {
+     "sura": 40,
+     "from": 1,
+     "to": 3
+    }
+   ],
+   "virtues": [
+    {
+     "text": {
+      "fr": "Qui récite Ḥā-Mīm al-Muʾmin (Ghāfir) jusqu'à « vers Lui est le retour » et Āyat al-Kursī le matin est protégé par elles jusqu'au soir ; et le soir, jusqu'au matin.",
+      "en": "Whoever recites Ḥā-Mīm al-Muʾmin (Ghāfir) up to \"to Him is the return\" and Āyat al-Kursī in the morning is protected by them until evening; and in the evening, until morning."
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2879",
+       "narrator": "Abū Hurayra",
+       "url": "https://sunnah.com/tirmidhi:2879"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "al-Albānī, Darussalam",
+      "note": {
+       "fr": "At-Tirmidhī : gharīb ; la mémoire de ʿAbd ar-Raḥmān al-Mulaykī est critiquée.",
+       "en": "At-Tirmidhī: gharīb; the memory of ʿAbd ar-Raḥmān al-Mulaykī is criticised."
+      }
+     },
+     "occasions": [
+      "morning",
+      "evening"
+     ],
+     "verified": true
+    }
+   ]
+  },
+  {
+   "id": "dukhan",
+   "title": {
+    "ar": "سورة الدخان",
+    "fr": "Ad-Dukhān",
+    "en": "Ad-Dukhān"
+   },
+   "ranges": [
+    {
+     "sura": 44,
+     "from": 1,
+     "to": 59
+    }
+   ],
+   "virtues": [
+    {
+     "text": {
+      "fr": "Qui récite Ḥā-Mīm ad-Dukhān pendant la nuit, soixante-dix mille anges demandent pardon pour lui au matin.",
+      "en": "Whoever recites Ḥā-Mīm ad-Dukhān during the night, seventy thousand angels seek forgiveness for him in the morning."
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2888",
+       "narrator": "Abū Hurayra",
+       "url": "https://sunnah.com/tirmidhi:2888"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "Darussalam",
+      "note": {
+       "fr": "At-Tirmidhī : gharīb, par cette seule chaîne ; ʿUmar ibn Abī Khathʿam est jugé faible (al-Bukhārī : munkar al-ḥadīth).",
+       "en": "At-Tirmidhī: gharīb, through this chain only; ʿUmar ibn Abī Khathʿam is graded weak (al-Bukhārī: munkar al-ḥadīth)."
+      }
+     },
+     "occasions": [
+      "night"
+     ],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "Qui récite Ḥā-Mīm ad-Dukhān la nuit du vendredi est pardonné.",
+      "en": "Whoever recites Ḥā-Mīm ad-Dukhān on the night before Friday is forgiven."
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2889",
+       "narrator": "Abū Hurayra",
+       "url": "https://sunnah.com/tirmidhi:2889"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "al-Albānī, Darussalam",
+      "note": {
+       "fr": "At-Tirmidhī : Hishām Abū l-Miqdām est jugé faible, et al-Ḥasan n'a pas entendu Abū Hurayra.",
+       "en": "At-Tirmidhī: Hishām Abū l-Miqdām is graded weak, and al-Ḥasan did not hear from Abū Hurayra."
+      }
+     },
+     "occasions": [
+      "night"
+     ],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "fath-end",
+   "title": {
+    "ar": "خاتمة الفتح",
+    "fr": "Fin d'al-Fatḥ",
+    "en": "End of al-Fatḥ"
+   },
+   "ranges": [
+    {
+     "sura": 48,
+     "from": 29,
+     "to": 29
+    }
+   ]
+  },
+  {
+   "id": "waqia",
    "title": {
     "ar": "سورة الواقعة",
-    "fr": "Al-Wāqiʿa contre la pauvreté",
-    "en": "Al-Wāqiʿa against poverty"
+    "fr": "Al-Wāqiʿa",
+    "en": "Al-Wāqiʿa"
    },
    "ranges": [
     {
@@ -803,113 +758,1227 @@
      "to": 96
     }
    ],
-   "virtue": {
-    "fr": "Celui qui récite la sourate al-Wāqiʿa chaque nuit ne sera jamais frappé par la pauvreté.",
-    "en": "Whoever recites Sūrat al-Wāqiʿa every night will never be struck by poverty."
-   },
-   "sources": [
+   "virtues": [
     {
-     "collection": "as-Silsila aḍ-Ḍaʿīfa (al-Albānī)",
-     "number": "289",
-     "narrator": "ʿAbdullāh ibn Masʿūd",
-     "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%B3%D9%88%D8%B1%D8%A9%20%D8%A7%D9%84%D9%88%D8%A7%D9%82%D8%B9%D8%A9%20%D9%83%D9%84%20%D9%84%D9%8A%D9%84%D8%A9%20%D9%84%D9%85%20%D8%AA%D8%B5%D8%A8%D9%87%20%D9%81%D8%A7%D9%82%D8%A9%20%D8%A3%D8%A8%D8%AF%D8%A7"
+     "text": {
+      "fr": "Celui qui récite la sourate al-Wāqiʿa chaque nuit ne sera jamais frappé par la pauvreté.",
+      "en": "Whoever recites Sūrat al-Wāqiʿa every night will never be struck by poverty."
+     },
+     "sources": [
+      {
+       "collection": "as-Silsila aḍ-Ḍaʿīfa (al-Albānī)",
+       "number": "289",
+       "narrator": "ʿAbdullāh ibn Masʿūd",
+       "url": "https://dorar.net/hadith/search?q=%D9%85%D9%86%20%D9%82%D8%B1%D8%A3%20%D8%B3%D9%88%D8%B1%D8%A9%20%D8%A7%D9%84%D9%88%D8%A7%D9%82%D8%B9%D8%A9%20%D9%83%D9%84%20%D9%84%D9%8A%D9%84%D8%A9%20%D9%84%D9%85%20%D8%AA%D8%B5%D8%A8%D9%87%20%D9%81%D8%A7%D9%82%D8%A9%20%D8%A3%D8%A8%D8%AF%D8%A7"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "al-Albānī"
+     },
+     "occasions": [
+      "night"
+     ],
+     "verified": true
     }
-   ],
-   "grading": {
-    "grade": "daif",
-    "by": "al-Albānī"
-   },
-   "occasions": [
-    "night"
    ],
    "tags": [
     "sura",
     "long"
-   ],
-   "verified": true
+   ]
   },
   {
-   "id": "baqara-house",
+   "id": "hadid",
    "title": {
-    "ar": "سورة البقرة",
-    "fr": "Al-Baqara · Satan fuit la maison",
-    "en": "Al-Baqara · Shayṭān flees the house"
+    "ar": "سورة الحديد",
+    "fr": "Al-Ḥadīd",
+    "en": "Al-Ḥadīd"
    },
    "ranges": [
     {
-     "sura": 2,
+     "sura": 57,
      "from": 1,
-     "to": 286
+     "to": 29
     }
    ],
-   "virtue": {
-    "fr": "Ne faites pas de vos maisons des tombes : Satan fuit la maison dans laquelle on récite la sourate al-Baqara.",
-    "en": "Do not make your houses graves: Shayṭān flees from the house in which Sūrat al-Baqara is recited."
-   },
-   "sources": [
+   "virtues": [
     {
-     "collection": "Ṣaḥīḥ Muslim",
-     "number": "780",
-     "narrator": "Abū Hurayra",
-     "url": "https://sunnah.com/muslim:780"
+     "text": {
+      "fr": "Le Prophète ﷺ récitait les musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa, at-Taghābun) avant de dormir, et disait : « Il y a en elles une āya meilleure que mille āyāt. »",
+      "en": "The Prophet ﷺ would recite the musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa, at-Taghābun) before sleeping, and say: \"In them is an āya better than a thousand āyāt.\""
+     },
+     "sources": [
+      {
+       "collection": "Sunan Abī Dāwūd",
+       "number": "5057",
+       "narrator": "al-ʿIrbāḍ ibn Sāriya",
+       "url": "https://sunnah.com/abudawud:5057"
+      },
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2921",
+       "narrator": "al-ʿIrbāḍ ibn Sāriya",
+       "url": "https://sunnah.com/tirmidhi:2921"
+      }
+     ],
+     "grading": {
+      "grade": "hasan",
+      "by": "at-Tirmidhī, Ibn Ḥajar",
+      "note": {
+       "fr": "At-Tirmidhī : ḥasan gharīb ; Ibn Ḥajar et Darussalam : ḥasan. Al-Albānī : faible (Baqiyya ibn al-Walīd).",
+       "en": "At-Tirmidhī: ḥasan gharīb; Ibn Ḥajar and Darussalam: ḥasan. Al-Albānī: weak (Baqiyya ibn al-Walīd)."
+      }
+     },
+     "occasions": [
+      "before_sleep"
+     ],
+     "verified": true
     }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "Muslim (Ṣaḥīḥ)"
-   },
-   "occasions": [
-    "any"
    ],
    "tags": [
-    "sura",
-    "long"
-   ],
-   "verified": true
+    "sura"
+   ]
   },
   {
-   "id": "zahrawan",
+   "id": "hashr",
    "title": {
-    "ar": "الزهراوان",
-    "fr": "Al-Baqara et Āl ʿImrān · les deux lumineuses",
-    "en": "Al-Baqara and Āl ʿImrān · the two bright ones"
+    "ar": "سورة الحشر",
+    "fr": "Al-Ḥashr",
+    "en": "Al-Ḥashr"
    },
    "ranges": [
     {
-     "sura": 2,
+     "sura": 59,
      "from": 1,
-     "to": 286
+     "to": 24
+    }
+   ],
+   "virtues": [
+    {
+     "text": {
+      "fr": "Le Prophète ﷺ récitait les musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa, at-Taghābun) avant de dormir, et disait : « Il y a en elles une āya meilleure que mille āyāt. »",
+      "en": "The Prophet ﷺ would recite the musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa, at-Taghābun) before sleeping, and say: \"In them is an āya better than a thousand āyāt.\""
+     },
+     "sources": [
+      {
+       "collection": "Sunan Abī Dāwūd",
+       "number": "5057",
+       "narrator": "al-ʿIrbāḍ ibn Sāriya",
+       "url": "https://sunnah.com/abudawud:5057"
+      },
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2921",
+       "narrator": "al-ʿIrbāḍ ibn Sāriya",
+       "url": "https://sunnah.com/tirmidhi:2921"
+      }
+     ],
+     "grading": {
+      "grade": "hasan",
+      "by": "at-Tirmidhī, Ibn Ḥajar",
+      "note": {
+       "fr": "At-Tirmidhī : ḥasan gharīb ; Ibn Ḥajar et Darussalam : ḥasan. Al-Albānī : faible (Baqiyya ibn al-Walīd).",
+       "en": "At-Tirmidhī: ḥasan gharīb; Ibn Ḥajar and Darussalam: ḥasan. Al-Albānī: weak (Baqiyya ibn al-Walīd)."
+      }
+     },
+     "occasions": [
+      "before_sleep"
+     ],
+     "verified": true
     },
     {
-     "sura": 3,
-     "from": 1,
-     "to": 200
+     "text": {
+      "fr": "Celui qui dit trois fois le matin « Aʿūdhu billāhi s-samīʿi l-ʿalīmi mina sh-shayṭāni r-rajīm » et récite les trois derniers versets d'al-Ḥashr, Allah charge soixante-dix mille anges de prier pour lui jusqu'au soir ; s'il meurt ce jour-là, il meurt martyr. De même le soir.",
+      "en": "Whoever says three times in the morning \"Aʿūdhu billāhi s-samīʿi l-ʿalīmi mina sh-shayṭāni r-rajīm\" and recites the last three āyāt of al-Ḥashr, Allah appoints seventy thousand angels to pray for him until evening; if he dies that day, he dies a martyr. The same in the evening."
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2922",
+       "narrator": "Maʿqil ibn Yasār",
+       "url": "https://sunnah.com/tirmidhi:2922"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "At-Tirmidhī : gharīb, connu par cette seule chaîne. Al-Albānī : faible (Khālid ibn Ṭahmān).",
+       "en": "At-Tirmidhī: gharīb, known only through this chain. Al-Albānī: weak (Khālid ibn Ṭahmān)."
+      }
+     },
+     "occasions": [
+      "morning",
+      "evening"
+     ],
+     "verified": true
     }
-   ],
-   "virtue": {
-    "fr": "Récitez les deux lumineuses, al-Baqara et Āl ʿImrān : au Jour de la Résurrection, elles viendront comme deux nuages, deux ombres ou deux volées d'oiseaux en rangs, plaidant pour leurs compagnons.",
-    "en": "Recite the two bright ones, al-Baqara and Āl ʿImrān: on the Day of Resurrection they will come like two clouds, or two shades, or two flocks of birds in ranks, pleading for their companions."
-   },
-   "sources": [
-    {
-     "collection": "Ṣaḥīḥ Muslim",
-     "number": "804a",
-     "narrator": "Abū Umāma al-Bāhilī",
-     "url": "https://sunnah.com/muslim:804a"
-    }
-   ],
-   "grading": {
-    "grade": "sahih",
-    "by": "Muslim (Ṣaḥīḥ)"
-   },
-   "occasions": [
-    "any"
    ],
    "tags": [
-    "sura",
-    "long"
+    "sura"
+   ]
+  },
+  {
+   "id": "saff",
+   "title": {
+    "ar": "سورة الصف",
+    "fr": "Aṣ-Ṣaff",
+    "en": "Aṣ-Ṣaff"
+   },
+   "ranges": [
+    {
+     "sura": 61,
+     "from": 1,
+     "to": 14
+    }
    ],
-   "verified": true
+   "virtues": [
+    {
+     "text": {
+      "fr": "Le Prophète ﷺ récitait les musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa, at-Taghābun) avant de dormir, et disait : « Il y a en elles une āya meilleure que mille āyāt. »",
+      "en": "The Prophet ﷺ would recite the musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa, at-Taghābun) before sleeping, and say: \"In them is an āya better than a thousand āyāt.\""
+     },
+     "sources": [
+      {
+       "collection": "Sunan Abī Dāwūd",
+       "number": "5057",
+       "narrator": "al-ʿIrbāḍ ibn Sāriya",
+       "url": "https://sunnah.com/abudawud:5057"
+      },
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2921",
+       "narrator": "al-ʿIrbāḍ ibn Sāriya",
+       "url": "https://sunnah.com/tirmidhi:2921"
+      }
+     ],
+     "grading": {
+      "grade": "hasan",
+      "by": "at-Tirmidhī, Ibn Ḥajar",
+      "note": {
+       "fr": "At-Tirmidhī : ḥasan gharīb ; Ibn Ḥajar et Darussalam : ḥasan. Al-Albānī : faible (Baqiyya ibn al-Walīd).",
+       "en": "At-Tirmidhī: ḥasan gharīb; Ibn Ḥajar and Darussalam: ḥasan. Al-Albānī: weak (Baqiyya ibn al-Walīd)."
+      }
+     },
+     "occasions": [
+      "before_sleep"
+     ],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "jumua",
+   "title": {
+    "ar": "سورة الجمعة",
+    "fr": "Al-Jumuʿa",
+    "en": "Al-Jumuʿa"
+   },
+   "ranges": [
+    {
+     "sura": 62,
+     "from": 1,
+     "to": 11
+    }
+   ],
+   "virtues": [
+    {
+     "text": {
+      "fr": "Le Prophète ﷺ récitait les musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa, at-Taghābun) avant de dormir, et disait : « Il y a en elles une āya meilleure que mille āyāt. »",
+      "en": "The Prophet ﷺ would recite the musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa, at-Taghābun) before sleeping, and say: \"In them is an āya better than a thousand āyāt.\""
+     },
+     "sources": [
+      {
+       "collection": "Sunan Abī Dāwūd",
+       "number": "5057",
+       "narrator": "al-ʿIrbāḍ ibn Sāriya",
+       "url": "https://sunnah.com/abudawud:5057"
+      },
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2921",
+       "narrator": "al-ʿIrbāḍ ibn Sāriya",
+       "url": "https://sunnah.com/tirmidhi:2921"
+      }
+     ],
+     "grading": {
+      "grade": "hasan",
+      "by": "at-Tirmidhī, Ibn Ḥajar",
+      "note": {
+       "fr": "At-Tirmidhī : ḥasan gharīb ; Ibn Ḥajar et Darussalam : ḥasan. Al-Albānī : faible (Baqiyya ibn al-Walīd).",
+       "en": "At-Tirmidhī: ḥasan gharīb; Ibn Ḥajar and Darussalam: ḥasan. Al-Albānī: weak (Baqiyya ibn al-Walīd)."
+      }
+     },
+     "occasions": [
+      "before_sleep"
+     ],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "taghabun",
+   "title": {
+    "ar": "سورة التغابن",
+    "fr": "At-Taghābun",
+    "en": "At-Taghābun"
+   },
+   "ranges": [
+    {
+     "sura": 64,
+     "from": 1,
+     "to": 18
+    }
+   ],
+   "virtues": [
+    {
+     "text": {
+      "fr": "Le Prophète ﷺ récitait les musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa, at-Taghābun) avant de dormir, et disait : « Il y a en elles une āya meilleure que mille āyāt. »",
+      "en": "The Prophet ﷺ would recite the musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa, at-Taghābun) before sleeping, and say: \"In them is an āya better than a thousand āyāt.\""
+     },
+     "sources": [
+      {
+       "collection": "Sunan Abī Dāwūd",
+       "number": "5057",
+       "narrator": "al-ʿIrbāḍ ibn Sāriya",
+       "url": "https://sunnah.com/abudawud:5057"
+      },
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2921",
+       "narrator": "al-ʿIrbāḍ ibn Sāriya",
+       "url": "https://sunnah.com/tirmidhi:2921"
+      }
+     ],
+     "grading": {
+      "grade": "hasan",
+      "by": "at-Tirmidhī, Ibn Ḥajar",
+      "note": {
+       "fr": "At-Tirmidhī : ḥasan gharīb ; Ibn Ḥajar et Darussalam : ḥasan. Al-Albānī : faible (Baqiyya ibn al-Walīd).",
+       "en": "At-Tirmidhī: ḥasan gharīb; Ibn Ḥajar and Darussalam: ḥasan. Al-Albānī: weak (Baqiyya ibn al-Walīd)."
+      }
+     },
+     "occasions": [
+      "before_sleep"
+     ],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "mulk",
+   "title": {
+    "ar": "سورة الملك",
+    "fr": "Al-Mulk",
+    "en": "Al-Mulk"
+   },
+   "ranges": [
+    {
+     "sura": 67,
+     "from": 1,
+     "to": 30
+    }
+   ],
+   "virtues": [
+    {
+     "text": {
+      "fr": "Une sourate du Coran de trente versets intercède pour celui qui la récite jusqu'à ce qu'il soit pardonné : Tabārak alladhī bi-yadihi l-mulk.",
+      "en": "A sūra of the Qur'an of thirty āyāt intercedes for its reciter until he is forgiven: Tabārak alladhī bi-yadihi l-mulk."
+     },
+     "sources": [
+      {
+       "collection": "Sunan Abī Dāwūd",
+       "number": "1400",
+       "narrator": "Abū Hurayra",
+       "url": "https://sunnah.com/abudawud:1400"
+      },
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2891",
+       "narrator": "Abū Hurayra",
+       "url": "https://sunnah.com/tirmidhi:2891"
+      }
+     ],
+     "grading": {
+      "grade": "hasan",
+      "by": "at-Tirmidhī, al-Albānī"
+     },
+     "occasions": [],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "Le Prophète ﷺ ne dormait pas avant d'avoir récité Alif Lām Mīm Tanzīl (as-Sajda) et Tabārak alladhī bi-yadihi l-mulk.",
+      "en": "The Prophet ﷺ would not sleep until he had recited Alif Lām Mīm Tanzīl (as-Sajda) and Tabārak alladhī bi-yadihi l-mulk."
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2892",
+       "narrator": "Jābir ibn ʿAbdillāh",
+       "url": "https://sunnah.com/tirmidhi:2892"
+      },
+      {
+       "collection": "as-Silsila aṣ-Ṣaḥīḥa (al-Albānī)",
+       "number": "585",
+       "narrator": "Jābir ibn ʿAbdillāh",
+       "url": "https://dorar.net/hadith/search?q=%D9%83%D8%A7%D9%86%20%D9%84%D8%A7%20%D9%8A%D9%86%D8%A7%D9%85%20%D8%AD%D8%AA%D9%89%20%D9%8A%D9%82%D8%B1%D8%A3%20%D8%A7%D9%84%D9%85%20%D8%AA%D9%86%D8%B2%D9%8A%D9%84%20%D8%A7%D9%84%D8%B3%D8%AC%D8%AF%D8%A9%20%D9%88%D8%AA%D8%A8%D8%A7%D8%B1%D9%83%20%D8%A7%D9%84%D8%B0%D9%8A%20%D8%A8%D9%8A%D8%AF%D9%87%20%D8%A7%D9%84%D9%85%D9%84%D9%83"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "Darussalam juge cette chaîne faible (Layth ibn Abī Sulaym) ; al-Albānī l'authentifie par ses autres voies (aṣ-Ṣaḥīḥa 585, Ṣaḥīḥ at-Tirmidhī).",
+       "en": "Darussalam grades this chain weak (Layth ibn Abī Sulaym); al-Albānī authenticates it through its other routes (aṣ-Ṣaḥīḥa 585, Ṣaḥīḥ at-Tirmidhī)."
+      }
+     },
+     "occasions": [
+      "before_sleep"
+     ],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "ala",
+   "title": {
+    "ar": "سورة الأعلى",
+    "fr": "Al-Aʿlā",
+    "en": "Al-Aʿlā"
+   },
+   "ranges": [
+    {
+     "sura": 87,
+     "from": 1,
+     "to": 19
+    }
+   ],
+   "virtues": [
+    {
+     "text": {
+      "fr": "Le Prophète ﷺ récitait « Sabbiḥ isma rabbika l-aʿlā » et al-Ghāshiya dans les prières des deux ʿĪd et du vendredi.",
+      "en": "The Prophet ﷺ recited \"Sabbiḥ isma rabbika l-aʿlā\" and al-Ghāshiya in the prayers of the two ʿĪds and of Friday."
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ Muslim",
+       "number": "878a",
+       "narrator": "an-Nuʿmān ibn Bashīr",
+       "url": "https://sunnah.com/muslim:878a"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "Muslim (Ṣaḥīḥ)"
+     },
+     "occasions": [],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "duha",
+   "title": {
+    "ar": "سورة الضحى",
+    "fr": "Aḍ-Ḍuḥā",
+    "en": "Aḍ-Ḍuḥā"
+   },
+   "ranges": [
+    {
+     "sura": 93,
+     "from": 1,
+     "to": 11
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "sharh",
+   "title": {
+    "ar": "سورة الشرح",
+    "fr": "Ash-Sharḥ",
+    "en": "Ash-Sharḥ"
+   },
+   "ranges": [
+    {
+     "sura": 94,
+     "from": 1,
+     "to": 8
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "alaq",
+   "title": {
+    "ar": "سورة العلق",
+    "fr": "Al-ʿAlaq",
+    "en": "Al-ʿAlaq"
+   },
+   "ranges": [
+    {
+     "sura": 96,
+     "from": 1,
+     "to": 19
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "qadr",
+   "title": {
+    "ar": "سورة القدر",
+    "fr": "Al-Qadr",
+    "en": "Al-Qadr"
+   },
+   "ranges": [
+    {
+     "sura": 97,
+     "from": 1,
+     "to": 5
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "zalzala",
+   "title": {
+    "ar": "سورة الزلزلة",
+    "fr": "Az-Zalzala",
+    "en": "Az-Zalzala"
+   },
+   "ranges": [
+    {
+     "sura": 99,
+     "from": 1,
+     "to": 8
+    }
+   ],
+   "times": 4,
+   "virtues": [
+    {
+     "text": {
+      "fr": "« Idhā zulzilat » équivaut à la moitié du Coran, « Qul huwa llāhu aḥad » au tiers, et « Qul yā ayyuhā l-kāfirūn » au quart.",
+      "en": "\"Idhā zulzilat\" equals half of the Qur'an, \"Qul huwa llāhu aḥad\" a third, and \"Qul yā ayyuhā l-kāfirūn\" a quarter."
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2893",
+       "narrator": "Anas ibn Mālik",
+       "url": "https://sunnah.com/tirmidhi:2893"
+      },
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2894",
+       "narrator": "ʿAbdullāh ibn ʿAbbās",
+       "url": "https://sunnah.com/tirmidhi:2894"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "al-Albānī, Darussalam",
+      "note": {
+       "fr": "Al-Albānī authentifie 2894 sauf la partie sur az-Zalzala. At-Tirmidhī : gharīb (al-Ḥasan ibn Salm ; Yamān ibn al-Mughīra, faible).",
+       "en": "Al-Albānī authenticates 2894 except the part on az-Zalzala. At-Tirmidhī: gharīb (al-Ḥasan ibn Salm; Yamān ibn al-Mughīra, weak)."
+      }
+     },
+     "occasions": [],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "À un Compagnon qui n'avait pas de quoi se marier, le Prophète ﷺ demanda s'il savait al-Ikhlāṣ (« le tiers du Coran »), an-Naṣr, al-Kāfirūn et az-Zalzala (« le quart du Coran » chacune), puis : « Marie-toi, marie-toi. »",
+      "en": "To a Companion who had nothing to marry with, the Prophet ﷺ asked whether he knew al-Ikhlāṣ (\"a third of the Qur'an\"), an-Naṣr, al-Kāfirūn and az-Zalzala (\"a quarter of the Qur'an\" each), then said: \"Marry, marry.\""
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2895",
+       "narrator": "Anas ibn Mālik",
+       "url": "https://sunnah.com/tirmidhi:2895"
+      },
+      {
+       "collection": "Ḍaʿīf at-Targhīb (al-Albānī)",
+       "number": "890",
+       "narrator": "Anas ibn Mālik",
+       "url": "https://dorar.net/hadith/search?q=%D8%A5%D8%B0%D8%A7%20%D8%AC%D8%A7%D8%A1%20%D9%86%D8%B5%D8%B1%20%D8%A7%D9%84%D9%84%D9%87%20%D9%88%D8%A7%D9%84%D9%81%D8%AA%D8%AD%20%D8%B1%D8%A8%D8%B9%20%D8%A7%D9%84%D9%82%D8%B1%D8%A2%D9%86"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "al-Albānī, Darussalam",
+      "note": {
+       "fr": "At-Tirmidhī : ḥasan. Al-Mundhirī signale Salama ibn Wardān.",
+       "en": "At-Tirmidhī: ḥasan. Al-Mundhirī points to Salama ibn Wardān."
+      }
+     },
+     "occasions": [],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "takathur",
+   "title": {
+    "ar": "سورة التكاثر",
+    "fr": "At-Takāthur",
+    "en": "At-Takāthur"
+   },
+   "ranges": [
+    {
+     "sura": 102,
+     "from": 1,
+     "to": 8
+    }
+   ],
+   "virtues": [
+    {
+     "text": {
+      "fr": "« L'un de vous ne peut-il pas réciter mille āyāt chaque jour ? » — « Qui le peut ? » — « L'un de vous ne peut-il pas réciter « Alhākumu t-takāthur » ? »",
+      "en": "\"Can one of you not recite a thousand āyāt every day?\" — \"Who can do that?\" — \"Can one of you not recite 'Alhākumu t-takāthur'?\""
+     },
+     "sources": [
+      {
+       "collection": "al-Mustadrak (al-Ḥākim)",
+       "number": "2111",
+       "narrator": "ʿAbdullāh ibn ʿUmar",
+       "url": "https://dorar.net/hadith/search?q=%D8%A3%D9%84%D8%A7%20%D9%8A%D8%B3%D8%AA%D8%B7%D9%8A%D8%B9%20%D8%A3%D8%AD%D8%AF%D9%83%D9%85%20%D8%A3%D9%86%20%D9%8A%D9%82%D8%B1%D8%A3%20%D8%A3%D9%84%D9%81%20%D8%A2%D9%8A%D8%A9%20%D9%81%D9%8A%20%D9%83%D9%84%20%D9%8A%D9%88%D9%85"
+      },
+      {
+       "collection": "Ḍaʿīf at-Targhīb (al-Albānī)",
+       "number": "891",
+       "narrator": "ʿAbdullāh ibn ʿUmar",
+       "url": "https://dorar.net/hadith/search?q=%D8%A3%D9%84%D8%A7%20%D9%8A%D8%B3%D8%AA%D8%B7%D9%8A%D8%B9%20%D8%A3%D8%AD%D8%AF%D9%83%D9%85%20%D8%A3%D9%86%20%D9%8A%D9%82%D8%B1%D8%A3%20%D8%A3%D9%84%D9%81%20%D8%A2%D9%8A%D8%A9%20%D9%81%D9%8A%20%D9%83%D9%84%20%D9%8A%D9%88%D9%85"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "Al-Ḥākim : transmetteurs fiables, mais ʿUqba ibn Muḥammad est peu connu.",
+       "en": "Al-Ḥākim: trustworthy narrators, but ʿUqba ibn Muḥammad is little known."
+      }
+     },
+     "occasions": [],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "asr",
+   "title": {
+    "ar": "سورة العصر",
+    "fr": "Al-ʿAṣr",
+    "en": "Al-ʿAṣr"
+   },
+   "ranges": [
+    {
+     "sura": 103,
+     "from": 1,
+     "to": 3
+    }
+   ],
+   "times": 2,
+   "virtues": [
+    {
+     "text": {
+      "fr": "Quand deux Compagnons du Prophète ﷺ se rencontraient, ils ne se quittaient pas avant que l'un ait récité à l'autre « Wa l-ʿaṣr » jusqu'à la fin, puis ils se saluaient.",
+      "en": "When two Companions of the Prophet ﷺ met, they would not part before one had recited \"Wa l-ʿaṣr\" to the other to its end; then they greeted each other with salām."
+     },
+     "sources": [
+      {
+       "collection": "as-Silsila aṣ-Ṣaḥīḥa (al-Albānī)",
+       "number": "2648",
+       "narrator": "Abū Madīna ad-Dārimī",
+       "url": "https://dorar.net/hadith/search?q=%D8%A5%D8%B0%D8%A7%20%D8%A7%D9%84%D8%AA%D9%82%D9%8A%D8%A7%20%D9%84%D9%85%20%D9%8A%D8%AA%D9%81%D8%B1%D9%82%D8%A7%20%D8%A5%D9%84%D8%A7%20%D8%B9%D9%84%D9%89%20%D8%A3%D9%86%20%D9%8A%D9%82%D8%B1%D8%A3%20%D8%A3%D8%AD%D8%AF%D9%87%D9%85%D8%A7%20%D8%B9%D9%84%D9%89%20%D8%A7%D9%84%D8%A2%D8%AE%D8%B1%20%D8%B3%D9%88%D8%B1%D8%A9%20%D8%A7%D9%84%D8%B9%D8%B5%D8%B1"
+      },
+      {
+       "collection": "Majmaʿ az-Zawāʾid (al-Haythamī)",
+       "number": "10/236",
+       "narrator": "Abū Madīna ad-Dārimī",
+       "url": "https://dorar.net/hadith/search?q=%D8%A5%D8%B0%D8%A7%20%D8%A7%D9%84%D8%AA%D9%82%D9%8A%D8%A7%20%D9%84%D9%85%20%D9%8A%D8%AA%D9%81%D8%B1%D9%82%D8%A7%20%D8%A5%D9%84%D8%A7%20%D8%B9%D9%84%D9%89%20%D8%A3%D9%86%20%D9%8A%D9%82%D8%B1%D8%A3%20%D8%A3%D8%AD%D8%AF%D9%87%D9%85%D8%A7%20%D8%B9%D9%84%D9%89%20%D8%A7%D9%84%D8%A2%D8%AE%D8%B1%20%D8%B3%D9%88%D8%B1%D8%A9%20%D8%A7%D9%84%D8%B9%D8%B5%D8%B1"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "Pratique des Compagnons. Al-Haythamī : transmetteurs du Ṣaḥīḥ. Aṭ-Ṭabarānī (al-Awsaṭ) : seul Ḥammād ibn Salama la rapporte.",
+       "en": "A practice of the Companions. Al-Haythamī: narrators of the Ṣaḥīḥ. Aṭ-Ṭabarānī (al-Awsaṭ): only Ḥammād ibn Salama reports it."
+      }
+     },
+     "occasions": [],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "quraysh",
+   "title": {
+    "ar": "سورة قريش",
+    "fr": "Quraysh",
+    "en": "Quraysh"
+   },
+   "ranges": [
+    {
+     "sura": 106,
+     "from": 1,
+     "to": 4
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "maun",
+   "title": {
+    "ar": "سورة الماعون",
+    "fr": "Al-Māʿūn",
+    "en": "Al-Māʿūn"
+   },
+   "ranges": [
+    {
+     "sura": 107,
+     "from": 1,
+     "to": 7
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "kawthar",
+   "title": {
+    "ar": "سورة الكوثر",
+    "fr": "Al-Kawthar",
+    "en": "Al-Kawthar"
+   },
+   "ranges": [
+    {
+     "sura": 108,
+     "from": 1,
+     "to": 3
+    }
+   ],
+   "times": 3,
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "kafirun",
+   "title": {
+    "ar": "سورة الكافرون",
+    "fr": "Al-Kāfirūn",
+    "en": "Al-Kāfirūn"
+   },
+   "ranges": [
+    {
+     "sura": 109,
+     "from": 1,
+     "to": 6
+    }
+   ],
+   "times": 4,
+   "virtues": [
+    {
+     "text": {
+      "fr": "Récite « Qul yā ayyuhā l-kāfirūn » puis dors à sa fin, car c'est un désaveu de l'associationnisme (shirk).",
+      "en": "Recite \"Qul yā ayyuhā l-kāfirūn\", then sleep at its end, for it is a declaration of freedom from shirk."
+     },
+     "sources": [
+      {
+       "collection": "Sunan Abī Dāwūd",
+       "number": "5055",
+       "narrator": "Nawfal al-Ashjaʿī",
+       "url": "https://sunnah.com/abudawud:5055"
+      },
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "3403",
+       "narrator": "Nawfal al-Ashjaʿī",
+       "url": "https://sunnah.com/tirmidhi:3403"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "Al-Albānī : ṣaḥīḥ (Ṣaḥīḥ Abī Dāwūd 5055), ḥasan (Ṣaḥīḥ al-Jāmiʿ 292). Darussalam : ḥasan (at-Tirmidhī 3403).",
+       "en": "Al-Albānī: ṣaḥīḥ (Ṣaḥīḥ Abī Dāwūd 5055), ḥasan (Ṣaḥīḥ al-Jāmiʿ 292). Darussalam: ḥasan (at-Tirmidhī 3403)."
+      }
+     },
+     "occasions": [
+      "before_sleep"
+     ],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "« Qul yā ayyuhā l-kāfirūn » équivaut au quart du Coran.",
+      "en": "\"Qul yā ayyuhā l-kāfirūn\" equals a quarter of the Qur'an."
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2894",
+       "narrator": "ʿAbdullāh ibn ʿAbbās",
+       "url": "https://sunnah.com/tirmidhi:2894"
+      },
+      {
+       "collection": "Ṣaḥīḥ at-Tirmidhī (al-Albānī)",
+       "number": "2894",
+       "narrator": "ʿAbdullāh ibn ʿAbbās",
+       "url": "https://dorar.net/hadith/search?q=%D8%A5%D8%B0%D8%A7%20%D8%B2%D9%84%D8%B2%D9%84%D8%AA%20%D8%AA%D8%B9%D8%AF%D9%84%20%D9%86%D8%B5%D9%81%20%D8%A7%D9%84%D9%82%D8%B1%D8%A2%D9%86"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "Al-Albānī : authentique, sauf la partie sur az-Zalzala. Darussalam : faible ; at-Tirmidhī : gharīb (Yamān ibn al-Mughīra).",
+       "en": "Al-Albānī: authentic, except the part on az-Zalzala. Darussalam: weak; at-Tirmidhī: gharīb (Yamān ibn al-Mughīra)."
+      }
+     },
+     "occasions": [],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "À un Compagnon qui n'avait pas de quoi se marier, le Prophète ﷺ demanda s'il savait al-Ikhlāṣ (« le tiers du Coran »), an-Naṣr, al-Kāfirūn et az-Zalzala (« le quart du Coran » chacune), puis : « Marie-toi, marie-toi. »",
+      "en": "To a Companion who had nothing to marry with, the Prophet ﷺ asked whether he knew al-Ikhlāṣ (\"a third of the Qur'an\"), an-Naṣr, al-Kāfirūn and az-Zalzala (\"a quarter of the Qur'an\" each), then said: \"Marry, marry.\""
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2895",
+       "narrator": "Anas ibn Mālik",
+       "url": "https://sunnah.com/tirmidhi:2895"
+      },
+      {
+       "collection": "Ḍaʿīf at-Targhīb (al-Albānī)",
+       "number": "890",
+       "narrator": "Anas ibn Mālik",
+       "url": "https://dorar.net/hadith/search?q=%D8%A5%D8%B0%D8%A7%20%D8%AC%D8%A7%D8%A1%20%D9%86%D8%B5%D8%B1%20%D8%A7%D9%84%D9%84%D9%87%20%D9%88%D8%A7%D9%84%D9%81%D8%AA%D8%AD%20%D8%B1%D8%A8%D8%B9%20%D8%A7%D9%84%D9%82%D8%B1%D8%A2%D9%86"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "al-Albānī, Darussalam",
+      "note": {
+       "fr": "At-Tirmidhī : ḥasan. Al-Mundhirī signale Salama ibn Wardān.",
+       "en": "At-Tirmidhī: ḥasan. Al-Mundhirī points to Salama ibn Wardān."
+      }
+     },
+     "occasions": [],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "nasr",
+   "title": {
+    "ar": "سورة النصر",
+    "fr": "An-Naṣr",
+    "en": "An-Naṣr"
+   },
+   "ranges": [
+    {
+     "sura": 110,
+     "from": 1,
+     "to": 3
+    }
+   ],
+   "times": 4,
+   "virtues": [
+    {
+     "text": {
+      "fr": "À un Compagnon qui n'avait pas de quoi se marier, le Prophète ﷺ demanda s'il savait al-Ikhlāṣ (« le tiers du Coran »), an-Naṣr, al-Kāfirūn et az-Zalzala (« le quart du Coran » chacune), puis : « Marie-toi, marie-toi. »",
+      "en": "To a Companion who had nothing to marry with, the Prophet ﷺ asked whether he knew al-Ikhlāṣ (\"a third of the Qur'an\"), an-Naṣr, al-Kāfirūn and az-Zalzala (\"a quarter of the Qur'an\" each), then said: \"Marry, marry.\""
+     },
+     "sources": [
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "2895",
+       "narrator": "Anas ibn Mālik",
+       "url": "https://sunnah.com/tirmidhi:2895"
+      },
+      {
+       "collection": "Ḍaʿīf at-Targhīb (al-Albānī)",
+       "number": "890",
+       "narrator": "Anas ibn Mālik",
+       "url": "https://dorar.net/hadith/search?q=%D8%A5%D8%B0%D8%A7%20%D8%AC%D8%A7%D8%A1%20%D9%86%D8%B5%D8%B1%20%D8%A7%D9%84%D9%84%D9%87%20%D9%88%D8%A7%D9%84%D9%81%D8%AA%D8%AD%20%D8%B1%D8%A8%D8%B9%20%D8%A7%D9%84%D9%82%D8%B1%D8%A2%D9%86"
+      }
+     ],
+     "grading": {
+      "grade": "daif",
+      "by": "al-Albānī, Darussalam",
+      "note": {
+       "fr": "At-Tirmidhī : ḥasan. Al-Mundhirī signale Salama ibn Wardān.",
+       "en": "At-Tirmidhī: ḥasan. Al-Mundhirī points to Salama ibn Wardān."
+      }
+     },
+     "occasions": [],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "sura"
+   ]
+  },
+  {
+   "id": "ikhlas",
+   "title": {
+    "ar": "سورة الإخلاص",
+    "fr": "Al-Ikhlāṣ",
+    "en": "Al-Ikhlāṣ"
+   },
+   "ranges": [
+    {
+     "sura": 112,
+     "from": 1,
+     "to": 4
+    }
+   ],
+   "times": 3,
+   "virtues": [
+    {
+     "text": {
+      "fr": "« Qul huwa Allāhu aḥad » équivaut au tiers du Coran.",
+      "en": "\"Qul huwa Allāhu aḥad\" equals a third of the Qur'an."
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ al-Bukhārī",
+       "number": "5013",
+       "narrator": "Abū Saʿīd al-Khudrī",
+       "url": "https://sunnah.com/bukhari:5013"
+      },
+      {
+       "collection": "Ṣaḥīḥ Muslim",
+       "number": "811a",
+       "narrator": "Abū d-Dardāʾ",
+       "url": "https://sunnah.com/muslim:811a"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Bukhārī, Muslim"
+     },
+     "occasions": [],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "Récite Qul huwa Allāhu aḥad et les deux Muʿawwidhāt trois fois le soir et le matin : elles te suffiront contre toute chose.",
+      "en": "Recite Qul huwa Allāhu aḥad and the two Muʿawwidhāt three times in the evening and the morning: they will suffice you against everything."
+     },
+     "sources": [
+      {
+       "collection": "Sunan Abī Dāwūd",
+       "number": "5082",
+       "narrator": "ʿAbdullāh ibn Khubayb",
+       "url": "https://sunnah.com/abudawud:5082"
+      },
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "3575",
+       "narrator": "ʿAbdullāh ibn Khubayb",
+       "url": "https://sunnah.com/tirmidhi:3575"
+      }
+     ],
+     "grading": {
+      "grade": "hasan",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "At-Tirmidhī : ḥasan ṣaḥīḥ gharīb. Al-Albānī : ḥasan (Ṣaḥīḥ Abī Dāwūd), ṣaḥīḥ (Ṣaḥīḥ al-Jāmiʿ 4406).",
+       "en": "At-Tirmidhī: ḥasan ṣaḥīḥ gharīb. Al-Albānī: ḥasan (Ṣaḥīḥ Abī Dāwūd), ṣaḥīḥ (Ṣaḥīḥ al-Jāmiʿ 4406)."
+      }
+     },
+     "occasions": [
+      "morning",
+      "evening"
+     ],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "Chaque nuit en se couchant, le Prophète ﷺ joignait les mains, soufflait dedans en récitant al-Ikhlāṣ, al-Falaq et an-Nās, puis les passait sur ce qu'il pouvait de son corps, en commençant par la tête et le visage. Il le faisait trois fois.",
+      "en": "Every night on going to bed, the Prophet ﷺ cupped his hands, blew into them reciting al-Ikhlāṣ, al-Falaq and an-Nās, then wiped them over as much of his body as he could, starting with his head and face. He did this three times."
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ al-Bukhārī",
+       "number": "5017",
+       "narrator": "ʿĀʾisha",
+       "url": "https://sunnah.com/bukhari:5017"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Bukhārī (Ṣaḥīḥ)"
+     },
+     "occasions": [
+      "before_sleep"
+     ],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "daily",
+    "sura"
+   ]
+  },
+  {
+   "id": "falaq",
+   "title": {
+    "ar": "سورة الفلق",
+    "fr": "Al-Falaq",
+    "en": "Al-Falaq"
+   },
+   "ranges": [
+    {
+     "sura": 113,
+     "from": 1,
+     "to": 5
+    }
+   ],
+   "virtues": [
+    {
+     "text": {
+      "fr": "Des versets ont été révélés cette nuit, tels qu'on n'en a jamais vu de semblables : Qul aʿūdhu bi-rabbi l-falaq et Qul aʿūdhu bi-rabbi n-nās.",
+      "en": "Āyāt were revealed tonight the like of which have never been seen: Qul aʿūdhu bi-rabbi l-falaq and Qul aʿūdhu bi-rabbi n-nās."
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ Muslim",
+       "number": "814a",
+       "narrator": "ʿUqba ibn ʿĀmir",
+       "url": "https://sunnah.com/muslim:814a"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "Muslim (Ṣaḥīḥ)"
+     },
+     "occasions": [],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "Récite Qul huwa Allāhu aḥad et les deux Muʿawwidhāt trois fois le soir et le matin : elles te suffiront contre toute chose.",
+      "en": "Recite Qul huwa Allāhu aḥad and the two Muʿawwidhāt three times in the evening and the morning: they will suffice you against everything."
+     },
+     "sources": [
+      {
+       "collection": "Sunan Abī Dāwūd",
+       "number": "5082",
+       "narrator": "ʿAbdullāh ibn Khubayb",
+       "url": "https://sunnah.com/abudawud:5082"
+      },
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "3575",
+       "narrator": "ʿAbdullāh ibn Khubayb",
+       "url": "https://sunnah.com/tirmidhi:3575"
+      }
+     ],
+     "grading": {
+      "grade": "hasan",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "At-Tirmidhī : ḥasan ṣaḥīḥ gharīb. Al-Albānī : ḥasan (Ṣaḥīḥ Abī Dāwūd), ṣaḥīḥ (Ṣaḥīḥ al-Jāmiʿ 4406).",
+       "en": "At-Tirmidhī: ḥasan ṣaḥīḥ gharīb. Al-Albānī: ḥasan (Ṣaḥīḥ Abī Dāwūd), ṣaḥīḥ (Ṣaḥīḥ al-Jāmiʿ 4406)."
+      }
+     },
+     "occasions": [
+      "morning",
+      "evening"
+     ],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "Chaque nuit en se couchant, le Prophète ﷺ joignait les mains, soufflait dedans en récitant al-Ikhlāṣ, al-Falaq et an-Nās, puis les passait sur ce qu'il pouvait de son corps, en commençant par la tête et le visage. Il le faisait trois fois.",
+      "en": "Every night on going to bed, the Prophet ﷺ cupped his hands, blew into them reciting al-Ikhlāṣ, al-Falaq and an-Nās, then wiped them over as much of his body as he could, starting with his head and face. He did this three times."
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ al-Bukhārī",
+       "number": "5017",
+       "narrator": "ʿĀʾisha",
+       "url": "https://sunnah.com/bukhari:5017"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Bukhārī (Ṣaḥīḥ)"
+     },
+     "occasions": [
+      "before_sleep"
+     ],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "daily",
+    "sura"
+   ]
+  },
+  {
+   "id": "nas",
+   "title": {
+    "ar": "سورة الناس",
+    "fr": "An-Nās",
+    "en": "An-Nās"
+   },
+   "ranges": [
+    {
+     "sura": 114,
+     "from": 1,
+     "to": 6
+    }
+   ],
+   "virtues": [
+    {
+     "text": {
+      "fr": "Des versets ont été révélés cette nuit, tels qu'on n'en a jamais vu de semblables : Qul aʿūdhu bi-rabbi l-falaq et Qul aʿūdhu bi-rabbi n-nās.",
+      "en": "Āyāt were revealed tonight the like of which have never been seen: Qul aʿūdhu bi-rabbi l-falaq and Qul aʿūdhu bi-rabbi n-nās."
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ Muslim",
+       "number": "814a",
+       "narrator": "ʿUqba ibn ʿĀmir",
+       "url": "https://sunnah.com/muslim:814a"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "Muslim (Ṣaḥīḥ)"
+     },
+     "occasions": [],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "Récite Qul huwa Allāhu aḥad et les deux Muʿawwidhāt trois fois le soir et le matin : elles te suffiront contre toute chose.",
+      "en": "Recite Qul huwa Allāhu aḥad and the two Muʿawwidhāt three times in the evening and the morning: they will suffice you against everything."
+     },
+     "sources": [
+      {
+       "collection": "Sunan Abī Dāwūd",
+       "number": "5082",
+       "narrator": "ʿAbdullāh ibn Khubayb",
+       "url": "https://sunnah.com/abudawud:5082"
+      },
+      {
+       "collection": "Jāmiʿ at-Tirmidhī",
+       "number": "3575",
+       "narrator": "ʿAbdullāh ibn Khubayb",
+       "url": "https://sunnah.com/tirmidhi:3575"
+      }
+     ],
+     "grading": {
+      "grade": "hasan",
+      "by": "al-Albānī",
+      "note": {
+       "fr": "At-Tirmidhī : ḥasan ṣaḥīḥ gharīb. Al-Albānī : ḥasan (Ṣaḥīḥ Abī Dāwūd), ṣaḥīḥ (Ṣaḥīḥ al-Jāmiʿ 4406).",
+       "en": "At-Tirmidhī: ḥasan ṣaḥīḥ gharīb. Al-Albānī: ḥasan (Ṣaḥīḥ Abī Dāwūd), ṣaḥīḥ (Ṣaḥīḥ al-Jāmiʿ 4406)."
+      }
+     },
+     "occasions": [
+      "morning",
+      "evening"
+     ],
+     "verified": true
+    },
+    {
+     "text": {
+      "fr": "Chaque nuit en se couchant, le Prophète ﷺ joignait les mains, soufflait dedans en récitant al-Ikhlāṣ, al-Falaq et an-Nās, puis les passait sur ce qu'il pouvait de son corps, en commençant par la tête et le visage. Il le faisait trois fois.",
+      "en": "Every night on going to bed, the Prophet ﷺ cupped his hands, blew into them reciting al-Ikhlāṣ, al-Falaq and an-Nās, then wiped them over as much of his body as he could, starting with his head and face. He did this three times."
+     },
+     "sources": [
+      {
+       "collection": "Ṣaḥīḥ al-Bukhārī",
+       "number": "5017",
+       "narrator": "ʿĀʾisha",
+       "url": "https://sunnah.com/bukhari:5017"
+      }
+     ],
+     "grading": {
+      "grade": "sahih",
+      "by": "al-Bukhārī (Ṣaḥīḥ)"
+     },
+     "occasions": [
+      "before_sleep"
+     ],
+     "verified": true
+    }
+   ],
+   "tags": [
+    "daily",
+    "sura"
+   ]
+  },
+  {
+   "id": "closing",
+   "title": {
+    "ar": "الختم بالفاتحة وأول البقرة",
+    "fr": "Clôture : al-Fātiḥa et début d'al-Baqara",
+    "en": "Closing: al-Fātiḥa and the opening of al-Baqara"
+   },
+   "ranges": [
+    {
+     "sura": 1,
+     "from": 1,
+     "to": 7
+    },
+    {
+     "sura": 2,
+     "from": 1,
+     "to": 5
+    }
+   ]
   }
  ]
 }

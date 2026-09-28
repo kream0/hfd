@@ -10,29 +10,23 @@ class GroupingTest {
     private val all = Assets.fadail.fadail
 
     @Test
-    fun weakOnlyWhenAskedAndInTheirOwnGroup() {
-        val normal = FadailGrouping.group(all, showWeak = false)
-        assertTrue(normal.none { it.first == FadailGroup.Weak })
-        assertTrue(normal.flatMap { it.second }.all { it.grading.grade.acceptable && it.verified })
-
-        val withWeak = FadailGrouping.group(all, showWeak = true)
-        val weak = withWeak.single { it.first == FadailGroup.Weak }.second
-        assertTrue(weak.isNotEmpty())
-        assertTrue(weak.none { it.grading.grade.acceptable })
-        // Weak entries never leak into the regular groups.
-        assertTrue(withWeak.filter { it.first != FadailGroup.Weak }.flatMap { it.second }.all { it.grading.grade.acceptable })
+    fun suggestionsComeFromSoundNarrations() {
+        val sleep = FadailGrouping.suggested(all, listOf(Occasion.BEFORE_SLEEP), showWeak = false).map { it.id }
+        assertTrue("kursi" in sleep)
+        assertTrue("mulk" in sleep)
+        assertTrue("hadid" in sleep)
+        // Al-Wāqiʿa at night rests on a weak narration: only with the setting.
+        val night = { weak: Boolean -> FadailGrouping.suggested(all, listOf(Occasion.NIGHT), weak).map { it.id } }
+        assertTrue("waqia" !in night(false))
+        assertTrue("waqia" in night(true))
+        assertTrue(FadailGrouping.suggested(all, listOf(Occasion.FRIDAY), showWeak = false).any { it.id == "kahf" })
     }
 
     @Test
-    fun entriesAppearUnderEachOfTheirOccasions() {
-        val groups = FadailGrouping.group(all, showWeak = false).toMap()
-        val morning = groups[FadailGroup.ByOccasion(Occasion.MORNING)].orEmpty().map { it.id }
-        val evening = groups[FadailGroup.ByOccasion(Occasion.EVENING)].orEmpty().map { it.id }
-        assertTrue("three-quls-morning-evening" in morning)
-        assertTrue("three-quls-morning-evening" in evening)
-        assertTrue(groups[FadailGroup.ByOccasion(Occasion.FRIDAY)].orEmpty().any { it.id == "kahf-friday" })
-        assertTrue(groups[FadailGroup.Long].orEmpty().any { it.id == "baqara-house" })
-        assertTrue(groups[FadailGroup.ByOccasion(Occasion.ANY)].orEmpty().none { it.id == "baqara-house" })
+    fun suggestionsKeepTheReferenceOrder() {
+        val ids = all.map { it.id }
+        val morning = FadailGrouping.suggested(all, listOf(Occasion.MORNING, Occasion.EVENING), showWeak = false).map { it.id }
+        assertEquals(morning.sortedBy { ids.indexOf(it) }, morning)
     }
 
     @Test

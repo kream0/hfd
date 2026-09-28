@@ -113,7 +113,9 @@ object Reminders {
             ReminderKind.KAHF_FRIDAY -> context.getString(R.string.reminder_kahf_title)
             ReminderKind.DUE_REVIEWS -> context.resources.getQuantityString(R.plurals.home_due_count, dueCount, dueCount)
         }
-        val text = fadila?.virtue?.pick(lang) ?: context.getString(R.string.reminder_reviews_text)
+        // The passage's sound narration for this moment (e.g. Āyat al-Kursī after prayer).
+        val virtue = fadila?.virtues(showWeak = false)?.firstOrNull { kind.occasion in it.occasions }
+        val text = virtue?.text?.pick(lang) ?: context.getString(R.string.reminder_reviews_text)
         val open = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         if (fadila != null) open.setAction(MainActivity.ACTION_OPEN_FADILA).putExtra(MainActivity.EXTRA_FADILA, fadila.id)
         else open.setAction(MainActivity.ACTION_REVIEW)

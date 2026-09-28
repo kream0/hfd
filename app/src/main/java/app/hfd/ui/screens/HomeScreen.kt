@@ -131,11 +131,11 @@ fun HomeScreen(app: AppViewModel) {
             }
         }
 
-        val visible = remember(c) { c.fadail.filter { it.visible(showWeak = false) } }
+        val all = c.fadail
         fun progressOf(f: Fadila) = Stats.fadila(progress, f, Graph.progress.fsrs, now).fraction
 
-        // One suggestion per passage (three entries share Āyat al-Kursī).
-        val tests = visible.filter { Stats.testSuggested(progress, it, now) }.distinctBy { f -> f.ayat }
+        // One suggestion per text (the closing repeats al-Fātiḥa and the opening of al-Baqara).
+        val tests = all.filter { Stats.testSuggested(progress, it, now) }.distinctBy { f -> f.ayat.toSet() }
         if (tests.isNotEmpty()) {
             SectionLabel(stringResource(R.string.home_test_suggested), Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp))
             tests.forEach { f -> FadilaRow(f, progressOf(f), onClick = { app.test(f) }) }
@@ -143,14 +143,14 @@ fun HomeScreen(app: AppViewModel) {
 
         val occasions = remember { FadailGrouping.now(LocalDateTime.now()) }
         if (occasions.isNotEmpty()) {
-            val suggested = visible.filter { f -> f.occasions.any { it in occasions } }
+            val suggested = FadailGrouping.suggested(all, occasions, showWeak = false)
             if (suggested.isNotEmpty()) {
                 val label = occasions.map { stringResource(it.label) }.joinToString(" · ")
                 SectionLabel(stringResource(R.string.home_now, label), Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp))
                 suggested.forEach { FadilaRow(it, progressOf(it), onClick = { app.openFadila(it.id) }) }
             }
         }
-        val daily = visible.filter { "daily" in it.tags && it.occasions.none { o -> o in occasions } }
+        val daily = all.filter { "daily" in it.tags && it.occasions(showWeak = false).none { o -> o in occasions } }
         if (daily.isNotEmpty()) {
             SectionLabel(stringResource(R.string.home_daily), Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp))
             daily.forEach { FadilaRow(it, progressOf(it), onClick = { app.openFadila(it.id) }) }
