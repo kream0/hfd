@@ -11,6 +11,8 @@ enum class Mode {
     @SerialName("learn") LEARN,
     @SerialName("review") REVIEW,
     @SerialName("test") TEST,
+    /** Recited aloud and checked by speech recognition. */
+    @SerialName("recite") RECITE,
 }
 
 /**
@@ -36,6 +38,22 @@ sealed class Event {
     @Serializable
     @SerialName("chain")
     data class Chain(override val at: Long, val keys: List<String>, val ok: Boolean, val ms: Long = 0) : Event()
+
+    /**
+     * Āya [k] recited aloud from memory and checked by speech recognition: [n] words, [miss] the
+     * indices of those recited wrongly, skipped or shown as a hint; [rating] follows from them
+     * (see Tracker.ratingFor) and drives FSRS like a self-rating.
+     */
+    @Serializable
+    @SerialName("recite")
+    data class Recite(
+        override val at: Long,
+        val k: String,
+        val n: Int,
+        val miss: List<Int> = emptyList(),
+        val rating: Rating,
+        val ms: Long = 0,
+    ) : Event()
 
     /** A full test of faḍīla [f] finished: [good] of [total] āyāt recalled. */
     @Serializable

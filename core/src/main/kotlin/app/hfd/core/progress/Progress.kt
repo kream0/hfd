@@ -18,7 +18,16 @@ data class AyahProgress(
     /** Chains (cumulative recitations) this āya was part of, and how many went right. */
     val chains: Int = 0,
     val chainsOk: Int = 0,
+    /** Recitations checked by speech recognition, words recited in them, and mistakes. */
+    val recites: Int = 0,
+    val recitedWords: Int = 0,
+    val recitedMistakes: Int = 0,
+    val lastRecited: Long? = null,
+    /** Word index (in the āya) → times it went wrong: the words to work on. */
+    val weakWords: Map<Int, Int> = emptyMap(),
 ) {
+    /** Share of words right over all checked recitations; null before the first one. */
+    val reciteAccuracy: Float? get() = if (recitedWords == 0) null else (recitedWords - recitedMistakes).toFloat() / recitedWords
     val started: Boolean get() = card.state != CardState.NEW
     /** Graduated to review: learnt, now kept by spaced repetition. */
     val memorised: Boolean get() = card.state == CardState.REVIEW
@@ -85,6 +94,26 @@ class ProgressBook(
                 // The seed makes fuzz reproducible, so a replay lands on the same due dates.
                 val card = fsrs.review(p.card, e.rating, e.at, fuzzSeed = e.at xor e.k.hashCode().toLong())
                 ayat[e.k] = p.copy(card = card)
+                days[day] = d.copy(
+                    ratings = d.ratings + 1,
+                    reciteMs = d.reciteMs + e.ms.coerceIn(0, MAX_RECITE_MS),
+                    learned = d.learned + if (first) 1 else 0,
+                )
+            }
+            is Event.Recite -> {
+                val p = ayat[e.k] ?: AyahProgress()
+                val first = !p.started
+                val card = fsrs.review(p.card, e.rating, e.at, fuzzSeed = e.at xor e.k.hashCode().toLong())
+                val weak = HashMap(p.weakWords)
+                for (w in e.miss) weak[w] = (weak[w] ?: 0) + 1
+                ayat[e.k] = p.copy(
+                    card = card,
+                    recites = p.recites + 1,
+                    recitedWords = p.recitedWords + e.n,
+                    recitedMistakes = p.recitedMistakes + e.miss.size,
+                    lastRecited = maxOf(p.lastRecited ?: 0, e.at),
+                    weakWords = weak,
+                )
                 days[day] = d.copy(
                     ratings = d.ratings + 1,
                     reciteMs = d.reciteMs + e.ms.coerceIn(0, MAX_RECITE_MS),
