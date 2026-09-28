@@ -108,6 +108,22 @@ object Graph {
     fun init(application: Application) {
         app = application
         Diag.start(http, scope) { settings.current.sendDiagnostics }
+        ReciteSession.recordings = { settings.current.sendRecordings }
+        ReciteSession.referenceClip = {
+            runCatching {
+                application.assets.open("diag/112001.wav").use { input ->
+                    val bytes = input.readBytes()
+                    // 16-bit mono PCM: the "data" chunk.
+                    var at = 12
+                    while (at + 8 <= bytes.size && String(bytes, at, 4, Charsets.US_ASCII) != "data") {
+                        at += 8 + java.nio.ByteBuffer.wrap(bytes, at + 4, 4).order(java.nio.ByteOrder.LITTLE_ENDIAN).int
+                    }
+                    val start = at + 8
+                    val b = java.nio.ByteBuffer.wrap(bytes, start, bytes.size - start).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                    FloatArray((bytes.size - start) / 2) { b.short / 32768f }
+                }
+            }.getOrNull()
+        }
         content.content // start loading the text in the background right away
         audio.files // and indexing the āya files on the phone
         progress.state // and rebuilding progress from its log

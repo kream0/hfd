@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.1
+Recite: your voice is brought to a normal level before recognition, and scraps of words no longer move the text.
+- The diagnostics showed the microphone giving a very faint voice and the model catching only bits of words; one bit was taken for "Alif Lām Mīm". The text now only moves on what really matches.
+- More diagnostics: a recognition self-test on a reference recitation, and what the microphone sounds like (never the audio itself). *Settings → About → Send recordings* (off) sends a few recordings, only if you switch it on to help fix Recite.
+
 ## 1.6.0
 Simpler: a passage shows its text and translation, and the only reminder left is for reviews.
 - The narrations, their sources and the "Show weak narrations" setting are gone from the passages.

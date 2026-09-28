@@ -97,6 +97,17 @@ class TrackerTest {
     }
 
     @Test
+    fun audioStatsFindWhereTheSoundIs() {
+        // A 1.5 kHz tone at −20 dB: its energy in the 1–2 kHz band, no clipping, ~3000 crossings/s.
+        val tone = FloatArray(16_000) { (0.1 * kotlin.math.sin(2 * Math.PI * 1_500 * it / 16_000)).toFloat() }
+        val s = AudioStats.of(tone)
+        assertTrue(s.bands.toString(), s.bands[2] > 90)
+        assertEquals(0f, s.clipped)
+        assertTrue(s.zcr in 2_900f..3_100f)
+        assertTrue(s.peakDb in -21f..-19f)
+    }
+
+    @Test
     fun aHintCountsAsAMistake() {
         val t = Tracker(listOf(target(112, 1)))
         t.feed("قل هو")

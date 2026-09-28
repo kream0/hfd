@@ -28,6 +28,7 @@ object Diag {
     private const val TAG = "Diag"
     /** ntfy.sh keeps messages up to 4 KB as text. */
     private const val MAX_BYTES = 3_500
+    private const val MAX_RECORDINGS = 6
 
     /** This run of the app, to tell runs apart in the log. */
     val session: String = UUID.randomUUID().toString().take(6)
@@ -86,6 +87,39 @@ object Diag {
         "error" to e.toString(),
         "at" to e.stackTrace.take(8).joinToString(" < ") { "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" },
     )
+
+    /** Recordings sent this run (Settings → About → Send recordings, off by default). */
+    private var attached = 0
+
+    /**
+     * Sends a recording (16 kHz mono) as a WAV attachment, when the owner switched recordings on
+     * to debug Recite; at most [MAX_RECORDINGS] a run. Blocking; call off the main thread.
+     */
+    fun attach(name: String, pcm: FloatArray, allowed: Boolean) {
+        val client = http ?: return
+        if (!allowed || !enabled() || attached >= MAX_RECORDINGS) return
+        attached++
+        val wav = wav(pcm)
+        val ok = runCatching {
+            client.newCall(
+                Request.Builder().url(URL).put(wav.toRequestBody())
+                    .header("Filename", "$session-$name.wav")
+                    .header("X-Message", "rec $session $name")
+                    .build(),
+            ).execute().use { it.isSuccessful }
+        }.getOrDefault(false)
+        log("diag.recording", "name" to name, "bytes" to wav.size, "sent" to ok)
+    }
+
+    private fun wav(pcm: FloatArray): ByteArray {
+        val data = pcm.size * 2
+        val b = java.nio.ByteBuffer.allocate(44 + data).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        b.put("RIFF".toByteArray()).putInt(36 + data).put("WAVEfmt ".toByteArray())
+        b.putInt(16).putShort(1).putShort(1).putInt(16_000).putInt(32_000).putShort(2).putShort(16)
+        b.put("data".toByteArray()).putInt(data)
+        for (x in pcm) b.putShort((x.coerceIn(-1f, 1f) * 32767).toInt().toShort())
+        return b.array()
+    }
 
     /** Posts what's waiting (blocking; call off the main thread). */
     fun flush() {

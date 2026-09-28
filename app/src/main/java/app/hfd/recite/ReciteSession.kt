@@ -3,6 +3,7 @@ package app.hfd.recite
 import app.hfd.core.progress.Event
 import app.hfd.core.quran.AyahRef
 import app.hfd.core.recite.Arabic
+import app.hfd.core.recite.AudioStats
 import app.hfd.core.recite.AyahResult
 import app.hfd.core.recite.Level
 import app.hfd.core.recite.ReciteTarget
@@ -63,6 +64,7 @@ class ReciteSession(
     private var listenJob: Job? = null
     private val consumer: Job
     private var logged = 0
+    private var heardChunks = 0
     private var ayahStartedAt = System.currentTimeMillis()
 
     private val _ui = MutableStateFlow(snapshot(ReciteUi(targets, emptyList(), null)))
@@ -75,8 +77,17 @@ class ReciteSession(
             for (chunk in chunks) {
                 // The phone's speech microphone is faint: bring the voice to a normal level first.
                 val (pcm, gain) = Level.normalize(chunk)
-                Diag.log("recite.level", "gainDb" to (20 * kotlin.math.log10(gain.toDouble())).toFloat(), "seconds" to chunk.size / Whisper.SAMPLE_RATE.toFloat())
-                val text = withContext(recognizer) { loadedWhisper()?.transcribe(pcm) }
+                heardChunks++
+                val st = AudioStats.of(chunk)
+                Diag.log(
+                    "recite.chunk", "n" to heardChunks, "seconds" to st.seconds, "gainDb" to (20 * kotlin.math.log10(gain.toDouble())).toFloat(),
+                    "peakDb" to st.peakDb, "loudDb" to st.loudDb, "quietDb" to st.quietDb, "dc" to st.dc, "clipped" to st.clipped,
+                    "zcr" to st.zcr, "bands" to st.bands.joinToString("/"),
+                )
+                val text = withContext(recognizer) {
+                    Diag.attach("chunk$heardChunks", chunk, recordings())
+                    loadedWhisper()?.transcribe(pcm)
+                }
                 _ui.value = _ui.value.copy(pending = (_ui.value.pending - 1).coerceAtLeast(0))
                 if (text != null) onHeard(text)
             }
@@ -170,7 +181,23 @@ class ReciteSession(
     private fun loadedWhisper(): Whisper? {
         whisper?.let { return it }
         val file = model() ?: return null
-        return Whisper.load(file.path).also { whisper = it }
+        return Whisper.load(file.path).also {
+            whisper = it
+            if (it != null) selfTest(it)
+        }
+    }
+
+    /**
+     * Once a run: the model on a reference recitation (al-Ikhlāṣ 112:1, Alafasy), to tell a
+     * recognition problem on the phone from a problem with what the microphone hears.
+     */
+    private fun selfTest(w: Whisper) {
+        if (selfTested) return
+        selfTested = true
+        val pcm = referenceClip() ?: return
+        val started = System.currentTimeMillis()
+        val text = w.transcribe(pcm)
+        Diag.log("whisper.selftest", "expected" to "قُلْ هُوَ ٱللَّهُ أَحَدٌ", "text" to text, "ms" to System.currentTimeMillis() - started)
     }
 
     /**
@@ -194,6 +221,11 @@ class ReciteSession(
     }
 
     companion object {
+        @Volatile private var selfTested = false
+        /** The reference clip for [selfTest], set by the app (a WAV in the assets). */
+        @Volatile var referenceClip: () -> FloatArray? = { null }
+        /** Whether the owner asked for recordings to be sent ([Diag.attach]). */
+        @Volatile var recordings: () -> Boolean = { false }
         const val ERROR_MODEL = "model"
         const val ERROR_MIC = "mic"
         private const val ISTIADHA = "أعوذ بالله من الشيطان الرجيم"

@@ -121,6 +121,11 @@ fun SettingsScreen() {
             SettingLine(stringResource(R.string.settings_diagnostics), stringResource(R.string.settings_diagnostics_body, Diag.session)) {
                 NothingSwitch(settings.sendDiagnostics, { on -> Graph.settings.update { it.copy(sendDiagnostics = on) } })
             }
+            if (settings.sendDiagnostics) {
+                SettingLine(stringResource(R.string.settings_recordings), stringResource(R.string.settings_recordings_body)) {
+                    NothingSwitch(settings.sendRecordings, { on -> Graph.settings.update { it.copy(sendRecordings = on) } })
+                }
+            }
             Text(
                 stringResource(R.string.settings_about_body, BuildConfig.VERSION_NAME),
                 style = Type.label,

@@ -43,6 +43,8 @@ data class AppSettings(
     val learnOrder: LearnOrder = LearnOrder.SHORTEST,
     /** Send diagnostics to the developer ([app.hfd.diag.Diag]). */
     val sendDiagnostics: Boolean = true,
+    /** Also a few Recite recordings, to debug recognition (off; the owner switches it on). */
+    val sendRecordings: Boolean = false,
     /** The review reminder; its time in minutes after midnight. */
     val remindReviews: Boolean = false,
     val reviewsAt: Int = 19 * 60,
@@ -109,6 +111,7 @@ class Settings(context: Context) {
             learnRepeats = prefs.getInt("learnRepeats", d.learnRepeats).takeIf { it in AppSettings.LEARN_REPEATS } ?: d.learnRepeats,
             learnOrder = enumOr(prefs.getString("learnOrder", null), d.learnOrder),
             sendDiagnostics = prefs.getBoolean("sendDiagnostics", d.sendDiagnostics),
+            sendRecordings = prefs.getBoolean("sendRecordings", d.sendRecordings),
             remindReviews = prefs.getBoolean("remindReviews", d.remindReviews),
             reviewsAt = prefs.getInt("reviewsAt", d.reviewsAt).coerceIn(0, 24 * 60 - 1),
         )
@@ -130,6 +133,7 @@ class Settings(context: Context) {
             .putInt("learnRepeats", s.learnRepeats)
             .putString("learnOrder", s.learnOrder.name)
             .putBoolean("sendDiagnostics", s.sendDiagnostics)
+            .putBoolean("sendRecordings", s.sendRecordings)
             .putBoolean("remindReviews", s.remindReviews)
             .putInt("reviewsAt", s.reviewsAt)
             // Settings of removed features (1.6.0: passage reminders, the location they needed).
