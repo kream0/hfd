@@ -125,12 +125,12 @@ def sim(a, b):
 def align(heard, expected, lo, hi):
     """
     Semi-global word alignment of all of [heard] with a stretch of expected[lo:hi] (skeletons).
-    Returns the first and last expected indices matched, and the number of matches.
+    Returns the matched (heard index, expected index) pairs, in order.
     """
     span = expected[lo:hi]
     n, m = len(heard), len(span)
     if n == 0 or m == 0:
-        return None, None, 0
+        return []
     GAP = -1.0
     # d[i][j]: best score of heard[:i] against span ending at j; row 0 free (start anywhere).
     d = [[0.0] * (m + 1)] + [[GAP * i] + [0.0] * m for i in range(1, n + 1)]
@@ -151,24 +151,19 @@ def align(heard, expected, lo, hi):
     last_row = d[n]
     j = max(range(1, m + 1), key=lambda k: last_row[k])
     i = n
-    first = last = None
-    matches = 0
+    pairs = []
     while i > 0 and j > 0:
         how = back[i][j]
         if how == 1:
             if sim(heard[i - 1], span[j - 1]) >= 0.5:
-                matches += 1
-                if last is None:
-                    last = j - 1
-                first = j - 1
+                pairs.append((i - 1, lo + j - 1))
             i, j = i - 1, j - 1
         elif how == 2:
             i -= 1
         else:
             j -= 1
-    if first is None:
-        return None, None, 0
-    return lo + first, lo + last, matches
+    pairs.reverse()
+    return pairs
 
 
 # ---------------------------------------------------------------- MP3 frames
@@ -248,20 +243,44 @@ def write_wav(path, pcm):
         w.writeframes((np.clip(pcm, -1, 1) * 32767).astype(np.int16).tobytes())
 
 
-def transcribe(paths):
-    """Text heard in each WAV (one whisper.cpp run, the model loaded once per batch)."""
+def transcribe(paths, times=False):
+    """
+    What was heard in each WAV (one whisper.cpp run per batch, the model loaded once): text, or
+    with [times] the words and when each starts (DTW token timestamps, seconds into the WAV).
+    """
     out = {}
     for k in range(0, len(paths), 40):
         batch = paths[k:k + 40]
-        args = [CLI, "-m", MODEL, "-l", "ar", "-nt", "-np", "-bs", "1", "-bo", "1", "-mc", "0", "-t", str(os.cpu_count() or 4), "-otxt"]
+        args = [CLI, "-m", MODEL, "-l", "ar", "-nt", "-np", "-bs", "1", "-bo", "1", "-mc", "0", "-t", str(os.cpu_count() or 4)]
+        args += ["-dtw", "tiny", "-ojf"] if times else ["-otxt"]
         for p in batch:
             args += ["-f", p]
         subprocess.run(args, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for p in batch:
+            if not times:
+                try:
+                    out[p] = open(p + ".txt", encoding="utf-8").read().strip()
+                except FileNotFoundError:
+                    out[p] = ""
+                continue
             try:
-                out[p] = open(p + ".txt", encoding="utf-8").read().strip()
-            except FileNotFoundError:
-                out[p] = ""
+                # Tokens are bytes of UTF-8 (a letter can span two): keep them raw until joined.
+                doc = json.loads(open(p + ".json", "rb").read().decode("utf-8", "surrogateescape"))
+            except (FileNotFoundError, ValueError):
+                out[p] = []
+                continue
+            words = []
+            for seg in doc.get("transcription", []):
+                for tok in seg.get("tokens", []):
+                    t = tok.get("text", "")
+                    if t.startswith("[_") or t.startswith("<|"):
+                        continue
+                    raw = t.encode("utf-8", "surrogateescape")
+                    if raw.startswith(b" ") or not words:
+                        words.append([raw, tok.get("t_dtw", -1) / 100])
+                    else:
+                        words[-1][0] += raw
+            out[p] = [(w.decode("utf-8", "replace").strip(), t) for w, t in words if w.strip()]
     return out
 
 
@@ -314,97 +333,93 @@ def sura_timings(rid, sura, text, want):
     pcm = decode(mp3)
     dur = len(pcm) / RATE
     quiet, db = pauses(pcm)
+    smooth = np.convolve(db, np.ones(5) / 5, mode="same")  # 100 ms
     speech = [(quiet[k][1], quiet[k + 1][0]) for k in range(len(quiet) - 1) if quiet[k + 1][0] - quiet[k][1] >= 0.12]
     speech = split_long(speech, db)
 
-    # Windows of whole speech runs, up to WINDOW_S.
+    # Windows of whole speech runs, up to WINDOW_S, transcribed with each word's time.
     windows = []
     for a, b in speech:
         if windows and b - windows[-1][0][0] <= WINDOW_S:
             windows[-1].append((a, b))
         else:
             windows.append([(a, b)])
-    paths = []
+    paths, starts = [], []
     for k, w in enumerate(windows):
         p = os.path.join(WORK, f"{rid}-{sura:03d}-w{k:04d}.wav")
         a, b = max(0, w[0][0] - 0.15), min(dur, w[-1][1] + 0.15)
         write_wav(p, pcm[int(a * RATE):int(b * RATE)])
         paths.append(p)
-    heard = transcribe(paths)
+        starts.append(a)
+    heard = transcribe(paths, times=True)
 
     # The text as recited: isti'ādha (optional), basmala (not al-Fātiḥa, not at-Tawba), āyāt.
-    exp, aya_of = [], []
-    for w in words(ISTIADHA):
-        exp.append(skeleton(w)); aya_of.append(-1)
+    exp = [skeleton(w) for w in words(ISTIADHA)]
     if sura not in (1, 9):
-        for w in words(text[(1, 1)]):
-            exp.append(skeleton(w)); aya_of.append(0)
+        exp += [skeleton(w) for w in words(text[(1, 1)])]
     count = ayah_count(sura)
     first_word = {}
     for a in range(1, count + 1):
         first_word[a] = len(exp)
-        for w in words(text[(sura, a)]):
-            exp.append(skeleton(w)); aya_of.append(a)
+        exp += [skeleton(w) for w in words(text[(sura, a)])]
     first_word[count + 1] = len(exp)
-    letters = [max(1, len(x)) for x in exp]
 
-    # Follow the recitation window by window.
+    # Follow the recitation window by window; each expected word matched gets a time.
+    at = {}
     ptr = 0
-    spans = []
+    debug = []
     for k, w in enumerate(windows):
-        h = [skeleton(x) for x in heard[paths[k]].split()]
-        h = [x for x in h if x]
+        ws = [(skeleton(x), t) for x, t in heard[paths[k]]]
+        ws = [(x, t) for x, t in ws if x]
+        h = [x for x, _ in ws]
         lo, hi = max(0, ptr - 12), min(len(exp), ptr + 3 * len(h) + 40)
-        first, last, matches = align(h, exp, lo, hi)
-        if first is not None and matches >= max(1, len(h) // 4):
-            spans.append((first, last))
-            ptr = last + 1
+        pairs = align(h, exp, lo, hi)
+        if pairs and len(pairs) >= max(1, len(h) // 4):
+            for hi_, e in pairs:
+                t = ws[hi_][1]
+                if e not in at and t >= 0:
+                    at[e] = starts[k] + t
+            ptr = pairs[-1][1] + 1
+            span = f"{pairs[0][1]}-{pairs[-1][1]}"
         else:
-            spans.append(None)
+            span = "-"
+        debug.append(f"w{k} {w[0][0]:7.1f}-{w[-1][1]:7.1f} [{span}] {' '.join(x for x, _ in heard[paths[k]])[:110]}")
+
+    def valley(lo, hi):
+        """The quiet stretch around the quietest 100 ms in [lo, hi] (seconds)."""
+        i0, i1 = max(0, int(lo * 50)), min(len(smooth), max(int(lo * 50) + 1, int(hi * 50)))
+        m = i0 + int(np.argmin(smooth[i0:i1]))
+        floor = smooth[m] + 6
+        a = m
+        while a > 0 and smooth[a - 1] < floor and m - a < 100:
+            a -= 1
+        b = m
+        while b + 1 < len(smooth) and smooth[b + 1] < floor and b - m < 100:
+            b += 1
+        return a / 50, (b + 1) / 50
 
     def cut_at(b):
-        """The quiet stretch (start, end) before expected word b, and how it was found."""
-        last_k = max((k for k, s in enumerate(spans) if s), default=None)
-        for k, s in enumerate(spans):
-            if s is None:
-                continue
-            f, l = s
-            if f < b <= l:
-                # Inside window k: the pause between its speech runs nearest in letters.
-                runs = windows[k]
-                frac = sum(letters[f:b]) / sum(letters[f:l + 1])
-                total = sum(y - x for x, y in runs)
-                best, bestd, acc = None, 1.0, 0.0
-                for r in range(len(runs) - 1):
-                    acc += runs[r][1] - runs[r][0]
-                    dist = abs(acc / total - frac)
-                    if dist < bestd:
-                        best, bestd = r, dist
-                if best is not None and bestd <= 0.2:
-                    return runs[best][1], runs[best + 1][0], "pause"
-                # No pause there (āyāt joined): the quietest moment near the estimate.
-                t, left = runs[-1][1], frac * total
-                for x, y in runs:
-                    if left <= y - x:
-                        t = x + left
-                        break
-                    left -= y - x
-                lo, hi = max(0, int((t - 0.4) * 50)), max(1, int((t + 0.4) * 50))
-                q = (lo + int(np.argmin(db[lo:hi]))) / 50
-                return q, q, "joined"
-            if f >= b:
-                before = windows[k - 1][-1][1] if k > 0 else 0.0
-                return before, windows[k][0][0], "window"
-        # After the last word: the end of the last window where the text was heard.
-        k = last_k if last_k is not None else len(windows) - 1
-        after = windows[k + 1][0][0] if k + 1 < len(windows) else dur
-        return windows[k][-1][1], after, "end"
+        """The quiet stretch before expected word b (between the words heard around it)."""
+        before = next((at[e] for e in range(b - 1, max(-1, b - 6), -1) if e in at), None)
+        after = next((at[e] for e in range(b, min(len(exp), b + 5)) if e in at), None)
+        if after is None:
+            if before is None:
+                return None
+            # The end: where the speech run holding the last word stops.
+            run = next((r for r in speech if r[1] >= before), speech[-1])
+            nxt = next((r[0] for r in speech if r[0] > run[1]), dur)
+            return run[1], nxt
+        lo = before + 0.1 if before is not None else after - 2.5
+        return valley(max(lo, after - 8, 0), after + 0.35)
 
     out = {}
     report = []
     for a in sorted(want):
-        s0, s1, how0 = cut_at(first_word[a])
-        e0, e1, how1 = cut_at(first_word[a + 1])
+        c0, c1 = cut_at(first_word[a]), cut_at(first_word[a + 1])
+        if c0 is None or c1 is None:
+            report.append(f"{sura}:{a} not found")
+            continue
+        (s0, s1), (e0, e1) = c0, c1
         start = max((s0 + s1) / 2, s1 - LEAD_S)
         end = min((e0 + e1) / 2, e0 + TAIL_S)
         if end <= start:
@@ -415,9 +430,11 @@ def sura_timings(rid, sura, text, want):
         i0 = max(0, int(start / per) - 1)
         i1 = min(len(fr) - 1, int(end / per) + 1)
         out[f"{sura}:{a}"] = [fr[i0][0], fr[i1][0] + fr[i1][1]]
-        report.append(f"{sura}:{a} {start:8.2f} {end:8.2f} {how0}/{how1}")
+        report.append(f"{sura}:{a} {start:8.2f} {end:8.2f}")
+    if len(windows) <= 12:
+        report = debug + report
     info = {"file": "%03d.mp3" % sura, "size": len(data), "seconds": round(dur, 1), "kbps": kbps}
-    stats = f"{sura:3d}: {dur/60:5.1f} min, {len(windows)} windows, {sum(1 for s in spans if s)} aligned, kbps {kbps}"
+    stats = f"{sura:3d}: {dur/60:5.1f} min, {len(windows)} windows, {len(at)}/{len(exp)} words placed, kbps {kbps}"
     return out, info, report, stats
 
 
@@ -472,9 +489,10 @@ def main():
         if only and sura not in only:
             continue
         out, info, report, stats = sura_timings(rid, sura, text, want[sura])
-        print(stats, flush=True)
+        print(stats)
         for line in report:
             print("   ", line)
+        sys.stdout.flush()
         ayat.update(out)
         suras[str(sura)] = info
     bad = check(rid, text, ayat, suras)
