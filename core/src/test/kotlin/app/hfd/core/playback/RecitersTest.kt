@@ -1,5 +1,7 @@
 package app.hfd.core.playback
 
+import app.hfd.core.Assets
+import app.hfd.core.HfdJson
 import app.hfd.core.quran.AyahRef
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -28,6 +30,22 @@ class RecitersTest {
         assertEquals("https://example.org/r/112.mp3", t.url(AyahRef(112, 1)))
         assertEquals(1_000L..20_999L, t.bytes(AyahRef(112, 1)))
         assertTrue(AyahRef(112, 2) !in t)
+    }
+
+    @Test
+    fun wholeSuraRecitersHaveEveryAyaOfThePassages() {
+        val needed = Assets.fadail.fadail.flatMap { it.ayat }.toSet() + EveryAyah.BASMALA
+        for (r in Reciters.ALL.filter { it.timings != null }) {
+            val t = HfdJson.decodeFromString(AyahTimings.serializer(), Assets.file(r.timings!!).readText())
+            assertEquals(r.folder, t.reciter)
+            val missing = needed.filter { it !in t }
+            assertTrue("${r.id} lacks $missing", missing.isEmpty())
+            for (ref in needed) {
+                val bytes = t.bytes(ref)!!
+                val size = t.sura(ref)!!.size
+                assertTrue("${r.id} $ref $bytes", bytes.first >= 0 && bytes.last < size && bytes.last - bytes.first > 2_000)
+            }
+        }
     }
 
     @Test

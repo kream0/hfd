@@ -54,6 +54,12 @@
   context wrecks this model) and chunks ≤ 20 s (it slips past ~25 s). The base models don't
   load in whisper.cpp yet. whisper.cpp's version is pinned in `app/src/main/cpp/CMakeLists.txt`
   and in `convert.sh`: change both together. Native code is arm64-v8a only.
+- Reciters: everyayah.com folders (probe new ones with `tools/reference/reciters.py`, run by
+  reference.yml). A reciter only published as whole-sūra files (mp3quran.net) gets āya byte
+  ranges from `tools/audio/align.py` (`.github/workflows/audio.yml`, ~45 min, commits
+  `assets/audio/<id>.json`; set `SURAS` in the workflow for a quick trial that writes nothing).
+  Read its report: every cut is transcribed; "to look at" lines are misreadings or bad cuts.
+  If passages change, re-run it (the `:core` test requires every passage āya).
 
 ## Content rules
 - Qur'an text: Tanzil Uthmani, rendered verbatim, never altered; keep Tanzil's notice.
