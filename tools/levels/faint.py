@@ -90,6 +90,20 @@ def main():
         print(" | ".join(line))
     print("\nletter error, mean:", {k: round(sum(v) / len(v), 3) for k, v in total.items()})
 
+    # The app's own decoding path (whisper_jni.c's parameters), with and without single_segment.
+    for single in (1, 0):
+        out = subprocess.run(["work/app_decode", MODEL, str(single), *paths], capture_output=True, text=True).stdout
+        errs = {"original": [], "faint": [], "boosted": []}
+        print(f"\napp decoding, single_segment={single}:")
+        for line in out.splitlines():
+            path, _, hyp = line.partition("\t")
+            name = os.path.basename(path)
+            s, a, kind = int(name[:3]), int(name[3:6]), name[7:-4]
+            e = cer(text(s, a), hyp)
+            errs[kind].append(e)
+            print(f"  {s}:{a} {kind:8s} {e:.2f} «{hyp.strip()[:70]}»")
+        print("  letter error, mean:", {k: round(sum(v) / len(v), 3) for k, v in errs.items() if v})
+
 
 if __name__ == "__main__":
     sys.exit(main())
