@@ -27,8 +27,9 @@
   GitHub Actions (`.github/workflows/build.yml`). Push, then read the run with the GitHub MCP
   tools; the "Show compiler errors" step prints Kotlin errors and test failures compactly.
 - Pure-Kotlin logic lives in the `:core` module (no Android): Qur'an data, faḍāʾil dataset,
-  playback plan, FSRS, progress model. Test it locally with the harness in the scratchpad or
-  recreate it: a `settings.gradle.kts` that includes `:core` with
+  playback plan, FSRS, progress model, recitation tracking (`recite/Tracker.kt`). Test it
+  locally with the harness in the scratchpad or recreate it: a `settings.gradle.kts` that
+  includes `:core` with
   `projectDir = /home/user/hfd/core`, the version catalog from `gradle/libs.versions.toml`, and
   the Maven Central mirror `https://maven-central.storage-download.googleapis.com/maven2` for
   plugins and dependencies; run with the system `gradle` (`gradle -q :core:test`).
@@ -41,6 +42,15 @@
   (pull before your next push, then look at them). It runs on pushes touching `app/src/testDebug`
   or `tools/screenshots.trigger`; the session token can't dispatch or cancel workflows (403), so
   touch that file to re-render.
+- Recite mode's speech model: `.github/workflows/model.yml` (on pushes touching `tools/model/**`)
+  converts Tarteel's Hugging Face models with whisper.cpp v1.7.6 (`convert.sh`), scores them on
+  EveryAyah clips (`evaluate.py`, word error per model and decoding), and uploads the files to
+  the `speech-model` pre-release (never "latest", so the updater ignores it). The app uses
+  `ggml-tiny-ar-quran-q8_0.bin` (43 MB, ~13 % WER, greedy); `SpeechModel.DEFAULT` pins its
+  SHA-256, so a re-converted file needs the new checksum there. Keep audio_ctx 0 (a shorter
+  context wrecks this model) and chunks ≤ 20 s (it slips past ~25 s). The base models don't
+  load in whisper.cpp yet. whisper.cpp's version is pinned in `app/src/main/cpp/CMakeLists.txt`
+  and in `convert.sh`: change both together. Native code is arm64-v8a only.
 
 ## Content rules
 - Qur'an text: Tanzil Uthmani, rendered verbatim, never altered; keep Tanzil's notice.

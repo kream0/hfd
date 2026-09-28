@@ -79,6 +79,17 @@ that the app updates itself from new releases. Android 8.0 or newer.
 - **Review:** everything due today across all faḍāʾil, in muṣḥaf order: text hidden, recite,
   reveal (the āya plays), rate. A full test of a faḍīla is suggested once all its āyāt are
   memorised, then every 30 days.
+- **Recite** (Tarteel-style, on every passage): recite from memory into the microphone and the
+  app follows along, revealing each word once said, marking skipped (struck through) and wrong
+  words, with *Hint* for the next word (counted as a mistake). Speech is cut at the pauses and
+  recognised **on the phone** by [whisper.cpp](https://github.com/ggml-org/whisper.cpp) with
+  Tarteel's Qur'an model [`whisper-tiny-ar-quran`](https://huggingface.co/tarteel-ai/whisper-tiny-ar-quran)
+  (Apache-2.0; 43 MB, downloaded once from this repo's `speech-model` release and checked by
+  SHA-256). What was heard is aligned letter by letter with the text (`:core` `Tracker`,
+  without ḥarakāt or alif forms, so spelling variants of the Uthmani script don't count as
+  mistakes). Each finished āya is a review in the log with its mistakes (none → Good, a few →
+  Hard, more → Again), so it drives FSRS; Stats shows recitations and accuracy, and the
+  progress keeps each āya's weak words. No audio is stored or sent. 64-bit ARM phones only.
 - **Home and Stats:** today's goal (minutes of practice), streak, due reviews, continue where
   you left off, per-faḍīla progress (memorised / total, next review), a dot-matrix calendar,
   total āyāt memorised and listening time.
@@ -139,8 +150,8 @@ JDK 17 and the Android SDK (compileSdk 36):
 ./gradlew :core:test :app:assembleRelease   # → app/build/outputs/apk/release/app-release.apk
 ```
 
-`:core` is plain Kotlin (Qur'an data, faḍāʾil dataset, playback plan, FSRS, progress) and its
-tests run on any JVM.
+`:core` is plain Kotlin (Qur'an data, faḍāʾil dataset, playback plan, FSRS, progress, recitation
+tracking) and its tests run on any JVM. The app builds whisper.cpp with the NDK (CMake 3.22.1).
 
 ## Data sources and licences
 
@@ -153,8 +164,8 @@ tests run on any JVM.
 - **Sūra metadata:** Tanzil's `quran-data.xml` → `quran/suras.json`.
 - **Translations of meanings:** Muhammad Hamidullah (French) and Saheeh International
   (English), from tanzil.net, bundled as published there.
-- **Faḍāʾil dataset:** `app/src/main/assets/fadail.json` (schema 1). Every reference was checked
-  against the source text: the sunnah.com pages (fetched by the *Data* workflow's `verify` job,
+- **Faḍāʾil dataset:** `app/src/main/assets/fadail.json` (schema 2: the passages, each with its
+  narrations). Every reference was checked against the source text: the sunnah.com pages (fetched by the *Data* workflow's `verify` job,
   which prints each cited page), the hadith collections of
   [fawazahmed0/hadith-api](https://github.com/fawazahmed0/hadith-api), and al-Albānī's gradings
   on dorar.net. Nothing is cited that couldn't be checked; e.g. the Āyat al-Kursī-after-prayer
@@ -165,3 +176,7 @@ tests run on any JVM.
   Tanzil files (checksums in `tools/data.lock`).
 - **Fonts:** Amiri Quran, Doto, Space Grotesk, Space Mono — SIL Open Font License (`licenses/`).
 - **Playback:** AndroidX Media3 (Apache 2.0).
+- **Speech recognition:** whisper.cpp v1.7.6 (MIT), built from source by CMake; Tarteel AI's
+  `whisper-tiny-ar-quran` (Apache-2.0), converted to whisper.cpp's format (8-bit) by
+  `.github/workflows/model.yml`, which also measures it on EveryAyah recitations (about 13 %
+  word error, greedy decoding).

@@ -6,6 +6,8 @@ The passages now match the app سور وآيات فاضلة: its forty passages,
 - Each passage lists its narrations with sources and grading, including the app's own ("two lights": al-Fātiḥa and the end of al-Baqara, Muslim 806); weak ones stay behind the setting, and a passage without a known narration says so.
 - A passage plays its count (×7, ×4…) while "Repeat the range" is ×1.
 - Progress is kept (it is per āya). The first ten āyāt of al-Kahf, al-Baqara in full and the Zahrāwān are no longer listed.
+- New: *Recite* (on every passage). Recite from memory into the microphone; the app follows you word by word, reveals what you've said, marks skipped and wrong words, and *Hint* shows the next one. Each āya finished counts as a review (fewer mistakes, longer interval); Stats shows recitations and accuracy.
+- Recognition runs on the phone with Tarteel's Qur'an speech model (43 MB, downloaded the first time you use it). Nothing is sent anywhere.
 
 ## 1.0.0
 Optional reminders: Āyat al-Kursī after each prayer, as-Sajda and al-Mulk before sleep, al-Kahf on Friday, āyāt due for review.
