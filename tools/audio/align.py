@@ -37,7 +37,7 @@ ISTIADHA = "أعوذ بالله من الشيطان الرجيم"
 RATE = 16000
 HOP = RATE // 50            # 20 ms analysis frames
 MIN_PAUSE = 13              # frames: a pause is at least 260 ms of quiet
-WINDOW_S = 20.0             # transcription windows (the model slips past ~25 s)
+WINDOW_S = 10.0             # transcription windows (longer ones: the model drops words where a reciter hardly pauses)
 LEAD_S, TAIL_S = 0.30, 0.45  # pause kept before / after an āya
 JOIN_S = 0.08               # overlap where two āyāt are recited without a pause
 
