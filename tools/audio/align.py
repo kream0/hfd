@@ -167,6 +167,66 @@ def align(heard, expected, lo, hi):
     return pairs
 
 
+def align_all(heard, expected, band=150):
+    """
+    Global alignment of everything heard in a sūra with its whole text, within a band around the
+    diagonal (monotonic: a repeated phrase, as in al-Kāfirūn, is matched in its own place).
+    Leading expected words (the isti'ādha, the basmala) may be skipped cheaply.
+    Returns the matched (heard index, expected index) pairs.
+    """
+    n, m = len(heard), len(expected)
+    if n == 0 or m == 0:
+        return []
+    GAP, SKIP_LEAD = -1.0, -0.2
+    NEG = -1e18
+    centre = lambda i: int(i * m / n)
+    rows, backs = [], []
+    lo0, hi0 = 0, min(m, band)
+    rows.append((0, [SKIP_LEAD * j for j in range(0, hi0 + 1)]))
+    backs.append(None)
+    for i in range(1, n + 1):
+        lo, hi = max(0, centre(i) - band), min(m, centre(i) + band)
+        plo, prow = rows[-1]
+        phi = plo + len(prow) - 1
+        row = [NEG] * (hi - lo + 1)
+        back = [0] * (hi - lo + 1)
+        h = heard[i - 1]
+        for j in range(lo, hi + 1):
+            best, how = NEG, 0
+            if plo <= j <= phi and prow[j - plo] > NEG / 2:  # extra word heard
+                best, how = prow[j - plo] + GAP, 2
+            if j > 0 and plo <= j - 1 <= phi and prow[j - 1 - plo] > NEG / 2:
+                sc = sim(h, expected[j - 1])
+                v = prow[j - 1 - plo] + (2.0 if sc >= 0.75 else (0.5 if sc >= 0.5 else -1.0))
+                if v > best:
+                    best, how = v, 1
+            if j > lo and row[j - 1 - lo] > NEG / 2 and row[j - 1 - lo] + GAP > best:  # expected word not heard
+                best, how = row[j - 1 - lo] + GAP, 3
+            row[j - lo] = best
+            back[j - lo] = how
+        rows.append((lo, row))
+        backs.append(back)
+    # From the end (trailing words heard after the text, e.g. a closing formula, are free).
+    i = max(range(n + 1), key=lambda k: rows[k][1][m - rows[k][0]] if rows[k][0] <= m < rows[k][0] + len(rows[k][1]) else NEG)
+    j = m
+    pairs = []
+    while i > 0 and j > 0:
+        lo = rows[i][0]
+        how = backs[i][j - lo] if 0 <= j - lo < len(backs[i]) else 2
+        if how == 1:
+            if sim(heard[i - 1], expected[j - 1]) >= 0.5:
+                pairs.append((i - 1, j - 1))
+            i, j = i - 1, j - 1
+        elif how == 2:
+            i -= 1
+        elif how == 3:
+            j -= 1
+        else:
+            break
+    pairs.reverse()
+    return pairs
+
+
 # ---------------------------------------------------------------- MP3 frames
 
 BITRATES = {1: [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320],
@@ -378,26 +438,18 @@ def sura_timings(rid, sura, text, want):
     # Seconds per letter, to place words that weren't heard next to ones that were.
     pace = sum(b - a for a, b in speech) / max(1, sum(letters))
 
-    # Follow the recitation window by window; each expected word matched gets a time.
-    at = {}
-    ptr = 0
+    # Everything heard, in order, aligned with the whole text; each expected word matched gets a time.
+    flat = []
     debug = []
     for k, w in enumerate(windows):
-        ws = [(skeleton(x), t) for x, t in heard[paths[k]]]
-        ws = [(x, t) for x, t in ws if x]
-        h = [x for x, _ in ws]
-        lo, hi = max(0, ptr - 12), min(len(exp), ptr + 3 * len(h) + 40)
-        pairs = align(h, exp, lo, hi)
-        if pairs and len(pairs) >= max(1, len(h) // 4):
-            for hi_, e in pairs:
-                t = ws[hi_][1]
-                if e not in at and t >= 0:
-                    at[e] = starts[k] + t
-            ptr = pairs[-1][1] + 1
-            span = f"{pairs[0][1]}-{pairs[-1][1]}"
-        else:
-            span = "-"
-        debug.append(f"w{k} {w[0][0]:7.1f}-{w[-1][1]:7.1f} {len(w)} runs [{span}] " + " ".join(f"{x}@{starts[k] + t:.1f}" for x, t in heard[paths[k]])[:220])
+        for x, t in heard[paths[k]]:
+            sx = skeleton(x)
+            if sx and t >= 0:
+                flat.append((sx, starts[k] + t))
+        debug.append(f"w{k} {w[0][0]:7.1f}-{w[-1][1]:7.1f} {len(w)} runs " + " ".join(f"{x}@{starts[k] + t:.1f}" for x, t in heard[paths[k]])[:220])
+    at = {}
+    for hi_, e in align_all([x for x, _ in flat], exp):
+        at.setdefault(e, flat[hi_][1])
 
     def valley(lo, hi):
         """The silence around the quietest quarter second in [lo, hi] (seconds); a point if none."""
@@ -464,12 +516,20 @@ def sura_timings(rid, sura, text, want):
         got = transcribe(list(paths.values()))
         return {key: got[p] for key, p in paths.items()}
 
-    def judge(a, heard_text):
-        return verdict(text, sura, a, heard_text)
+    def hear_cuts(cuts_by_key):
+        """{key: (start, end)} → {key: (heard, heard at its end or None)}."""
+        segs = {}
+        for key, (a0, a1) in cuts_by_key.items():
+            segs.update(parts(str(key), a0, a1))
+        got = hear(segs)
+        return {key: (got[str(key)], got.get(f"{key}~end")) for key in cuts_by_key}
+
+    def judge(a, h):
+        return verdict(text, sura, a, h[0], h[1])
 
     # Listen to every cut; a boundary where an āya doesn't open or close on its own words is
     # moved to the quiet point nearby that makes both sides read right.
-    first = hear({a: sl for a in want if (sl := slice_of(a))})
+    first = hear_cuts({a: sl for a in want if (sl := slice_of(a))})
     suspects = set()
     for a in want:
         v = judge(a, first[a]) if a in first else None
@@ -501,7 +561,7 @@ def sura_timings(rid, sura, text, want):
                 sl = slice_of(a, trial)
                 if sl:
                     trials[(b, n, a)] = sl
-    heard_trials = hear({f"b{b}-{n}-{a}": sl for (b, n, a), sl in trials.items()}) if trials else {}
+    heard_trials = hear_cuts({f"b{b}-{n}-{a}": sl for (b, n, a), sl in trials.items()}) if trials else {}
     repaired = []
     for b, opts in options.items():
         sides = [x for x in (aya_of[b - 1] if b > 0 else None, aya_of[b] if b < len(exp) else None) if x in want]
@@ -540,23 +600,18 @@ def sura_timings(rid, sura, text, want):
 
 # ---------------------------------------------------------------- check
 
-def verdict(text, sura, a, heard):
+def verdict(text, sura, a, heard, tail_heard=None):
     """
-    Does [heard] read as āya sura:a, cut right? (ok, score, word error, opens right, closes right).
+    Does [heard] read as āya sura:a, cut right? (ok, score, letter error, opens right, closes right).
     Opening right: its first word first, not the previous āya's last word before it; closing
     likewise with the next āya's first word. 0.6: a letter misheard in a short word (وصل for فصل)
-    isn't a wrong cut.
+    isn't a wrong cut. A long āya is heard in two parts ([heard] its start, [tail_heard] its end).
     """
     ref = [skeleton(w) for w in words(text[(sura, a)])]
     hyp = [x for x in (skeleton(w) for w in heard.split()) if x]
-    if not hyp or not ref:
+    end = hyp if tail_heard is None else [x for x in (skeleton(w) for w in tail_heard.split()) if x]
+    if not hyp or not end or not ref:
         return False, -3.0, 1.0, False, False
-    d = list(range(len(hyp) + 1))
-    for i, r in enumerate(ref, 1):
-        prev, d[0] = d[0], i
-        for j, h in enumerate(hyp, 1):
-            prev, d[j] = d[j], min(d[j] + 1, d[j - 1] + 1, prev + (sim(r, h) < 0.75))
-    wer = d[len(hyp)] / len(ref)
     before = words(text[(sura, a - 1)])[-1] if a > 1 else (words(text[(1, 1)])[-1] if sura not in (1, 9) else None)
     after = words(text[(sura, a + 1)])[0] if (sura, a + 1) in text else None
 
@@ -564,32 +619,56 @@ def verdict(text, sura, a, heard):
         return w is not None and sim(x, skeleton(w)) >= 0.6
 
     head = sim(hyp[0], ref[0]) >= 0.6 or (len(hyp) > 1 and sim(hyp[1], ref[0]) >= 0.6 and not close(hyp[0], before))
-    tail = sim(hyp[-1], ref[-1]) >= 0.6 or (len(hyp) > 1 and sim(hyp[-2], ref[-1]) >= 0.6 and not close(hyp[-1], after))
-    ok = wer <= 0.35 and head and tail
-    return ok, (head + tail) - wer, wer, head, tail
+    tail = sim(end[-1], ref[-1]) >= 0.6 or (len(end) > 1 and sim(end[-2], ref[-1]) >= 0.6 and not close(end[-1], after))
+    if tail_heard is not None:
+        return head and tail, float(head + tail), 0.0, head, tail
+    # Letter error (word splits such as يا أيها / يأيها don't count).
+    r, h = "".join(ref), "".join(hyp)
+    d = list(range(len(h) + 1))
+    for i, cr in enumerate(r, 1):
+        prev, d[0] = d[0], i
+        for j, ch in enumerate(h, 1):
+            prev, d[j] = d[j], min(d[j] + 1, d[j - 1] + 1, prev + (cr != ch))
+    err = d[len(h)] / max(1, len(r))
+    ok = err <= 0.3 and head and tail
+    return ok, (head + tail) - err, err, head, tail
+
+
+LONG_S, PART_S = 20.0, 12.0  # cuts longer than LONG_S are heard as their first and last PART_S
+
+
+def parts(key, a0, a1):
+    """The pieces of a cut to transcribe: whole, or its start and its end."""
+    if a1 - a0 <= LONG_S:
+        return {key: (a0, a1)}
+    return {key: (a0, a0 + PART_S), key + "~end": (a1 - PART_S, a1)}
 
 
 def check(rid, text, ayat, infos):
     """Cut each āya as the app will, transcribe it and compare with its text."""
-    paths, refs = [], []
+    segs, refs = {}, []
     for key, (b0, b1) in ayat.items():
         s, a = map(int, key.split(":"))
         data = open(os.path.join(WORK, f"{rid}-{s:03d}.mp3"), "rb").read()[b0:b1]
         mp3 = os.path.join(WORK, f"check-{rid}-{s:03d}{a:03d}.mp3")
         open(mp3, "wb").write(data)
-        wav = mp3[:-4] + ".wav"
-        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", mp3, "-ar", str(RATE), "-ac", "1", wav], check=True)
-        paths.append(wav)
-        refs.append((s, a))
-    heard = transcribe(paths)
+        pcm = decode(mp3)
+        for part, (a0, a1) in parts(key, 0, len(pcm) / RATE).items():
+            wav = os.path.join(WORK, f"check-{rid}-{part.replace(':', '-').replace('~', '-')}.wav")
+            write_wav(wav, pcm[int(a0 * RATE):int(a1 * RATE)])
+            segs[part] = wav
+        refs.append((key, s, a))
+    heard = transcribe(list(segs.values()))
     bad = []
-    for p, (s, a) in zip(paths, refs):
-        ok, _, wer, head, tail = verdict(text, s, a, heard[p])
+    for key, s, a in refs:
+        h = heard[segs[key]]
+        t = heard[segs[key + "~end"]] if key + "~end" in segs else None
+        ok, _, err, head, tail = verdict(text, s, a, h, t)
         if not ok:
-            bad.append((s, a, wer, head, tail, heard[p]))
-    print(f"\nChecked {len(paths)} āyāt: {len(paths) - len(bad)} fine, {len(bad)} to look at")
-    for s, a, wer, head, tail, h in bad:
-        print(f"  {s}:{a} wer {wer:.2f} start {'ok' if head else 'OFF'} end {'ok' if tail else 'OFF'} | {h[:160]}")
+            bad.append((s, a, err, head, tail, h + (" … " + t if t else "")))
+    print(f"\nChecked {len(refs)} āyāt: {len(refs) - len(bad)} fine, {len(bad)} to look at")
+    for s, a, err, head, tail, h in bad:
+        print(f"  {s}:{a} letters off {err:.2f} start {'ok' if head else 'OFF'} end {'ok' if tail else 'OFF'} | {h[:200]}")
     return bad
 
 
