@@ -40,6 +40,8 @@ MIN_PAUSE = 13              # frames: a pause is at least 260 ms of quiet
 WINDOW_S = 10.0             # transcription windows (longer ones: the model drops words where a reciter hardly pauses)
 LEAD_S, TAIL_S = 0.30, 0.45  # pause kept before / after an āya
 JOIN_S = 0.08               # overlap where two āyāt are recited without a pause
+SHORT = 0.45                # a cut under this share of its text's time at the reciter's pace is wrong
+FAR_S = 4.5                 # a boundary may also move this far (a reciter repeating an āya)
 
 
 # ---------------------------------------------------------------- text
@@ -438,6 +440,13 @@ def sura_timings(rid, sura, text, want):
     # Seconds per letter, to place words that weren't heard next to ones that were.
     pace = sum(b - a for a, b in speech) / max(1, sum(letters))
 
+    def expected(a):
+        """Seconds āya a takes at the recitation's pace."""
+        return pace * sum(letters[first_word[a]:first_word[a + 1]])
+
+    def too_short(a, sl):
+        return sl is not None and sl[1] - sl[0] < SHORT * expected(a)
+
     # Everything heard, in order, aligned with the whole text; each expected word matched gets a time.
     flat = []
     debug = []
@@ -539,10 +548,12 @@ def sura_timings(rid, sura, text, want):
     suspects = set()
     for a in want:
         v = judge(a, first[a]) if a in first else None
-        if v is None or not v[0]:
-            if v is None or not v[3]:
+        # Too short for its text: the model heard two alike āyāt (94:5–6) as one.
+        short = too_short(a, slice_of(a))
+        if v is None or not v[0] or short:
+            if v is None or not v[3] or short:
                 suspects.add(first_word[a])
-            if v is None or not v[4]:
+            if v is None or not v[4] or short:
                 suspects.add(first_word[a + 1])
     trials, options = {}, {}
     for b in sorted(suspects):
@@ -550,14 +561,22 @@ def sura_timings(rid, sura, text, want):
             continue
         cur = cuts[b]
         mid = (cur[0] + cur[1]) / 2
+
+        def minima(reach, n, taken):
+            """The n quietest moments within [reach] seconds, apart from each other and from [taken]."""
+            lo, hi = max(1, int((mid - reach) * 50)), min(len(smooth) - 1, int((mid + reach) * 50))
+            idx = sorted((i for i in range(lo, hi) if smooth[i] <= smooth[i - 1] and smooth[i] <= smooth[i + 1]), key=lambda i: smooth[i])
+            got = []
+            for i in idx:
+                if all(abs(i - j) >= 7 for j in taken + got):
+                    got.append(i)
+                if len(got) == n:
+                    break
+            return got
         i0, i1 = max(1, int((mid - 2.0) * 50)), min(len(smooth) - 1, int((mid + 2.0) * 50))
-        idx = sorted((i for i in range(i0, i1) if smooth[i] <= smooth[i - 1] and smooth[i] <= smooth[i + 1]), key=lambda i: smooth[i])
-        picked = []
-        for i in idx:
-            if all(abs(i - j) >= 7 for j in picked):
-                picked.append(i)
-            if len(picked) == 10:
-                break
+        picked = minima(2.0, 10, [])
+        # Further out: where the reciter repeats an āya, the pause after the repetition.
+        picked += minima(FAR_S, 4, picked)
         # Also the quietest moment just before each word heard nearby.
         for e in range(max(0, b - 4), min(len(exp), b + 4)):
             if e in at and i0 / 50 <= at[e] <= i1 / 50:
@@ -565,6 +584,11 @@ def sura_timings(rid, sura, text, want):
                 picked.append(j0 + int(np.argmin(smooth[j0:max(j0 + 1, int((at[e] + 0.05) * 50))])))
         options[b] = [cur] + [around(i) for i in picked]
         sides = [x for x in (aya_of[b - 1] if b > 0 else None, aya_of[b] if b < len(exp) else None) if x in want]
+        # The pause nearest where the two āyāt's span splits in proportion to their letters.
+        if len(sides) == 2 and cuts.get(first_word[sides[0]]) and cuts.get(first_word[sides[1] + 1]):
+            s0, s1 = cuts[first_word[sides[0]]][1], cuts[first_word[sides[1] + 1]][0]
+            p = s0 + (s1 - s0) * expected(sides[0]) / max(1e-6, expected(sides[0]) + expected(sides[1]))
+            options[b].append(valley(max(s0, p - 1.0), min(s1, p + 1.0)))
         for n, c in enumerate(options[b]):
             trial = dict(cuts)
             trial[b] = c
@@ -581,6 +605,8 @@ def sura_timings(rid, sura, text, want):
             for a in sides:
                 key = f"b{b}-{n}-{a}"
                 total += judge(a, heard_trials[key])[1] if key in heard_trials else -5
+                if too_short(a, trials.get((b, n, a))):
+                    total -= 2
             return total
         best = max(range(len(opts)), key=lambda n: (score(n), n == 0))
         if best != 0 and score(best) > score(0):
@@ -595,6 +621,8 @@ def sura_timings(rid, sura, text, want):
             report.append(f"{sura}:{a} not found")
             continue
         start, end = sl
+        if too_short(a, sl):
+            report.append(f"{sura}:{a} short: {end - start:.1f} s for ~{expected(a):.1f} s of text")
         # Frames covering [start, end], plus one before (the bit reservoir of the first).
         per = spf / frate
         i0 = max(0, int(start / per) - 1)
