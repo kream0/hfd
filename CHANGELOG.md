@@ -3,7 +3,7 @@
 ## 1.1.0
 The passages now match the app سور وآيات فاضلة: its forty passages, in its order, with its counts.
 - Al-Fātiḥa, al-Baqara 1–5, Āyat al-Kursī with the two āyāt after it (255–257), 285–286, four passages of Āl ʿImrān, the end of at-Tawba ×7, the end of al-Kahf and al-Kahf in full, as-Sajda, Yā-Sīn, Ghāfir 1–3, ad-Dukhān, the end of al-Fatḥ, al-Wāqiʿa, the musabbiḥāt, al-Mulk, the short sūras from al-Aʿlā to an-Nās (az-Zalzala ×4, al-ʿAṣr ×2, al-Kawthar ×3, al-Kāfirūn ×4, an-Naṣr ×4, al-Ikhlāṣ ×3), and the closing.
-- Each passage lists its narrations with sources and grading; weak ones stay behind the setting, and a passage without a known narration says so.
+- Each passage lists its narrations with sources and grading, including the app's own ("two lights": al-Fātiḥa and the end of al-Baqara, Muslim 806); weak ones stay behind the setting, and a passage without a known narration says so.
 - A passage plays its count (×7, ×4…) while "Repeat the range" is ×1.
 - Progress is kept (it is per āya). The first ten āyāt of al-Kahf, al-Baqara in full and the Zahrāwān are no longer listed.
 

@@ -85,9 +85,11 @@ def main():
     path = os.path.join(ROOT, 'app', 'src', 'main', 'assets', 'fadail.json')
     if os.path.exists(path):
         for entry in json.load(open(path, encoding='utf-8'))['fadail']:
-            for src in entry.get('sources', []):
-                if src.get('url') and src['url'] not in urls:
-                    urls.append(src['url'])
+            # Schema 2: each passage's narrations carry their sources.
+            for v in entry.get('virtues', []) + [entry]:
+                for src in v.get('sources', []):
+                    if src.get('url') and src['url'] not in urls:
+                        urls.append(src['url'])
     for url in urls:
         print(f'\n==================== {url}')
         if 'sunnah.com' in url:

@@ -22,8 +22,10 @@ dependencies {
 }
 
 tasks.test {
-    // Dataset tests read the app's bundled assets.
-    systemProperty("hfd.assets", file("../app/src/main/assets").absolutePath)
+    // Dataset tests read the app's bundled assets: an input, so changing them reruns the tests.
+    val assets = file("../app/src/main/assets")
+    inputs.dir(assets).withPropertyName("assets").withPathSensitivity(PathSensitivity.RELATIVE)
+    systemProperty("hfd.assets", assets.absolutePath)
     testLogging {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL

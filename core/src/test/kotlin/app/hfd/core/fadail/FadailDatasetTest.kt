@@ -95,7 +95,7 @@ class FadailDatasetTest {
     fun weakNarrationsOnlyWithTheSetting() {
         val yasin = Assets.fadail.fadail.single { it.id == "yasin" }
         assertTrue(yasin.virtues(showWeak = false).isEmpty())
-        assertEquals(1, yasin.hiddenWeak(showWeak = false))
+        assertEquals(2, yasin.hiddenWeak(showWeak = false))
         assertTrue(yasin.virtues(showWeak = true).isNotEmpty())
         assertTrue(Assets.fadail.fadail.flatMap { it.virtues(showWeak = false) }.all { it.grading.grade.acceptable })
     }
