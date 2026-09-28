@@ -31,8 +31,8 @@ data class AppSettings(
     val arabicSize: Int = 28,
     /** everyayah.com recitation (see [Reciters]). */
     val reciter: String = Reciters.DEFAULT.id,
-    /** Times each āya is recited in a row; [PlanSpec.INFINITE] = until skipped. */
-    val repeatEach: Int = 3,
+    /** Times each āya is recited in a row; [PlanSpec.INFINITE] = until skipped. Once by default: the passage plays through. */
+    val repeatEach: Int = 1,
     /** Times the whole range is played; [PlanSpec.INFINITE] = loop. */
     val repeatRange: Int = 1,
     val gap: GapMode = GapMode.NONE,
@@ -99,6 +99,11 @@ class Settings(context: Context) {
     val state: StateFlow<AppSettings> = _state.asStateFlow()
     val current: AppSettings get() = _state.value
 
+    init {
+        // Store what load() migrated, so a later choice isn't mistaken for an old default.
+        if (prefs.getInt("defaults", 0) < DEFAULTS) save(_state.value)
+    }
+
     fun update(block: (AppSettings) -> AppSettings) {
         val next = block(_state.value)
         _state.value = next
@@ -114,13 +119,16 @@ class Settings(context: Context) {
             showWeak = prefs.getBoolean("showWeak", d.showWeak),
             arabicSize = prefs.getInt("arabicSize", d.arabicSize).coerceIn(AppSettings.ARABIC_SIZES),
             reciter = Reciters.byId(prefs.getString("reciter", null)).id,
-            repeatEach = prefs.getInt("repeatEach", d.repeatEach).takeIf { it in AppSettings.REPEAT_EACH } ?: d.repeatEach,
+            repeatEach = prefs.getInt("repeatEach", d.repeatEach).takeIf { it in AppSettings.REPEAT_EACH }
+                // Until 1.3.0 each āya played ×3 by default (saved with every other setting): back to the new default.
+                ?.takeUnless { prefs.getInt("defaults", 0) < 1 && it == 3 } ?: d.repeatEach,
             repeatRange = prefs.getInt("repeatRange", d.repeatRange).takeIf { it in AppSettings.REPEAT_RANGE } ?: d.repeatRange,
             gap = enumOr(prefs.getString("gap", null), d.gap),
             speed = prefs.getFloat("speed", d.speed).coerceIn(0.5f, 2f),
             basmala = prefs.getBoolean("basmala", d.basmala),
             dailyGoalMin = prefs.getInt("dailyGoalMin", d.dailyGoalMin).takeIf { it in AppSettings.GOALS } ?: d.dailyGoalMin,
             learnRepeats = prefs.getInt("learnRepeats", d.learnRepeats).takeIf { it in AppSettings.LEARN_REPEATS } ?: d.learnRepeats,
+            learnOrder = enumOr(prefs.getString("learnOrder", null), d.learnOrder),
             remindKursi = prefs.getBoolean("remindKursi", d.remindKursi),
             remindMulk = prefs.getBoolean("remindMulk", d.remindMulk),
             mulkAt = prefs.getInt("mulkAt", d.mulkAt).coerceIn(0, 24 * 60 - 1),
@@ -149,6 +157,7 @@ class Settings(context: Context) {
             .putBoolean("basmala", s.basmala)
             .putInt("dailyGoalMin", s.dailyGoalMin)
             .putInt("learnRepeats", s.learnRepeats)
+            .putString("learnOrder", s.learnOrder.name)
             .putBoolean("remindKursi", s.remindKursi)
             .putBoolean("remindMulk", s.remindMulk)
             .putInt("mulkAt", s.mulkAt)
@@ -159,6 +168,7 @@ class Settings(context: Context) {
             .putString("latitude", s.latitude?.toString())
             .putString("longitude", s.longitude?.toString())
             .putString("prayerMethod", s.prayerMethod.name)
+            .putInt("defaults", DEFAULTS)
             .apply()
     }
 
@@ -167,5 +177,7 @@ class Settings(context: Context) {
 
     companion object {
         const val PREFS = "hfd_settings"
+        /** Version of the defaults the stored settings were saved under (1: an āya plays once). */
+        private const val DEFAULTS = 1
     }
 }

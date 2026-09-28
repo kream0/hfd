@@ -53,7 +53,7 @@ that the app updates itself from new releases. Android 8.0 or newer.
   French, Saheeh International in English; *Auto* follows the app language). Text size S–XL.
 - **Per-āya player:** playback is built as an explicit plan, a flat list of items such as
   basmala, āya (repetition 1), gap, āya (repetition 2), gap, …, next āya. Settings: repeat each
-  āya ×1/3/5/7/10/∞, repeat the range ×1/2/3/5/10/∞, a pause after each recitation of ½×, 1× or
+  āya ×1/3/5/7/10/∞ (×1 by default: the passage plays through), repeat the range ×1/2/3/5/10/∞, a pause after each recitation of ½×, 1× or
   1½× the āya's length (to repeat it aloud), speed 0.75–1.25×, reciter, basmala before a sūra,
   and a sub-range of the faḍīla (range chip, or long-press an āya). Changing a setting rebuilds
   the plan from the current āya. Gaps are `hfd://silence/<ms>` items (a WAV of silence made on

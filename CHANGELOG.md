@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1
+Listening plays the passage through to the end: each āya once by default (it was ×3).
+- The change applies to you too if you'd kept the old ×3; the Āya chip under the player still sets any count.
+- Fix: the order chosen for "Next to learn" is now kept when the app restarts.
+
 ## 1.3.0
 Choose the order of "Next to learn": shortest first, from the beginning, or from the end.
 - Tap the section's title on Home, or go to *Settings → Progress*. "From the end" starts with an-Nās, al-Falaq, al-Ikhlāṣ, the usual way of learning the short sūras.
