@@ -1,0 +1,48 @@
+name: Speech model
+
+# Converts Tarteel's Qur'an-tuned Whisper models (tarteel-ai on Hugging Face, Apache-2.0) to
+# whisper.cpp's format, measures them on EveryAyah recitations, and publishes the files as
+# assets of the "speech-model" pre-release, from which the app downloads its model (never the
+# app updater's "latest" release). The dev sandbox can't reach Hugging Face.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'tools/model/**'
+      - '.github/workflows/model.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: model-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - name: Python dependencies (CPU torch)
+        run: |
+          pip install --quiet --index-url https://download.pytorch.org/whl/cpu torch
+          pip install --quiet "transformers==4.46.3" huggingface_hub numpy
+      - name: Convert and quantize
+        run: bash tools/model/convert.sh
+      - name: Evaluate on EveryAyah recitations
+        run: python3 tools/model/evaluate.py
+      - name: Checksums
+        run: cd out && sha256sum *.bin | tee SHA256SUMS
+      - name: Publish (pre-release "speech-model")
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=speech-model
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --prerelease --latest=false --target "$GITHUB_SHA" \
+              --title "Speech model (Tarteel whisper, whisper.cpp)" \
+              --notes "Qur'an-tuned Whisper models by Tarteel (https://huggingface.co/tarteel-ai, Apache-2.0), converted to whisper.cpp's GGML format for HFD's Recite mode. Not an app release."
+          fi
+          gh release upload "$TAG" out/*.bin out/SHA256SUMS --clobber

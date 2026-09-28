@@ -38,7 +38,8 @@ jobs:
         run: |
           MODE=dev; TAG=""
           case "$EVENT" in
-            release) TAG="$RELEASE_TAG"; MODE=upload ;;
+            # Only app releases (vX.Y.Z); other releases hold assets such as the speech model.
+            release) case "$RELEASE_TAG" in v*) TAG="$RELEASE_TAG"; MODE=upload ;; *) MODE=skip ;; esac ;;
             workflow_dispatch) TAG="v${INPUT_VERSION#v}"; MODE=create ;;
             push)
               if [ "$GITHUB_REF_TYPE" = "tag" ]; then
