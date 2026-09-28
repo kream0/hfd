@@ -32,9 +32,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.nullable
 import java.io.File
 
-/** The range repetitions: the setting, or the passage's own count while the setting is ×1. */
-fun effectiveRepeatRange(setting: Int, times: Int): Int = if (setting == 1) times else setting
-
 /** What is being listened to: a faḍīla, or a sub-range of it (indices into its āyāt). */
 @Serializable
 data class PlaySession(
@@ -52,8 +49,6 @@ data class PlaySession(
     val basmala: Boolean? = null,
     /** Lets a caller recognise the end of its own request (e.g. a Learn step). */
     val tag: String? = null,
-    /** The passage's count in the reference (×7, ×4…): the range repeats that often unless set otherwise. */
-    val times: Int = 1,
 )
 
 /** Saved on every change so playback resumes exactly there (in the app or from earbuds). */
@@ -269,7 +264,7 @@ class PlaybackEngine(
 
     private fun specFor(session: PlaySession, s: AppSettings): PlanSpec {
         var repeatEach = session.repeatEach ?: s.repeatEach
-        var repeatRange = session.repeatRange ?: effectiveRepeatRange(s.repeatRange, session.times)
+        var repeatRange = session.repeatRange ?: s.repeatRange
         if (endOfFadila) {
             if (repeatEach == PlanSpec.INFINITE) repeatEach = 1
             repeatRange = currentItem()?.cursor?.pass ?: 1

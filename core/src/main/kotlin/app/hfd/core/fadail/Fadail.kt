@@ -91,7 +91,10 @@ data class Fadila(
     val id: String,
     val title: Localized,
     val ranges: List<AyahRange>,
-    /** Recitations in a row, as the reference gives them (end of at-Tawba ×7…). */
+    /**
+     * Recitations in a row in the reference's daily wird (end of at-Tawba ×7…). Kept as the
+     * reference gives it; the app is for learning, so neither playback nor the lists use it.
+     */
     val times: Int = 1,
     /** Narrations about this passage; none when no specific one is known. */
     val virtues: List<Virtue> = emptyList(),

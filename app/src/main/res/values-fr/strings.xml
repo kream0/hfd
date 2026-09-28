@@ -64,8 +64,8 @@
     <string name="detail_back">Retour</string>
     <string name="sura_header">Sourate %1$d · %2$s · %3$s</string>
 
-    <string name="home_now">Suggéré maintenant · %1$s</string>
-    <string name="home_daily">Chaque jour</string>
+    <string name="home_learning">Continuer l’apprentissage</string>
+    <string name="home_next">À apprendre ensuite · les plus courts d’abord</string>
     <string name="home_all">Tous les faḍāʾil</string>
 
     <string name="settings_reading">Lecture</string>
@@ -257,8 +257,7 @@
     <string name="time_title">Heure</string>
     <string name="offline_partial">%d %% hors ligne · tout enregistrer</string>
     <string name="notifications_denied">Notifications de HFD désactivées : les rappels ne peuvent pas s\'afficher.</string>
-    <string name="label_times">×%1$d</string>
-    <string name="fadail_wird">Le wird de référence · %1$d passages</string>
+    <string name="fadail_count">%1$d passages</string>
     <string name="detail_no_narration">Aucun récit propre à ce passage n\'est cité ici : il est récité dans le cadre du wird de référence.</string>
     <plurals name="detail_hidden_weak">
         <item quantity="one">%1$d récit faible masqué (Réglages → Lecture → Afficher les récits faibles)</item>

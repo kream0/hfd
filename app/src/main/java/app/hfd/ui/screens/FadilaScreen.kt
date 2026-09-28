@@ -238,7 +238,6 @@ private fun Intro(f: Fadila, app: AppViewModel) {
             horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            if (f.times > 1) Chip(stringResource(R.string.label_times, f.times))
             f.occasions(settings.showWeak).forEach { Chip(stringResource(it.label)) }
             if (f.isLong) Chip(stringResource(R.string.label_long))
         }

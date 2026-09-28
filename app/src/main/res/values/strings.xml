@@ -64,8 +64,8 @@
     <string name="detail_back">Back</string>
     <string name="sura_header">Sūra %1$d · %2$s · %3$s</string>
 
-    <string name="home_now">Suggested now · %1$s</string>
-    <string name="home_daily">Every day</string>
+    <string name="home_learning">Continue learning</string>
+    <string name="home_next">Next to learn · shortest first</string>
     <string name="home_all">All faḍāʾil</string>
 
     <string name="settings_reading">Reading</string>
@@ -256,8 +256,7 @@
     <string name="time_title">Time</string>
     <string name="offline_partial">%d%% offline · save all</string>
     <string name="notifications_denied">Notifications are off for HFD: reminders can\'t show.</string>
-    <string name="label_times">×%1$d</string>
-    <string name="fadail_wird">The reference wird · %1$d passages</string>
+    <string name="fadail_count">%1$d passages</string>
     <string name="detail_no_narration">No narration about this particular passage is cited here: it is recited as part of the reference wird.</string>
     <plurals name="detail_hidden_weak">
         <item quantity="one">%1$d weak narration hidden (Settings → Reading → Show weak narrations)</item>

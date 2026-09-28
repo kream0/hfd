@@ -26,22 +26,25 @@ that the app updates itself from new releases. Android 8.0 or newer.
 
 ## Features
 
-- **The passages of the reference app** *سور وآيات فاضلة* (the "wird at-taḥṣīn", as listed
-  with the app's own recitation and by its publisher on aljamaa.net), in its order and with its counts: al-Fātiḥa; al-Baqara
+- **What to learn: the passages of the reference app** *سور وآيات فاضلة* (as listed with the
+  app's own recitation and by its publisher on aljamaa.net), in its order: al-Fātiḥa; al-Baqara
   1–5, Āyat al-Kursī to "khālidūn" (255–257), 285–286; Āl ʿImrān 1–9, 18–19, 26–27, 190–200; the end of at-Tawba ×7;
   the end of al-Kahf, and al-Kahf in full (Friday); as-Sajda, Yā-Sīn, Ghāfir 1–3, ad-Dukhān,
   the end of al-Fatḥ, al-Wāqiʿa, the musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa,
   at-Taghābun), al-Mulk, al-Aʿlā, aḍ-Ḍuḥā, ash-Sharḥ, al-ʿAlaq, al-Qadr, az-Zalzala ×4,
   at-Takāthur, al-ʿAṣr ×2, Quraysh, al-Māʿūn, al-Kawthar ×3, al-Kāfirūn ×4, an-Naṣr ×4,
   al-Ikhlāṣ ×3, al-Falaq, an-Nās, and the closing (al-Fātiḥa and al-Baqara 1–5). A `:core`
-  test pins this list. The count is how often the passage plays while *Repeat the range* is ×1.
+  test pins this list. The reference's recitation counts (×7…) are kept in the data only: the
+  app is for learning the passages, not for reciting the daily wird.
 - **Narrations, verified:** each passage lists the ḥadīth about it, with a short faithful
   paraphrase (French / English), its sources (sunnah.com / dorar.net links) and its grading with
   the grader. Ṣaḥīḥ and ḥasan show by default; weak (ḍaʿīf) and fabricated (mawḍūʿ) ones only
   with *Settings → Reading → Show weak narrations*, clearly labelled. Where no narration about a
   passage is known, the app says so rather than invent one.
-- **Suggestions:** Home suggests what fits the time of day (morning, evening, night, before
-  sleep, Friday) from the sound narrations, plus the daily ones.
+- **Learning path:** Home puts learning first: today's goal and the reviews due, then
+  *Continue learning* (the passages begun, straight into Learn at the next new āya) and *Next
+  to learn* (the passages not begun, shortest first: al-Kawthar, al-ʿAṣr, al-Ikhlāṣ…). A
+  passage made only of shorter ones (the closing) is learnt through them.
 - **Reading view:** Tanzil's Uthmani text, verbatim, in Amiri Quran, right-to-left, large, with
   ḥarakāt, waqf marks and āya numbers in Arabic-Indic digits between ornate brackets ﴿٤﴾. Each sūra's basmala
   is shown above its first āya. Optional translation of meanings under each āya (Hamidullah in

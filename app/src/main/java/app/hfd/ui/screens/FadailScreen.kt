@@ -21,7 +21,7 @@ import app.hfd.ui.components.FadilaRow
 import app.hfd.ui.components.ScreenHeader
 import app.hfd.ui.components.SectionLabel
 
-/** Every passage, in the order of the reference wird. */
+/** Every passage, in the reference list's order, with its progress. */
 @Composable
 fun FadailScreen(onOpen: (String) -> Unit) {
     val content by Graph.content.content.collectAsStateWithLifecycle()
@@ -36,7 +36,7 @@ fun FadailScreen(onOpen: (String) -> Unit) {
         LazyColumn(Modifier.fillMaxSize()) {
             item { ScreenHeader(stringResource(R.string.tab_fadail).uppercase()) }
             item {
-                SectionLabel(stringResource(R.string.fadail_wird, c.fadail.size), Modifier.padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 4.dp))
+                SectionLabel(stringResource(R.string.fadail_count, c.fadail.size), Modifier.padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 4.dp))
             }
             items(c.fadail, key = { it.id }) { f ->
                 FadilaRow(f, progress = Stats.fadila(progress, f, Graph.progress.fsrs, now).fraction, onClick = { onOpen(f.id) })

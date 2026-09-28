@@ -9,6 +9,8 @@
 - Release on your own, without asking, once a user-facing change is ready and CI is green on
   it (the owner said never to ask for release permission): bump `VERSION`, add its section to
   `CHANGELOG.md`, push. Say which version went out.
+- The app is for **learning** (memorising) the passages; the daily wird (recitation counts,
+  time-of-day suggestions) is not the goal. Design for the learner first.
 - Keep replies short: what changed, what to do on the phone (ideally nothing), known limits.
 - No pull requests unless asked. Work in small verified steps: run the JVM tests, re-read the
   diff, push, then check CI is green.

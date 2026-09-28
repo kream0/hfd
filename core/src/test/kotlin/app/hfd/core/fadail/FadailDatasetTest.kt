@@ -98,6 +98,10 @@ class FadailDatasetTest {
         assertEquals(2, yasin.hiddenWeak(showWeak = false))
         assertTrue(yasin.virtues(showWeak = true).isNotEmpty())
         assertTrue(Assets.fadail.fadail.flatMap { it.virtues(showWeak = false) }.all { it.grading.grade.acceptable })
+        // Al-Wāqiʿa at night rests on a weak narration: that occasion only shows with the setting.
+        val waqia = Assets.fadail.fadail.single { it.id == "waqia" }
+        assertTrue(Occasion.NIGHT !in waqia.occasions(showWeak = false))
+        assertTrue(Occasion.NIGHT in waqia.occasions(showWeak = true))
     }
 
     @Test

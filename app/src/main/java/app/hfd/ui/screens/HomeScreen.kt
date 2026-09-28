@@ -30,10 +30,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
-import app.hfd.core.fadail.FadailGrouping
 import app.hfd.core.fadail.Fadila
 import app.hfd.core.progress.LearnStep
+import app.hfd.core.progress.LearningPath
 import app.hfd.core.progress.Stats
+import app.hfd.core.recite.Arabic
 import app.hfd.data.AppMode
 import app.hfd.ui.AppViewModel
 import app.hfd.ui.Tab
@@ -44,11 +45,9 @@ import app.hfd.ui.components.PillButton
 import app.hfd.ui.components.PillStyle
 import app.hfd.ui.components.ScreenHeader
 import app.hfd.ui.components.SectionLabel
-import app.hfd.ui.label
 import app.hfd.ui.text
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
-import java.time.LocalDateTime
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -141,19 +140,20 @@ fun HomeScreen(app: AppViewModel) {
             tests.forEach { f -> FadilaRow(f, progressOf(f), onClick = { app.test(f) }) }
         }
 
-        val occasions = remember { FadailGrouping.now(LocalDateTime.now()) }
-        if (occasions.isNotEmpty()) {
-            val suggested = FadailGrouping.suggested(all, occasions, showWeak = false)
-            if (suggested.isNotEmpty()) {
-                val label = occasions.map { stringResource(it.label) }.joinToString(" · ")
-                SectionLabel(stringResource(R.string.home_now, label), Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp))
-                suggested.forEach { FadilaRow(it, progressOf(it), onClick = { app.openFadila(it.id) }) }
-            }
+        // Learning first: carry on with the passages begun, then the next ones, shortest first.
+        // (Not the one the Continue card already resumes.)
+        val resumed = if (s != null && s.mode == AppMode.LEARN && s.learn != null && s.learn.step != LearnStep.DONE) s.learn.fadilaId else null
+        val learning = remember(progress, all, resumed) { LearningPath.inProgress(all, progress).filter { it.id != resumed } }
+        if (learning.isNotEmpty()) {
+            SectionLabel(stringResource(R.string.home_learning), Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp))
+            learning.forEach { f -> FadilaRow(f, progressOf(f), onClick = { app.learn(f) }) }
         }
-        val daily = all.filter { "daily" in it.tags && it.occasions(showWeak = false).none { o -> o in occasions } }
-        if (daily.isNotEmpty()) {
-            SectionLabel(stringResource(R.string.home_daily), Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp))
-            daily.forEach { FadilaRow(it, progressOf(it), onClick = { app.openFadila(it.id) }) }
+        val next = remember(progress, all) {
+            LearningPath.next(all, progress, words = { ref -> Arabic.words(c.text(ref)).size })
+        }
+        if (next.isNotEmpty()) {
+            SectionLabel(stringResource(R.string.home_next), Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp))
+            next.forEach { f -> FadilaRow(f, progressOf(f), onClick = { app.openFadila(f.id) }) }
         }
         Box(Modifier.padding(20.dp)) { PillButton(stringResource(R.string.home_all), { app.selectTab(Tab.FADAIL) }) }
     }
