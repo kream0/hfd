@@ -58,10 +58,13 @@ that the app updates itself from new releases. Android 8.0 or newer.
   and a sub-range of the faḍīla (range chip, or long-press an āya). Changing a setting rebuilds
   the plan from the current āya. Gaps are `hfd://silence/<ms>` items (a WAV of silence made on
   the fly) sized from the āya's measured length.
-- **Reciters** (everyayah.com, one MP3 per āya): Mishary Alafasy (`Alafasy_128kbps`),
-  al-Ḥuṣarī (`Husary_128kbps`), al-Ḥuṣarī Muʿallim (`Husary_Muallim_128kbps`), al-Minshāwī
-  murattal (`Minshawy_Murattal_128kbps`), ʿAbd al-Bāsiṭ murattal (`Abdul_Basit_Murattal_192kbps`).
-  Folder names were checked on the server by the *Data* workflow.
+- **Reciters** (everyayah.com, one MP3 per āya): Māhir al-Muʿayqilī (default,
+  `MaherAlMuaiqly128kbps`), Mishary Alafasy (`Alafasy_128kbps`), al-Ḥuṣarī (`Husary_128kbps`),
+  al-Ḥuṣarī Muʿallim (`Husary_Muallim_128kbps`), al-Minshāwī murattal
+  (`Minshawy_Murattal_128kbps`), ʿAbd al-Bāsiṭ murattal (`Abdul_Basit_Murattal_192kbps`), Yāsir
+  ad-Dawsarī, ʿAbd ar-Raḥmān as-Sudays, Saʿūd ash-Shuraym, Nāṣir al-Qaṭāmī, Abū Bakr
+  ash-Shāṭirī, Aḥmad al-ʿAjamī, ʿAlī al-Ḥudhayfī, Ṣalāḥ al-Budayr, Muḥammad Ayyūb and Hānī
+  ar-Rifāʿī. Folder names were checked on the server by CI (`tools/reference/reciters.py`).
 - **Media session:** notification, lock screen and Bluetooth earbuds. Next / previous jump to the
   next / previous āya (a `ForwardingPlayer`), not the next repetition; the title reads like
   "Āyat al-Kursī · 2:255 · 3/5". Play on the earbuds with the app closed resumes exactly where

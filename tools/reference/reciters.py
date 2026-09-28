@@ -40,8 +40,12 @@ def everyayah():
         print(f"--- {url} HTTP {status}, {len(names)} links")
         print("matching:", [n for n in names if matches(n)])
         print("all:", " ".join(names)[:6000])
-    for folder in ["MaherAlMuaiqly128kbps", "Maher_AlMuaiqly_64kbps", "Badr_AlTurki_128kbps", "Bader_AlTurki_128kbps"]:
-        for f in ["001001.mp3", "002255.mp3", "114006.mp3"]:
+    # The folders HFD offers: a few āyāt of the passages in each, to be sure the folder is whole.
+    for folder in ["MaherAlMuaiqly128kbps", "Yasser_Ad-Dussary_128kbps", "Abdurrahmaan_As-Sudais_192kbps",
+                   "Saood_ash-Shuraym_128kbps", "Nasser_Alqatami_128kbps", "Abu_Bakr_Ash-Shaatree_128kbps",
+                   "Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net", "Hudhaify_128kbps", "Salah_Al_Budair_128kbps",
+                   "Muhammad_Ayyoub_128kbps", "Hani_Rifai_192kbps"]:
+        for f in ["001001.mp3", "002255.mp3", "003200.mp3", "018110.mp3", "036083.mp3", "056096.mp3", "067030.mp3", "114006.mp3"]:
             url = f"https://everyayah.com/data/{folder}/{f}"
             status, h, _ = get(url, "HEAD")
             print(f"{status} {h.get('Content-Length', '?'):>8} {url}")

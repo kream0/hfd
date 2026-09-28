@@ -118,7 +118,9 @@ class Settings(context: Context) {
             translation = enumOr(prefs.getString("translation", null), d.translation),
             showWeak = prefs.getBoolean("showWeak", d.showWeak),
             arabicSize = prefs.getInt("arabicSize", d.arabicSize).coerceIn(AppSettings.ARABIC_SIZES),
-            reciter = Reciters.byId(prefs.getString("reciter", null)).id,
+            reciter = Reciters.byId(prefs.getString("reciter", null)).id
+                // Until 1.3.1 Alafasy was the default (saved with every other setting): move to the new one.
+                .takeUnless { prefs.getInt("defaults", 0) < 2 && it == "alafasy" } ?: d.reciter,
             repeatEach = prefs.getInt("repeatEach", d.repeatEach).takeIf { it in AppSettings.REPEAT_EACH }
                 // Until 1.3.0 each āya played ×3 by default (saved with every other setting): back to the new default.
                 ?.takeUnless { prefs.getInt("defaults", 0) < 1 && it == 3 } ?: d.repeatEach,
@@ -177,7 +179,7 @@ class Settings(context: Context) {
 
     companion object {
         const val PREFS = "hfd_settings"
-        /** Version of the defaults the stored settings were saved under (1: an āya plays once). */
-        private const val DEFAULTS = 1
+        /** Version of the defaults the stored settings were saved under (1: an āya plays once; 2: Maher al-Muʿayqilī). */
+        private const val DEFAULTS = 2
     }
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0
+Māhir al-Muʿayqilī is the default reciter, with eleven more to choose from.
+- New: al-Muʿayqilī, Yāsir ad-Dawsarī, as-Sudays, ash-Shuraym, al-Qaṭāmī, ash-Shāṭirī, al-ʿAjamī, al-Ḥudhayfī, al-Budayr, Muḥammad Ayyūb, ar-Rifāʿī (the reciter chip under the player, or Settings → Listening).
+- If you had kept Alafasy (the old default), the app switches to al-Muʿayqilī once; any reciter you pick afterwards stays. Āyāt download again for the new reciter when you open a passage.
+
 ## 1.3.1
 Listening plays the passage through to the end: each āya once by default (it was ×3).
 - The change applies to you too if you'd kept the old ×3; the Āya chip under the player still sets any count.

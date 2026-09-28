@@ -13,6 +13,7 @@ class RecitersTest {
         assertEquals("114006.mp3", EveryAyah.fileName(AyahRef(114, 6)))
         assertEquals("001001.mp3", EveryAyah.fileName(EveryAyah.BASMALA))
         assertEquals(Reciters.DEFAULT, Reciters.byId("unknown"))
+        assertEquals("maher", Reciters.DEFAULT.id)
     }
 
     @Test
