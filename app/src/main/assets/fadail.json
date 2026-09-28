@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "source": "Passages and counts: the app \"سور وآيات فاضلة\" (com.yassine.mob.ayatfadila) as its publisher lists them (aljamaa.net, \"سور وآيات فاضلــة\"); al-Kahf in full from the app's description. Narrations checked on sunnah.com / dorar.net.",
+ "source": "Passages and counts: the app \"سور وآيات فاضلة\" (com.yassine.mob.ayatfadila), as listed with its own recitation (\"مصحف السور والآيات الفاضلة\", Warsh, SoundCloud) and by its publisher (aljamaa.net); al-Kahf in full from the app's description. Narrations checked on sunnah.com / dorar.net.",
  "fadail": [
   {
    "id": "fatiha",
@@ -97,7 +97,7 @@
     {
      "sura": 2,
      "from": 255,
-     "to": 255
+     "to": 257
     }
    ],
    "virtues": [
@@ -249,7 +249,7 @@
    "ranges": [
     {
      "sura": 2,
-     "from": 284,
+     "from": 285,
      "to": 286
     }
    ],

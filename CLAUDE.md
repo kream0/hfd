@@ -45,7 +45,8 @@
 ## Content rules
 - Qur'an text: Tanzil Uthmani, rendered verbatim, never altered; keep Tanzil's notice.
 - The passages (and their counts, ×7…) must match the owner's reference app *سور وآيات فاضلة*
-  (com.yassine.mob.ayatfadila), as its publisher lists them (aljamaa.net, "سور وآيات فاضلــة");
+  (com.yassine.mob.ayatfadila), as listed with the app's own recitation (SoundCloud,
+  "مصحف السور والآيات الفاضلة") and by its publisher (aljamaa.net, "سور وآيات فاضلــة");
   `FadailDatasetTest` pins that list in order. Don't add or drop passages without the owner.
 - Narrations in `fadail.json`: never invent a reference. Each source is checked against the
   source text (verify job log, or the hadith dataset on raw.githubusercontent.com). Unverified

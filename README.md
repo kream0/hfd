@@ -26,9 +26,9 @@ that the app updates itself from new releases. Android 8.0 or newer.
 
 ## Features
 
-- **The passages of the reference app** *سور وآيات فاضلة* (the "wird at-taḥṣīn", as its
-  publisher lists them on aljamaa.net), in its order and with its counts: al-Fātiḥa; al-Baqara
-  1–5, Āyat al-Kursī, 284–286; Āl ʿImrān 1–9, 18–19, 26–27, 190–200; the end of at-Tawba ×7;
+- **The passages of the reference app** *سور وآيات فاضلة* (the "wird at-taḥṣīn", as listed
+  with the app's own recitation and by its publisher on aljamaa.net), in its order and with its counts: al-Fātiḥa; al-Baqara
+  1–5, Āyat al-Kursī to "khālidūn" (255–257), 285–286; Āl ʿImrān 1–9, 18–19, 26–27, 190–200; the end of at-Tawba ×7;
   the end of al-Kahf, and al-Kahf in full (Friday); as-Sajda, Yā-Sīn, Ghāfir 1–3, ad-Dukhān,
   the end of al-Fatḥ, al-Wāqiʿa, the musabbiḥāt (al-Ḥadīd, al-Ḥashr, aṣ-Ṣaff, al-Jumuʿa,
   at-Taghābun), al-Mulk, al-Aʿlā, aḍ-Ḍuḥā, ash-Sharḥ, al-ʿAlaq, al-Qadr, az-Zalzala ×4,

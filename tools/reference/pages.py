@@ -12,30 +12,29 @@ UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chr
 
 # (url, max characters of text, print the page's links)
 PAGES = [
-    ("https://www.yassine.mobi/store/ar/Ayat-Fadila.shtml", 6000, True),
-    ("https://www.yassine.mobi/store/fr/Ayat-Fadila.shtml", 6000, True),
-    ("https://www.yassine.mobi/store/en/Ayat-Fadila.shtml", 6000, True),
-    ("https://www.yassine.mobi/store/en/index.shtml", 4000, True),
-    # The app's written content (Warsh), as shared on SlideShare.
-    ("https://www.slideshare.net/slideshow/warsh-soar-wa-ayat-fadila/72085438", 60000, False),
-    # The app's full recitation, with its track description.
-    ("https://soundcloud.com/user563166769/sowar-wa-ayat-fadila-yassine-al-jazaeri", 8000, False),
-    ("https://bouarfa.ahlamountada.com/t20-topic", 40000, False),
-    ("https://www.aljamaa.net/posts/%D8%A7%D9%84%D8%AA%D8%AD%D8%B5%D9%8A%D9%86-%D9%81%D9%8A-%D8%A7%D9%84%D9%82%D8%B1%D8%A2%D9%86-%D8%A7%D9%84%D9%83%D8%B1%D9%8A%D9%85-%D9%88%D8%A7%D9%84%D8%B3%D9%86%D8%A9-%D8%A7%D9%84%D9%86%D8%A8%D9%88", 20000, False),
-    ("https://mawdoo3.com/%D8%B3%D9%88%D8%B1_%D9%88%D8%A2%D9%8A%D8%A7%D8%AA_%D9%81%D8%A7%D8%B6%D9%84%D8%A9", 12000, False),
+    # The app's own recitation ("مصحف السور والآيات الفاضلة", Warsh): its description lists the
+    # passages in order, with the app's download links.
+    ("https://soundcloud.com/user563166769/sowar-wa-ayat-fadila-yassine-al-jazaeri", 3000, False),
+    # "Forty ḥadīth on the virtuous sūras and āyāt" that go with this wird (windows-1256).
+    ("https://bouarfa.ahlamountada.com/t20-topic", 60000, False),
 ]
 
 # Hugging Face: the Tarteel models (licence, files and sizes, model cards).
-HF_API = [
-    "https://huggingface.co/api/models?author=tarteel-ai&full=true",
-]
-HF_CARDS = ["tarteel-ai/whisper-base-ar-quran", "tarteel-ai/whisper-tiny-ar-quran"]
+# (Read once: both Apache-2.0, fine-tuned Whisper; base WER 5.75, tiny WER 7.05.)
+HF_API: list = []
+HF_CARDS: list = []
 
 
 def get(url):
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept-Language": "ar,fr,en"})
     with urllib.request.urlopen(req, timeout=60) as r:
-        return r.read().decode("utf-8", "replace")
+        raw = r.read()
+        # Older Arabic forums are windows-1256: use the declared charset.
+        charset = r.headers.get_content_charset()
+        if not charset:
+            m = re.search(rb'charset=["\']?([A-Za-z0-9_-]+)', raw[:4000])
+            charset = m.group(1).decode() if m else "utf-8"
+        return raw.decode(charset, "replace")
 
 
 def text_of(page):

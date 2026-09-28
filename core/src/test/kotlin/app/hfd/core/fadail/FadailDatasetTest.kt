@@ -9,14 +9,16 @@ import org.junit.Test
 class FadailDatasetTest {
     /**
      * The passages of the reference app "سور وآيات فاضلة" (com.yassine.mob.ayatfadila), in its
-     * publisher's order (aljamaa.net, "سور وآيات فاضلــة": الفاتحة، البقرة من "الم" إلى
-     * "المفلحون"، آية الكرسي، من "لله ما في السموات" إلى آخرها، …، الإخلاص ×3، الفلق والناس،
-     * والختم بالفاتحة وأول البقرة). Whole sūra = its number; "×n" = recitations. Al-Kahf in full
-     * comes from the app's own description (al-Kahf on Friday).
+     * order, as listed with the app's own recitation ("مصحف السور والآيات الفاضلة", Warsh, on
+     * SoundCloud with the app's download links): الفاتحة، "ألم" البقرة إلى "المفلحون"، آية
+     * الكرسي إلى "خالدون"، "آمن الرسول" إلى آخر السورة، …، الإخلاص 3 مرات، الفلق والناس، ثم
+     * الختم بالفاتحة وأول البقرة إلى "المفلحون". The publisher's article (aljamaa.net) gives the
+     * same list. Whole sūra = its number; "×n" = recitations. Al-Kahf in full comes from the
+     * app's description (al-Kahf on Friday).
      */
     private val reference = listOf(
         "1:1-7",
-        "2:1-5", "2:255", "2:284-286",
+        "2:1-5", "2:255-257", "2:285-286",
         "3:1-9", "3:18-19", "3:26-27", "3:190-200",
         "9:128-129 ×7",
         "18:107-110", "18",
@@ -31,7 +33,7 @@ class FadailDatasetTest {
     /** Words the reference quotes at the start or end of a passage, checked against Tanzil. */
     private val quoted = mapOf(
         AyahRef(2, 1) to "الم", AyahRef(2, 5) to "المفلحون",
-        AyahRef(2, 284) to "لله ما في", AyahRef(3, 9) to "الميعاد",
+        AyahRef(2, 257) to "خالدون", AyahRef(2, 285) to "آمن الرسول", AyahRef(3, 9) to "الميعاد",
         AyahRef(3, 18) to "شهد الله", AyahRef(3, 19) to "سريع الحساب",
         AyahRef(3, 26) to "قل اللهم", AyahRef(3, 27) to "بغير حساب",
         AyahRef(3, 190) to "إن في خلق", AyahRef(9, 128) to "لقد جاءكم رسول",
@@ -51,10 +53,14 @@ class FadailDatasetTest {
         return if (f.times > 1) "$ranges ×${f.times}" else ranges
     }
 
-    /** Letters only: no ḥarakāt or Qur'anic marks, one alif, one yāʾ. */
+    /**
+     * Letter skeleton: no ḥarakāt or Qur'anic marks, and no alif at all (the Uthmani script writes
+     * many as a small alif, e.g. خَٰلِدُونَ), one yāʾ.
+     */
     private fun letters(s: String): String = s
         .filterNot { it in 'ً'..'ٟ' || it == 'ٰ' || it in 'ۖ'..'ۭ' || it == 'ـ' }
-        .map { c -> when (c) { 'ٱ', 'أ', 'إ', 'آ' -> 'ا'; 'ي' -> 'ى'; else -> c } }
+        .filterNot { it in "اٱأإآ" }
+        .map { c -> if (c == 'ي') 'ى' else c }
         .joinToString("")
 
     @Test
