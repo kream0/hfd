@@ -1,0 +1,23 @@
+name: Reference app
+
+# Prints the public pages describing the reference app "سور وآيات فاضلة" (Google Play listing,
+# the publisher's web section), whose sūras and āyāt HFD's faḍāʾil list follows. The dev sandbox
+# can't reach these hosts; read the output with get_job_logs.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'tools/reference/**'
+      - '.github/workflows/reference.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - run: python3 tools/reference/pages.py
