@@ -20,4 +20,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+      - name: Reciters (everyayah folders, other per-āya audio APIs)
+        run: python3 tools/reference/reciters.py
       - run: python3 tools/reference/pages.py
