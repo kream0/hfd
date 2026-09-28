@@ -42,6 +42,7 @@ LEAD_S, TAIL_S = 0.30, 0.45  # pause kept before / after an āya
 JOIN_S = 0.08               # overlap where two āyāt are recited without a pause
 SHORT = 0.45                # a cut under this share of its text's time at the reciter's pace is wrong
 FAR_S = 4.5                 # a boundary may also move this far (a reciter repeating an āya)
+PAUSE_S = 0.4               # a repair prefers a real pause, up to this long, to a dip inside a word
 
 
 # ---------------------------------------------------------------- text
@@ -607,10 +608,12 @@ def sura_timings(rid, sura, text, want):
                 total += judge(a, heard_trials[key])[1] if key in heard_trials else -5
                 if too_short(a, trials.get((b, n, a))):
                     total -= 2
-            return total
+            # The model hears a clip cut inside a word (حميم) about as well as one cut at the pause.
+            return total + 0.5 * min(1.0, (opts[n][1] - opts[n][0]) / PAUSE_S)
         best = max(range(len(opts)), key=lambda n: (score(n), n == 0))
         if best != 0 and score(best) > score(0):
-            repaired.append(f"boundary before {sura}:{aya_of[b] if b < len(exp) else 'end'}: {opts[0][0]:.2f} → {opts[best][0]:.2f}")
+            repaired.append(f"boundary before {sura}:{aya_of[b] if b < len(exp) else 'end'}: {opts[0][0]:.2f} → {opts[best][0]:.2f}"
+                            f" (score {score(0):.2f} → {score(best):.2f}, pause {opts[0][1] - opts[0][0]:.2f} → {opts[best][1] - opts[best][0]:.2f} s)")
             cuts[b] = opts[best]
 
     out = {}
