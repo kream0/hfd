@@ -267,12 +267,13 @@ private fun Intro(f: Fadila, app: AppViewModel) {
 
         Spacer(Modifier.height(18.dp))
         SectionLabel(stringResource(R.string.detail_virtue))
+        val hidden = f.hiddenWeak(settings.showWeak)
         if (virtues.isEmpty()) {
             Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.detail_no_narration), style = Type.body, color = P.textDim)
+            val none = if (hidden > 0) R.string.detail_no_sound_narration else R.string.detail_no_narration
+            Text(stringResource(none), style = Type.body, color = P.textDim)
         }
         virtues.forEach { v -> Narration(v) }
-        val hidden = f.hiddenWeak(settings.showWeak)
         if (hidden > 0) {
             Spacer(Modifier.height(8.dp))
             Text(pluralStringResource(R.plurals.detail_hidden_weak, hidden, hidden), style = Type.label, color = P.textDim)

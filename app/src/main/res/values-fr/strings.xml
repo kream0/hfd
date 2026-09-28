@@ -266,4 +266,5 @@
         <item quantity="other">%1$d récits faibles masqués (Réglages → Lecture → Afficher les récits faibles)</item>
     </plurals>
     <string name="stats_none">Rien d\'appris pour l\'instant : ouvrez un passage et touchez Apprendre.</string>
+    <string name="detail_no_sound_narration">Aucun récit authentique propre à ce passage n\'est connu : il est récité dans le cadre du wird de référence.</string>
 </resources>

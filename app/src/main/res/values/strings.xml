@@ -264,4 +264,5 @@
         <item quantity="other">%1$d weak narrations hidden (Settings → Reading → Show weak narrations)</item>
     </plurals>
     <string name="stats_none">Nothing learnt yet: open a passage and tap Learn.</string>
+    <string name="detail_no_sound_narration">No authentic narration about this particular passage is known: it is recited as part of the reference wird.</string>
 </resources>
