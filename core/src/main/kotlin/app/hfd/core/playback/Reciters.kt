@@ -23,6 +23,8 @@ data class Reciter(
 object Reciters {
     val ALL = listOf(
         Reciter("maher", "MaherAlMuaiqly128kbps", "Māhir al-Muʿayqilī", "ماهر المعيقلي", "Murattal", "Muʿayqilī"),
+        // mp3quran.net, whole sūras: each āya is a byte range found by tools/audio/align.py.
+        Reciter("badr", "badr-alturki", "Badr at-Turkī", "بدر التركي", "Murattal", "at-Turkī", timings = "audio/badr-alturki.json"),
         Reciter("alafasy", "Alafasy_128kbps", "Mishary Rashid Alafasy", "مشاري راشد العفاسي", "Murattal", "Alafasy"),
         Reciter("husary", "Husary_128kbps", "Maḥmūd Khalīl al-Ḥuṣarī", "محمود خليل الحصري", "Murattal", "Ḥuṣarī"),
         Reciter("husary-muallim", "Husary_Muallim_128kbps", "Maḥmūd Khalīl al-Ḥuṣarī", "محمود خليل الحصري", "Muʿallim", "Ḥuṣarī · Muʿallim"),

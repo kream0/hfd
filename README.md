@@ -64,6 +64,12 @@ that the app updates itself from new releases. Android 8.0 or newer.
   ad-Dawsarī, ʿAbd ar-Raḥmān as-Sudays, Saʿūd ash-Shuraym, Nāṣir al-Qaṭāmī, Abū Bakr
   ash-Shāṭirī, Aḥmad al-ʿAjamī, ʿAlī al-Ḥudhayfī, Ṣalāḥ al-Budayr, Muḥammad Ayyūb and Hānī
   ar-Rifāʿī. Folder names were checked on the server by CI (`tools/reference/reciters.py`).
+  **Badr at-Turkī** is only published as whole-sūra files (mp3quran.net): `tools/audio/align.py`
+  (run by `.github/workflows/audio.yml`) finds each āya of the passages in them with Tarteel's
+  model (DTW word times, the quietest point between two āyāt, a repair pass where a cut doesn't
+  open and close on the āya's own words, then every cut transcribed and checked) and stores its
+  byte range in `assets/audio/badr-alturki.json`; the app fetches just those bytes (HTTP Range)
+  and plays and saves them like an everyayah file.
 - **Media session:** notification, lock screen and Bluetooth earbuds. Next / previous jump to the
   next / previous āya (a `ForwardingPlayer`), not the next repetition; the title reads like
   "Āyat al-Kursī · 2:255 · 3/5". Play on the earbuds with the app closed resumes exactly where

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.0
+New reciter: Badr at-Turkī (the reciter chip under the player, or Settings → Listening).
+- His recitation is only published as whole sūras: the app fetches just each āya from them. A few āyāt (al-Wāqiʿa, al-Aʿlā, ash-Sharḥ 5–6, al-ʿAlaq 8–9) may start or end a word early or late; the passage still plays through without a gap.
+
 ## 1.6.1
 Recite: your voice is brought to a normal level before recognition, and scraps of words no longer move the text.
 - The diagnostics showed the microphone giving a very faint voice and the model catching only bits of words; one bit was taken for "Alif Lām Mīm". The text now only moves on what really matches.
