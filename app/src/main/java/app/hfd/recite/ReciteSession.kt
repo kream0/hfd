@@ -5,6 +5,7 @@ import app.hfd.core.quran.AyahRef
 import app.hfd.core.recite.Arabic
 import app.hfd.core.recite.AudioStats
 import app.hfd.core.recite.AyahResult
+import app.hfd.core.recite.Clarity
 import app.hfd.core.recite.Follower
 import app.hfd.core.recite.Level
 import app.hfd.core.recite.ReciteTarget
@@ -96,13 +97,15 @@ class ReciteSession(
                 while (true) {
                     val u = queue.removeFirstOrNull() ?: break
                     val text = withContext(recognizer) {
-                        // The phone's speech microphone is faint: bring the voice to a normal level first.
-                        val (pcm, gain) = Level.normalize(u.pcm)
+                        // The phone's speech microphone is faint, sometimes muffled: clearer and at a
+                        // normal level first (the bench does the same, Clarity.prepare).
+                        val pcm = Clarity.prepare(u.pcm)
                         if (u.final) {
                             heardChunks++
                             val st = AudioStats.of(u.pcm)
-                            // Almost nothing above 300 Hz (the rumble below 120 Hz is filtered out already).
-                            val muffled = st.bands.drop(1).sum() < MUFFLED_PERCENT
+                            val gain = Level.normalize(u.pcm).second
+                            // Hardly anything above 1 kHz: a pocket, a hand over the microphone…
+                            val muffled = Clarity.highShare(u.pcm) < Clarity.MUFFLED_SHARE
                             if (muffled != _ui.value.muffled) scope.launch { _ui.value = _ui.value.copy(muffled = muffled) }
                             Diag.log(
                                 "recite.chunk", "n" to heardChunks, "id" to u.id, "seconds" to st.seconds, "muffled" to muffled,
@@ -306,8 +309,7 @@ class ReciteSession(
         const val ERROR_MIC = "mic"
         /** A reading's new words are shown over about this long. */
         private const val REVEAL_MS = 700L
-        /** Share of the energy above 300 Hz under which the microphone sounds muffled. */
-        private const val MUFFLED_PERCENT = 10
+
 
         fun targets(refs: List<AyahRef>, text: (AyahRef) -> String?): List<ReciteTarget> =
             refs.map { ReciteTarget(it, Arabic.words(text(it).orEmpty())) }

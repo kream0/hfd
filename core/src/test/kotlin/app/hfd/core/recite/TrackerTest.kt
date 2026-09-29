@@ -9,6 +9,7 @@ import app.hfd.core.srs.Rating
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.PI
 import java.time.ZoneOffset
 
 class TrackerTest {
@@ -205,5 +206,19 @@ class TrackerTest {
         v.feed("الله الصمد")
         assertEquals(0, v.feed("الله"))
         assertEquals(6, v.position)
+    }
+
+    @Test
+    fun aMuffledVoiceIsMadeClearer() {
+        // A voice as the owner's phone gave it: its sounds above 1 kHz some 30 dB down.
+        val pcm = FloatArray(32_000) { i ->
+            val t = i / 16_000.0
+            (0.05 * kotlin.math.sin(2 * PI * 200 * t) + 0.03 * kotlin.math.sin(2 * PI * 600 * t) + 0.0015 * kotlin.math.sin(2 * PI * 1800 * t)).toFloat()
+        }
+        assertTrue(Clarity.highShare(pcm) < Clarity.MUFFLED_SHARE)
+        assertTrue(Clarity.highShare(Clarity.highShelf(pcm)) > Clarity.MUFFLED_SHARE)
+        // A normal voice is left as it is.
+        val clear = FloatArray(32_000) { i -> (0.05 * kotlin.math.sin(2 * PI * 200 * i / 16_000.0) + 0.02 * kotlin.math.sin(2 * PI * 1800 * i / 16_000.0)).toFloat() }
+        assertTrue(Clarity.highShare(clear) > Clarity.MUFFLED_SHARE)
     }
 }
