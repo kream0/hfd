@@ -77,6 +77,15 @@
   `tools/recite/owner.trigger` to replay the kept sessions in `recite.yml` ("OWNER'S SESSION"
   lines, and "+boost" lines with `Clarity`'s highs boost, which the app doesn't use: it made muffled
   speech worse). ntfy keeps attachments ~3 h: run diag.yml soon after.
+- The owner recites with earbuds on (Nothing Ear (3)); Android records from the phone's own mic
+  unless asked otherwise, and the phone away from the mouth gives nothing usable (bench "pocket"
+  and the owner's 29 Sept session: 0–1 words). Recite listens through connected earbuds
+  (`recite/HeadsetMic.kt`: communication mode + `setCommunicationDevice`, LE Audio first); the
+  bench's "sco" cases (8 kHz call audio, mic near the mouth) end ~99 % right. `mic.device` /
+  `mic.headset` in the diagnostics say which mic was used.
+- `LogReplayTest` replays the owner's logged readings (`core/src/test/resources/recite/*.log`,
+  from `recite.partial` / `recite.heard`) through `Follower`: add a log there when a session goes
+  wrong, to reproduce it without audio.
 
 ## Debugging on the owner's phone
 - The app posts diagnostics (`app/src/main/java/app/hfd/diag/Diag.kt`: `Diag.log(event, …)`) to
