@@ -13,8 +13,8 @@ class Utterance(val id: Int, val pcm: FloatArray, val final: Boolean) {
  * it) and ends at a pause. While it goes on, the audio so far is handed over again every
  * [PARTIAL_FRAMES], so the text follows the reciter without waiting for a pause: people
  * reciting from memory hardly pause for long. A long utterance ends at a short pause after
- * [SOFT_MAX_FRAMES], or at its quietest moment of the last two seconds at [MAX_FRAMES] (the
- * model reads 30 s windows and slips beyond ~25 s).
+ * 10 s, or at its quietest moment of the last two seconds at [MAX_FRAMES] (the model reads 30 s
+ * windows and slips beyond ~25 s).
  */
 class Segmenter {
     /** The room's noise level (RMS), following the quietest moments slowly. */
@@ -129,12 +129,14 @@ class Segmenter {
         /** 20 ms. */
         const val FRAME = 320
         private const val PRE_ROLL_FRAMES = 15 // 300 ms kept before the voice starts
-        private const val PAUSE_FRAMES = 35 // 700 ms of silence ends an utterance
+        // 400 ms of silence ends an utterance: short ones, an āya or less, are read best (on a
+        // longer stretch the model sometimes drops words it had heard).
+        private const val PAUSE_FRAMES = 20
         private const val SHORT_PAUSE_FRAMES = 10 // 200 ms, enough to end a long one
         private const val MIN_VOICED_FRAMES = 10 // at least 200 ms of voice
         /** The audio so far, handed over again after this much more (1 s). */
         const val PARTIAL_FRAMES = 50
-        private const val SOFT_MAX_FRAMES = 750 // 15 s
+        private const val SOFT_MAX_FRAMES = 500 // 10 s
         const val MAX_FRAMES = 1000 // 20 s
         private const val SPLIT_SEARCH_FRAMES = 100
         /** Voice: this much over the room's noise (×2.5 ≈ 8 dB), and above MIN_RMS (≈ −54 dB). */

@@ -25,7 +25,9 @@ data class AyahResult(
  * of speech the recogniser returns. Each chunk is aligned, letter by letter on the skeleton,
  * against the words expected next; words it covers become OK, WRONG or MISSED, and the position
  * moves on. Letter-level alignment copes with the recogniser splitting or merging words
- * differently from the Uthmani text (يَـٰٓأَيُّهَا / يا أيها).
+ * differently from the Uthmani text (يَـٰٓأَيُّهَا / يا أيها). A chunk may also start further on
+ * (words the recogniser dropped, or the reciter skipped): the words passed over are MISSED, which
+ * a clear match allows, so the tracker never stays stuck behind the reciter.
  */
 class Tracker(val targets: List<ReciteTarget>) {
     private val flat: List<String> = targets.flatMap { it.words }
@@ -88,7 +90,7 @@ class Tracker(val targets: List<ReciteTarget>) {
         val hWords = heard.split(Regex("\\s+")).map { Arabic.skeleton(it) }.filter { it.isNotEmpty() }
         if (hWords.isEmpty()) return 0
         val h = hWords.joinToString("")
-        val end = minOf(flat.size, position + maxOf(MIN_WINDOW, hWords.size * 3))
+        val end = minOf(flat.size, position + maxOf(MIN_WINDOW, hWords.size * 3) + SKIP_WORDS)
         val e = StringBuilder()
         val owner = ArrayList<Int>()
         for (w in position until end) {
@@ -97,13 +99,14 @@ class Tracker(val targets: List<ReciteTarget>) {
         }
         val n = e.length
         val m = h.length
-        // Semi-global alignment scored like Needleman-Wunsch: the whole chunk against a prefix of
-        // the expected text. Matches earn more than gaps cost, so a skipped word shows up as a gap
-        // rather than the chunk being cut short against a wrong word.
+        // Semi-global alignment scored like Needleman-Wunsch: the whole chunk against a stretch of
+        // the expected text from the position. Matches earn more than gaps cost, so a skipped word
+        // shows up as a gap rather than the chunk being cut short against a wrong word; passing
+        // over words before the chunk's start costs a quarter of a gap.
         val d = Array(n + 1) { IntArray(m + 1) }
         for (j in 0..m) d[0][j] = -j * GAP
         for (i in 1..n) {
-            d[i][0] = -i * GAP
+            d[i][0] = -i * SKIP
             for (j in 1..m) {
                 val diag = d[i - 1][j - 1] + if (e[i - 1] == h[j - 1]) MATCH else -MISMATCH
                 d[i][j] = maxOf(diag, d[i - 1][j] - GAP, d[i][j - 1] - GAP)
@@ -130,9 +133,15 @@ class Tracker(val targets: List<ReciteTarget>) {
                 else -> j--
             }
         }
+        // Letters passed over before the chunk's start (i > 0 when j reached 0).
+        val start = if (j == 0) i else 0
+        val span = best - start
         // Too little in common, either way: not this text, or scraps the recogniser half heard
         // (a four-letter word sharing two letters with the next words isn't them). Don't move.
-        if (best == 0 || same < MIN_MATCH_FRACTION * m || same < MIN_MATCH_FRACTION * best) return 0
+        if (best == 0 || span <= 0 || same < MIN_MATCH_FRACTION * m || same < MIN_MATCH_FRACTION * span) return 0
+        // Passing over words takes a clear match.
+        val passed = owner[start] - position
+        if (passed >= 2 && (same < JUMP_MATCH_FRACTION * m || same < JUMP_MATCH_FRACTION * span || same < JUMP_MIN_LETTERS)) return 0
         // Words up to the last one the chunk reached (a word cut at the end counts whole).
         val lastWord = owner[best - 1]
         for (w in position..lastWord) {
@@ -154,13 +163,19 @@ class Tracker(val targets: List<ReciteTarget>) {
     companion object {
         /** Words looked at beyond the current position, at least. */
         const val MIN_WINDOW = 12
+        /** Words that may be passed over before a chunk (a dropped or skipped āya). */
+        const val SKIP_WORDS = 40
         /** Share of the chunk's letters, and of the text's letters it spans, that must match for it to be followed. */
         const val MIN_MATCH_FRACTION = 0.6
+        /** The same, when the chunk passes over two words or more; and at least this many letters. */
+        const val JUMP_MATCH_FRACTION = 0.75
+        const val JUMP_MIN_LETTERS = 12
         /** Share of a (long) word's letters that must match for it to count as right. */
         const val OK_FRACTION = 0.75
-        private const val MATCH = 2
-        private const val MISMATCH = 1
-        private const val GAP = 1
+        private const val MATCH = 8
+        private const val MISMATCH = 4
+        private const val GAP = 4
+        private const val SKIP = 1
 
         /** No mistake: Good; up to one in ten (at least one): Hard; more: Again. */
         fun ratingFor(words: Int, mistakes: Int): Rating = when {

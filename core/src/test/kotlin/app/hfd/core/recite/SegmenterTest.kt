@@ -112,4 +112,32 @@ class SegmenterTest {
         assertEquals(4, f.tracker.position)
         assertEquals(WordStatus.HINTED, f.tracker.statusOf(0, 2))
     }
+
+    @Test
+    fun wordsHeardRightTwiceStayRightWhenALaterReadingDropsThem() {
+        val f = Follower(targets)
+        f.heard(0, "قل هو الله احد", final = false)
+        f.heard(0, "قل هو الله احد الله", final = false)
+        // The final reading of the longer stretch lost the start.
+        f.heard(0, "الله الصمد", final = true)
+        assertTrue((0..3).all { f.tracker.statusOf(0, it) == WordStatus.OK })
+        assertTrue(f.tracker.done)
+    }
+
+    @Test
+    fun theTrackerCatchesUpWhenWordsWerentHeard() {
+        val ikhlas = listOf(
+            ReciteTarget(AyahRef(112, 1), Arabic.words("قُلْ هُوَ ٱللَّهُ أَحَدٌ")),
+            ReciteTarget(AyahRef(112, 2), Arabic.words("ٱللَّهُ ٱلصَّمَدُ")),
+            ReciteTarget(AyahRef(112, 3), Arabic.words("لَمْ يَلِدْ وَلَمْ يُولَدْ")),
+        )
+        val t = Tracker(ikhlas)
+        // A scrap further on doesn't move it…
+        assertEquals(0, t.feed("لم"))
+        // …a clear stretch does: the words passed over are missed.
+        assertEquals(10, t.feed("الله الصمد لم يلد ولم يولد"))
+        assertTrue((0..3).all { t.statusOf(0, it) == WordStatus.MISSED })
+        assertTrue((0..1).all { t.statusOf(1, it) == WordStatus.OK })
+        assertTrue(t.done)
+    }
 }
