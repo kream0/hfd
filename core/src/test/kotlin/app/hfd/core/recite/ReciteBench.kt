@@ -43,7 +43,10 @@ class ReciteBench {
     }
 }
 
-/** A recording of [refs] (the passage recited), with where each āya recited lies in it. */
+/**
+ * A recording of [refs] (the passage), with where each āya recited lies in it (the first time,
+ * when the reciter went back and said it again).
+ */
 class Case(val id: String, val refs: List<AyahRef>, val wav: String, val spans: Map<AyahRef, Pair<Double, Double>>) {
     companion object {
         /** `id  2:1-5  file.wav  2:1@0.52-2.10,2:2@2.40-8.01,…` */
@@ -52,11 +55,12 @@ class Case(val id: String, val refs: List<AyahRef>, val wav: String, val spans: 
             val (s, range) = p[1].split(':')
             val (a0, a1) = if ('-' in range) range.split('-').map(String::toInt) else listOf(range.toInt(), range.toInt())
             val refs = (a0..a1).map { AyahRef(s.toInt(), it) }
-            val spans = p[3].split(',').filter { it.isNotBlank() }.associate { item ->
+            val spans = LinkedHashMap<AyahRef, Pair<Double, Double>>()
+            for (item in p[3].split(',').filter { it.isNotBlank() }) {
                 val (ref, times) = item.split('@')
                 val (rs, ra) = ref.split(':').map(String::toInt)
                 val (t0, t1) = times.split('-').map(String::toDouble)
-                AyahRef(rs, ra) to (t0 to t1)
+                spans.putIfAbsent(AyahRef(rs, ra), t0 to t1)
             }
             return Case(p[0], refs, p[2], spans)
         }
@@ -69,6 +73,8 @@ class Result(
     val said: Int, val ok: Int, val wrong: Int, val missed: Int, val pending: Int,
     /** Words of āyāt left out of the audio, and how many of them ended MISSED. */
     val skipped: Int, val skippedMissed: Int,
+    /** Words after the last āya recited, and how many of them were marked all the same. */
+    val unreached: Int, val unreachedMarked: Int,
     /** Seconds from the end of each word said to its first showing. */
     val lags: List<Double>,
     val flips: Int, val partials: Int, val finals: Int,
@@ -77,7 +83,8 @@ class Result(
     fun line(): String {
         val l = lags.sorted()
         fun q(f: Double) = if (l.isEmpty()) Double.NaN else l[((l.size - 1) * f).toInt()]
-        val skip = if (skipped > 0) "  skipped $skippedMissed/$skipped missed" else ""
+        val skip = (if (skipped > 0) "  skipped $skippedMissed/$skipped missed" else "") +
+            (if (unreachedMarked > 0) "  UNREACHED MARKED $unreachedMarked/$unreached" else "")
         return String.format(
             Locale.US, "%-34s ok %3d/%-3d wrong %2d missed %2d pending %2d  lag p50 %4.1f p90 %4.1f s  flips %2d  calls %d+%d%s",
             id, ok, said, wrong, missed, pending, q(0.5), q(0.9), flips, partials, finals, skip,
@@ -186,9 +193,11 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         var flat = 0
         var said = 0; var ok = 0; var wrong = 0; var missed = 0; var pending = 0
         var skipped = 0; var skippedMissed = 0
+        var unreached = 0; var unreachedMarked = 0
+        val lastRecited = targets.indexOfLast { it.ref in case.spans }
         val lags = ArrayList<Double>()
         val detail = StringBuilder()
-        for (t in targets) {
+        for ((a, t) in targets.withIndex()) {
             val span = case.spans[t.ref]
             // Each word's end, spread over the āya by its letters.
             val weights = t.words.map { Arabic.skeleton(it).length + 1.0 }
@@ -208,6 +217,9 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                     }
                     val end = span.first + (span.second - span.first) * acc / total
                     if (!shownAt[flat + w].isNaN()) lags += shownAt[flat + w] - end
+                } else if (a > lastRecited) {
+                    unreached++
+                    if (st != WordStatus.PENDING) unreachedMarked++
                 } else {
                     skipped++
                     if (st == WordStatus.MISSED) skippedMissed++
@@ -225,11 +237,11 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                 marks.append(' ')
             }
             flat += t.words.size
-            detail.append("    ${t.ref}${if (span == null) " (not recited)" else ""}: $marks\n")
+            detail.append("    ${t.ref}${if (span == null) (if (a > lastRecited) " (not reached)" else " (not recited)") else ""}: $marks\n")
         }
-        val bad = said - ok + (skipped - skippedMissed)
+        val bad = said - ok + (skipped - skippedMissed) + unreachedMarked
         return Result(
-            case.id, said, ok, wrong, missed, pending, skipped, skippedMissed, lags, flips, partials, finals,
+            case.id, said, ok, wrong, missed, pending, skipped, skippedMissed, unreached, unreachedMarked, lags, flips, partials, finals,
             if (bad > 0) detail.toString() + readings else "",
         )
     }
