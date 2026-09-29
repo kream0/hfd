@@ -65,9 +65,17 @@
 
 - Recite: `.github/workflows/recite.yml` (on pushes touching `:core` `recite/**`, the bench or
   `tools/recite/**`) streams EveryAyah passages at the owner's microphone level through the exact
-  pipeline (`Segmenter`, `Level`, the JNI's decoding in `tools/recite/decoder.c`, `Follower`)
-  with the phone's recognition time, and prints words right / wrong / missed and how soon they
-  show per case (`ReciteBench`, "Report" step). Run it after any change to Recite's logic.
+  pipeline (`Segmenter` with its high-pass, `Clarity.prepare`, the JNI's decoding in
+  `tools/recite/decoder.c`, `Follower`) with the phone's recognition time, and prints words
+  right / wrong / missed and how soon they show per case (`ReciteBench`, "Report" step). Cases
+  (`tools/recite/prepare.py`) cover noise, a muffled microphone, rumble, restarts, repetitions and
+  skipped āyāt. Run it after any change to Recite's logic, and compare with the previous run
+  before releasing. Pushing core changes while a bench runs cancels it.
+- The owner's own sessions: with *Send recordings* on, the app uploads each Recite session's raw
+  microphone (`session-<passage>-<S_A>-<S_B>.wav`, ≤ 4 min). `diag.yml` prints its spectrum and a
+  large model's transcription, and keeps it in the Actions cache (not published); touch
+  `tools/recite/owner.trigger` to replay the kept sessions in `recite.yml` ("OWNER'S SESSION"
+  lines, with and without `Clarity`). ntfy keeps attachments ~3 h: run diag.yml soon after.
 
 ## Debugging on the owner's phone
 - The app posts diagnostics (`app/src/main/java/app/hfd/diag/Diag.kt`: `Diag.log(event, …)`) to
