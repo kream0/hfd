@@ -10,6 +10,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,6 +44,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
@@ -63,6 +67,7 @@ import app.hfd.core.recite.WordStatus
 import app.hfd.recite.ModelState
 import app.hfd.recite.ReciteSession
 import app.hfd.recite.ReciteUi
+import app.hfd.recite.Wave
 import app.hfd.ui.ayahEnd
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.IconBtn
@@ -87,6 +92,7 @@ fun ReciteScreen(onClose: () -> Unit) {
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
     val model by Graph.speech.state.collectAsStateWithLifecycle()
     val level by s.level.collectAsStateWithLifecycle()
+    val wave by s.wave.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val showText = settings.reciteShowText
     val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -133,6 +139,7 @@ fun ReciteScreen(onClose: () -> Unit) {
         ui.heard?.let {
             Text(it, style = Type.label, color = P.textFaint, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp))
         }
+        if (ui.listening) Waveform(wave, Modifier.padding(horizontal = 24.dp, vertical = 6.dp))
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -262,6 +269,32 @@ private fun Summary(results: List<AyahResult>, onAgain: () -> Unit, onClose: () 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PillButton(stringResource(R.string.recite_again), onAgain, style = PillStyle.Filled)
             PillButton(stringResource(R.string.close), onClose)
+        }
+    }
+}
+
+/**
+ * What the microphone hears, like a voice message being recorded: the last seconds as bars,
+ * newest on the right; bright where it counts as voice, dim where it's the room.
+ */
+@Composable
+private fun Waveform(wave: Wave, modifier: Modifier = Modifier) {
+    val voice = P.text
+    val room = P.textFaint
+    Canvas(modifier.fillMaxWidth().height(40.dp)) {
+        val bar = 3.dp.toPx()
+        val step = bar + 3.dp.toPx()
+        val n = wave.levels.size
+        val count = minOf(n, (size.width / step).toInt())
+        for (k in 0 until count) {
+            val i = n - 1 - k
+            val h = maxOf(bar, wave.levels[i] * size.height)
+            drawRoundRect(
+                color = if (wave.voiced[i]) voice else room,
+                topLeft = Offset(size.width - (k + 1) * step, (size.height - h) / 2),
+                size = Size(bar, h),
+                cornerRadius = CornerRadius(bar / 2),
+            )
         }
     }
 }

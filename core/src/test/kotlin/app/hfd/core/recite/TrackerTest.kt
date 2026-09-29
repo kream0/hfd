@@ -77,12 +77,13 @@ class TrackerTest {
 
     @Test
     fun scrapsOfWordsDoNotMove() {
-        // What the phone's faint microphone gave for al-Baqara 1–5 before the level was raised.
-        val t = Tracker(listOf(target(2, 1), target(2, 2)))
+        // What the phone's faint microphone gave before the level was raised (on al-Baqara 1–5,
+        // whose disconnected letters now take any speech: see below), on ordinary words.
+        val t = Tracker(listOf(target(112, 1), target(112, 2)))
         for (scrap in listOf("فرق", "في", "منذر")) assertEquals(scrap, 0, t.feed(scrap))
         assertEquals(0, t.position)
         // The words themselves do.
-        assertEquals(1, t.feed("الم"))
+        assertEquals(4, t.feed("قل هو الله احد"))
     }
 
     @Test
@@ -135,5 +136,22 @@ class TrackerTest {
         assertEquals(2, p.recites)
         assertEquals(mapOf(2 to 2), p.weakWords)
         assertEquals(0.75f, p.reciteAccuracy)
+    }
+
+    @Test
+    fun disconnectedLettersCountAsRecitedWhateverTheModelMadeOfThem() {
+        // Āl ʿImrān 1–2: الٓمٓ, then ٱللَّهُ لَآ إِلَٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ
+        val t = Tracker(listOf(target(3, 1), target(3, 2)))
+        // The long held "Alif Lām Mīm", heard as a made-up word.
+        assertEquals(1, t.feed("منذر"))
+        assertEquals(WordStatus.OK, t.statusOf(0, 0))
+        assertEquals(7, t.feed("الله لا اله الا هو الحي القيوم"))
+        assertTrue(t.done)
+        // Heard together with the words after them.
+        val u = Tracker(listOf(target(3, 1), target(3, 2)))
+        assertEquals(8, u.feed("فرق الله لا اله الا هو الحي القيوم"))
+        assertTrue((0 until 7).all { u.statusOf(1, it) == WordStatus.OK })
+        // Other words still need to be heard.
+        assertEquals(0, u.feed("منذر"))
     }
 }

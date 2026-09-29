@@ -32,6 +32,14 @@ data class AyahResult(
 class Tracker(val targets: List<ReciteTarget>) {
     private val flat: List<String> = targets.flatMap { it.words }
     private val skel: List<String> = flat.map { Arabic.skeleton(it) }
+    /** Words that are disconnected letters (الٓمٓ, حمٓ, يسٓ…). */
+    private val letters: BooleanArray = BooleanArray(flat.size).also { l ->
+        var at = 0
+        for (t in targets) {
+            if (t.words.isNotEmpty() && isLetters(t.ref)) l[at] = true
+            at += t.words.size
+        }
+    }
     /** Flat word index where each āya starts. */
     private val starts: IntArray = IntArray(targets.size + 1).also { s ->
         for (i in targets.indices) s[i + 1] = s[i] + targets[i].words.size
@@ -89,6 +97,16 @@ class Tracker(val targets: List<ReciteTarget>) {
         if (done) return 0
         val hWords = heard.split(Regex("\\s+")).map { Arabic.skeleton(it) }.filter { it.isNotEmpty() }
         if (hWords.isEmpty()) return 0
+        val moved = align(hWords)
+        if (moved > 0 || !letters[position]) return moved
+        // The disconnected letters (الٓمٓ, حمٓ…) are recited as long held notes, which the model
+        // doesn't hear as words (it makes up منذر, فرق…): whatever is heard while they're next
+        // counts as them, and the rest of the chunk may be the words after.
+        status[position++] = WordStatus.OK
+        return 1 + if (done) 0 else align(hWords)
+    }
+
+    private fun align(hWords: List<String>): Int {
         val h = hWords.joinToString("")
         val end = minOf(flat.size, position + maxOf(MIN_WINDOW, hWords.size * 3) + SKIP_WORDS)
         val e = StringBuilder()
@@ -150,7 +168,7 @@ class Tracker(val targets: List<ReciteTarget>) {
             val hits = idx.count { matched[it] }
             val any = idx.any { touched[it] }
             status[w] = when {
-                idx.isEmpty() -> WordStatus.OK
+                idx.isEmpty() || letters[w] -> WordStatus.OK
                 hits == idx.size || (idx.size == 3 && hits == 2) || (idx.size >= 4 && hits >= idx.size * OK_FRACTION) -> WordStatus.OK
                 any -> WordStatus.WRONG
                 else -> WordStatus.MISSED
@@ -162,6 +180,12 @@ class Tracker(val targets: List<ReciteTarget>) {
     }
 
     companion object {
+        /** Sūras opening with disconnected letters (and ash-Shūrā's second āya, عسٓقٓ). */
+        private val LETTER_SURAS = setOf(2, 3, 7, 10, 11, 12, 13, 14, 15, 19, 20, 26, 27, 28, 29, 30, 31, 32, 36, 38, 40, 41, 42, 43, 44, 45, 46, 50, 68)
+
+        /** Whether āya [ref] opens with disconnected letters. */
+        fun isLetters(ref: AyahRef): Boolean = (ref.aya == 1 && ref.sura in LETTER_SURAS) || (ref.sura == 42 && ref.aya == 2)
+
         /** Words looked at beyond the current position, at least. */
         const val MIN_WINDOW = 12
         /** Words that may be passed over before a chunk (a dropped or skipped āya). */

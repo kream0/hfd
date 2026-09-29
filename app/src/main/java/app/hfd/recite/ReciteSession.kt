@@ -77,6 +77,7 @@ class ReciteSession(
     private val _ui = MutableStateFlow(snapshot(ReciteUi(targets, emptyList(), null)))
     val ui: StateFlow<ReciteUi> = _ui.asStateFlow()
     val level: StateFlow<Float> = recorder.level
+    val wave: StateFlow<Wave> = recorder.wave
 
     init {
         // Recognition runs one reading at a time while the recorder goes on; a partial reading

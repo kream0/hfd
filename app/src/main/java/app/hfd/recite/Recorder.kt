@@ -19,6 +19,13 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
 import java.util.concurrent.atomic.AtomicBoolean
 
+/** The last few seconds of the microphone, as bars: each one's level (0…1) and whether it was voice. */
+class Wave(val levels: FloatArray, val voiced: BooleanArray) {
+    companion object {
+        val EMPTY = Wave(FloatArray(0), BooleanArray(0))
+    }
+}
+
 /**
  * The microphone, as utterances for the recogniser ([Segmenter]): the speech so far every second
  * while the reciter goes on, then whole at the pause. 16 kHz mono floats.
@@ -30,6 +37,10 @@ class Recorder {
 
     private val _speaking = MutableStateFlow(false)
     val speaking: StateFlow<Boolean> = _speaking.asStateFlow()
+
+    private val _wave = MutableStateFlow(Wave.EMPTY)
+    /** The live waveform shown while listening, newest bar last. */
+    val wave: StateFlow<Wave> = _wave.asStateFlow()
 
     private val stopRequested = AtomicBoolean(false)
     private val restartRequested = AtomicBoolean(false)
@@ -61,6 +72,13 @@ class Recorder {
         var secMax = 0f
         var secVoiced = 0
         var finals = 0
+        // The waveform: a bar every WAVE_FRAMES frames, the last WAVE_BARS kept.
+        val barLevels = ArrayDeque<Float>()
+        val barVoiced = ArrayDeque<Boolean>()
+        var barFrames = 0
+        var barMax = 0f
+        var barVoice = false
+        _wave.value = Wave.EMPTY
         try {
             record.startRecording()
             while (currentCoroutineContext().isActive && !stopRequested.get()) {
@@ -71,6 +89,15 @@ class Recorder {
                 // −60 dB → 0, −15 dB → 1: phone microphones for speech recognition are quiet.
                 _level.value = ((dB(seg.rms) + 60f) / 45f).coerceIn(0f, 1f)
                 _speaking.value = seg.inSpeech
+                barMax = maxOf(barMax, ((dB(seg.rms) + 62f) / 37f).coerceIn(0f, 1f))
+                barVoice = barVoice || seg.voiced
+                if (++barFrames == WAVE_FRAMES) {
+                    barLevels.addLast(barMax)
+                    barVoiced.addLast(barVoice)
+                    if (barLevels.size > WAVE_BARS) { barLevels.removeFirst(); barVoiced.removeFirst() }
+                    _wave.value = Wave(barLevels.toFloatArray(), barVoiced.toBooleanArray())
+                    barFrames = 0; barMax = 0f; barVoice = false
+                }
                 secFrames++
                 secSum += seg.rms
                 secMax = maxOf(secMax, seg.rms)
@@ -103,10 +130,15 @@ class Recorder {
             record.release()
             _level.value = 0f
             _speaking.value = false
+            _wave.value = Wave.EMPTY
         }
     }.flowOn(Dispatchers.IO)
 
     private companion object {
+        /** A bar every 60 ms; 64 of them, about four seconds. */
+        const val WAVE_FRAMES = 3
+        const val WAVE_BARS = 64
+
         fun dB(rms: Float): Float = (20 * kotlin.math.log10(rms.coerceAtLeast(1e-6f).toDouble())).toFloat()
     }
 }
