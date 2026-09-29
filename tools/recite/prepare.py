@@ -28,15 +28,23 @@ PASSAGES = {
     "baqara-opening": (2, 1, 5),
     "kursi": (2, 255, 255),
     "nas": (114, 1, 6),
+    "imran-opening": (3, 1, 9),
 }
-# name: pause between āyāt (s), tempo, voice level (dBFS, loud frames), āyāt left out
+# name: pause between āyāt (s), tempo, voice level (dBFS, loud frames), room noise (dBFS)
 VARIANTS = {
-    "flow": (0.3, 1.0, -38, ()),
-    "fast": (0.15, 1.25, -38, ()),
-    "pauses": (1.2, 1.0, -38, ()),
-    "loud": (0.3, 1.0, -20, ()),
+    "flow": (0.3, 1.0, -38, -60),
+    "fast": (0.15, 1.25, -38, -60),
+    "pauses": (1.2, 1.0, -38, -60),
+    "loud": (0.3, 1.0, -20, -60),
+    # The owner's room on 29 September: noise at −47 dB for a voice around −37 dB.
+    "noisy": (0.3, 1.0, -35, -47),
 }
-CASES = [(p, r, "flow") for p in PASSAGES for r in RECITERS] + [
+CASES = [(p, r, "flow") for p in PASSAGES if p != "imran-opening" for r in RECITERS] + [
+    ("imran-opening", "husary", "flow"),
+    ("imran-opening", "maher", "noisy"),
+    ("fatiha", "maher", "noisy"),
+    ("baqara-opening", "alafasy", "noisy"),
+    ("ikhlas", "dossary", "noisy"),
     ("fatiha", "maher", "fast"),
     ("baqara-opening", "maher", "fast"),
     ("kursi", "dossary", "fast"),
@@ -46,7 +54,6 @@ CASES = [(p, r, "flow") for p in PASSAGES for r in RECITERS] + [
     ("baqara-opening", "maher", "skip:2:3"),
     ("fatiha", "alafasy", "skip:1:4"),
 ]
-NOISE_DB = -60
 
 
 def fetch(folder, sura, aya, cache):
@@ -84,12 +91,12 @@ def trim(x):
     return x[a * 320:b * 320]
 
 
-def noise(n, rng):
-    """Low-pitched room noise (most of the phone's noise energy is below 300 Hz)."""
+def noise(n, rng, db):
+    """Low-pitched room noise at [db] dBFS (most of the phone's noise energy is below 300 Hz)."""
     spectrum = np.fft.rfft(rng.standard_normal(n))
     f = np.fft.rfftfreq(n, 1 / RATE)
     y = np.fft.irfft(spectrum * (1 / np.sqrt(1 + (f / 150) ** 2) + 0.1), n).astype(np.float32)
-    return y / np.sqrt(np.mean(y ** 2)) * 10 ** (NOISE_DB / 20)
+    return y / np.sqrt(np.mean(y ** 2)) * 10 ** (db / 20)
 
 
 def main():
@@ -105,9 +112,9 @@ def main():
         if variant.startswith("skip:"):
             s, a = variant[5:].split(":")
             skip = {(int(s), int(a))}
-            gap, tempo, level = 0.3, 1.0, -38
+            gap, tempo, level, room = 0.3, 1.0, -38, -60
         else:
-            gap, tempo, level, _ = VARIANTS[variant]
+            gap, tempo, level, room = VARIANTS[variant]
         parts = [np.zeros(int(0.6 * RATE), np.float32)]
         spans = []
         t = 0.6
@@ -127,7 +134,7 @@ def main():
         voice = np.concatenate(parts)
         e = frame_rms(voice)
         loud = np.percentile(e[e > e.max() * 0.03], 90)
-        pcm = voice * (10 ** (level / 20) / loud) + noise(len(voice), rng)
+        pcm = voice * (10 ** (level / 20) / loud) + noise(len(voice), rng, room)
         pcm = np.clip(pcm, -1, 1)
         name = f"{passage}-{reciter}-{variant.replace(':', '')}"
         with open(os.path.join(out, name + ".wav"), "wb") as f:
