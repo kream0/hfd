@@ -150,7 +150,7 @@ class Tracker(val targets: List<ReciteTarget>) {
             val any = idx.any { touched[it] }
             status[w] = when {
                 idx.isEmpty() -> WordStatus.OK
-                hits == idx.size || (idx.size >= 4 && hits >= idx.size * OK_FRACTION) -> WordStatus.OK
+                hits == idx.size || (idx.size == 3 && hits == 2) || (idx.size >= 4 && hits >= idx.size * OK_FRACTION) -> WordStatus.OK
                 any -> WordStatus.WRONG
                 else -> WordStatus.MISSED
             }
@@ -170,7 +170,11 @@ class Tracker(val targets: List<ReciteTarget>) {
         /** The same, when the chunk passes over two words or more; and at least this many letters. */
         const val JUMP_MATCH_FRACTION = 0.75
         const val JUMP_MIN_LETTERS = 12
-        /** Share of a (long) word's letters that must match for it to count as right. */
+        /**
+         * Share of a (long) word's letters that must match for it to count as right; a
+         * three-letter word may have one wrong. At the phone's level the model often mishears a
+         * letter (وإيات for وإياك): that isn't the reciter's mistake. A different word is.
+         */
         const val OK_FRACTION = 0.75
         private const val MATCH = 8
         private const val MISMATCH = 4

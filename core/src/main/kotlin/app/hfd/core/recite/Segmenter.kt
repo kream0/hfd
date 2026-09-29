@@ -17,9 +17,16 @@ class Utterance(val id: Int, val pcm: FloatArray, val final: Boolean) {
  * windows and slips beyond ~25 s).
  */
 class Segmenter {
-    /** The room's noise level (RMS), following the quietest moments slowly. */
+    /**
+     * The room's noise level (RMS): the quietest moments of the last three seconds. (Speech
+     * always has some, between its sounds; a level creeping up during speech, as before, took
+     * the soft sounds of a slow recitation — a ghunna, a madd — for silence and cut words.)
+     */
     var noise = 0.01f
         private set
+    private val recent = FloatArray(NOISE_FRAMES)
+    private var recentCount = 0
+    private val sorted = FloatArray(NOISE_FRAMES)
     /** The last frame's RMS. */
     var rms = 0f
         private set
@@ -41,7 +48,12 @@ class Segmenter {
     fun feed(frame: FloatArray): List<Utterance> {
         if (frame.isEmpty()) return emptyList()
         rms = rmsOf(frame)
-        noise = if (rms < noise) rms * 0.3f + noise * 0.7f else noise * 0.999f + rms * 0.001f
+        recent[recentCount % NOISE_FRAMES] = rms
+        recentCount++
+        val n0 = minOf(recentCount, NOISE_FRAMES)
+        recent.copyInto(sorted, 0, 0, n0)
+        sorted.sort(0, n0)
+        noise = sorted[minOf(n0 - 1, NOISE_RANK)].coerceAtLeast(1e-5f)
         voiced = rms > maxOf(noise * VOICE_OVER_NOISE, MIN_RMS)
         if (!inSpeech) {
             pre.addLast(frame)
@@ -139,6 +151,9 @@ class Segmenter {
         private const val SOFT_MAX_FRAMES = 500 // 10 s
         const val MAX_FRAMES = 1000 // 20 s
         private const val SPLIT_SEARCH_FRAMES = 100
+        /** The noise level: the 5th quietest frame of the last 3 s. */
+        private const val NOISE_FRAMES = 150
+        private const val NOISE_RANK = 4
         /** Voice: this much over the room's noise (×2.5 ≈ 8 dB), and above MIN_RMS (≈ −54 dB). */
         private const val VOICE_OVER_NOISE = 2.5f
         private const val MIN_RMS = 0.002f

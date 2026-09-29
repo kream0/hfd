@@ -61,8 +61,9 @@ class TrackerTest {
         val third = t.resultOf(2)
         assertEquals(listOf(2), third.mistakes)
         assertEquals(WordStatus.MISSED, t.statusOf(2, 2))
-        // A wrong word: "كفوا" said as "كفرا".
-        t.feed("ولم يكن له كفرا أحد")
+        // A wrong word: "كفوا" said as "مثلا" (one letter off in a short word, كفرا, is taken
+        // for the model mishearing, as it mostly is at the phone's level).
+        t.feed("ولم يكن له مثلا أحد")
         assertEquals(WordStatus.WRONG, t.statusOf(3, 3))
         assertEquals(Rating.HARD, t.resultOf(3).rating)
     }
