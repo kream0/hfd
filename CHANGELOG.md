@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.1
+Recite moves on from the disconnected letters (الم، حم، يس…), and shows what the microphone hears.
+- The speech model can't hear the long held letters as words (it made up منذر, فرق on your الم, so the text stayed on the first word). Whatever you say while they're next now counts as them: al-Baqara, Āl ʿImrān, as-Sajda, Yā-Sīn, Ghāfir and ad-Dukhān no longer get stuck at the start.
+- While you recite, a waveform like a voice message shows the microphone's last seconds: bright where it counts as your voice, dim where it's the room.
+
 ## 1.8.0
 Recite follows you as you recite: words light up while you say them, and *Play all* plays every passage in a row.
 - Recite no longer waits for a pause: what you've said is recognised again every second, so the text keeps up (about 1.5 s behind). The text shows by default, dim until recited; the eye button hides it and the app remembers. The red box around the next word is gone: the next word glows softly while the app listens.
