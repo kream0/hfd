@@ -36,11 +36,12 @@ class ReciteBench {
                 report.append(r.line()).append('\n')
                 if (r.detail.isNotEmpty()) report.append(r.detail)
                 println(r.line())
-                // Muffled recordings (and the owner's) once more without Clarity, to see what it does.
+                // Muffled recordings (and the owner's) once more with the highs raised, to compare.
                 if (c.owner || "muffled" in c.id) {
-                    val plain = Simulation(c, pcm, decoder, clarity = false).run()
-                    val line = plain.line().replaceFirst(c.id, "${c.id} (no clarity)".take(34).padEnd(34))
+                    val boosted = Simulation(c, pcm, decoder, boost = true).run()
+                    val line = "+boost " + boosted.line()
                     report.append(line).append('\n')
+                    if (c.owner) report.append(boosted.detail)
                     println(line)
                 }
             }
@@ -131,7 +132,7 @@ class Totals {
     }
 }
 
-private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val clarity: Boolean = true) {
+private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val boost: Boolean = false) {
     private val targets = case.refs.map { ReciteTarget(it, Arabic.words(Assets.quran.text(it).orEmpty())) }
     private val follower = Follower(targets)
     private val tracker = follower.tracker
@@ -189,7 +190,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         if (inFlight == null) {
             val u = queue.removeFirstOrNull() ?: return
             if (u.final) finals++ else partials++
-            val text = decoder.transcribe(Clarity.prepare(u.pcm, clarity))
+            val text = decoder.transcribe(Clarity.prepare(u.pcm, boost))
             inFlight = Triple(u, text, t + 1.25 + 0.04 * u.seconds)
         }
     }

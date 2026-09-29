@@ -7,11 +7,12 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * A muffled microphone made clearer before recognition. The owner's phone gave a voice with
- * almost nothing above 1 kHz (under 0.5 % of the energy, against 8–35 % for a normal voice): the
- * consonants the model reads words by are there, but some 20–30 dB down. When a stretch of
- * speech is that muffled, a high shelf brings the frequencies above ~1 kHz back up, by as much
- * as it takes to reach a normal voice's balance (up to [MAX_DB]).
+ * A muffled microphone. The owner's phone gave a voice with almost nothing above 1 kHz (under
+ * 0.5 % of the energy, against 8–35 % for a normal voice), and the model then loses most words
+ * (bench: ~97 % of words right on a clear voice, 10–60 % muffled). Bringing the highs back up
+ * ([highShelf]) made it worse on the bench (it raises hiss more than consonants): recognition
+ * takes the voice as it is ([prepare]), and a muffled one is pointed out and another microphone
+ * tried instead ([isMuffled]).
  */
 object Clarity {
     /** Share of the energy above 1 kHz under which speech counts as muffled (a normal voice: 8–35 %). */
@@ -21,12 +22,18 @@ object Clarity {
     const val SHELF_HZ = 1000.0
     const val MAX_DB = 30.0
 
-    /** What the recogniser gets: [pcm] made clearer if it's muffled, then at a normal level ([Level]). */
-    fun prepare(pcm: FloatArray, clarity: Boolean = true): FloatArray {
-        if (!clarity) return Level.normalize(pcm).first
+    /**
+     * What the recogniser gets: [pcm] at a normal level ([Level]); with [boost], a muffled voice's
+     * highs raised first (kept for the bench to compare: it doesn't help).
+     */
+    fun prepare(pcm: FloatArray, boost: Boolean = false): FloatArray {
+        if (!boost) return Level.normalize(pcm).first
         val share = highShare(pcm)
         return Level.normalize(if (share < MUFFLED_SHARE) highShelf(pcm, db = boostFor(share)) else pcm).first
     }
+
+    /** Hardly anything of [pcm] above 1 kHz (a pocket, a hand over the microphone…). */
+    fun isMuffled(pcm: FloatArray): Boolean = highShare(pcm) < MUFFLED_SHARE
 
     /**
      * The shelf's gain for a voice with [share] of its energy above 1 kHz: what brings it to

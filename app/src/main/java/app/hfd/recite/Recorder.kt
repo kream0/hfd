@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import app.hfd.core.recite.Clarity
 import app.hfd.core.recite.Segmenter
 import app.hfd.core.recite.Utterance
 import app.hfd.diag.Diag
@@ -51,21 +52,51 @@ class Recorder {
     /** Drops what is being said and starts a new utterance (after a hint). */
     fun restart() = restartRequested.set(true)
 
-    /**
-     * Utterances until the collector stops. Needs RECORD_AUDIO. With [capture], the whole
-     * session as the microphone gave it (up to [CAPTURE_SECONDS]) is handed to it at the end, to
-     * replay it on the bench (the owner's opt-in recordings).
-     */
+    /** Opens and starts [source] (an Android audio source), or null where the phone doesn't offer it. */
     @SuppressLint("MissingPermission")
-    fun utterances(capture: ((FloatArray) -> Unit)? = null): Flow<Utterance> = flow {
+    private fun open(source: Int): AudioRecord? {
         val rate = Segmenter.RATE
         val minBuf = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        val record = AudioRecord(
-            MediaRecorder.AudioSource.VOICE_RECOGNITION, rate,
-            AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(minBuf, rate) * 2,
-        )
-        Diag.log("mic.open", "state" to record.state, "minBuffer" to minBuf, "rate" to record.sampleRate, "source" to "VOICE_RECOGNITION")
-        check(record.state == AudioRecord.STATE_INITIALIZED) { "microphone unavailable" }
+        val record = runCatching {
+            AudioRecord(source, rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(minBuf, rate) * 2)
+        }.getOrNull()
+        Diag.log("mic.open", "source" to nameOf(source), "state" to record?.state, "minBuffer" to minBuf)
+        if (record == null) return null
+        if (record.state != AudioRecord.STATE_INITIALIZED || runCatching { record.startRecording() }.isFailure ||
+            record.recordingState != AudioRecord.RECORDSTATE_RECORDING
+        ) {
+            record.release()
+            return null
+        }
+        // Which microphone Android gives: the phone's, or a headset's (earbuds).
+        record.routedDevice.let { d ->
+            Diag.log("mic.device", "source" to nameOf(source), "type" to d?.type, "name" to d?.productName?.toString(), "id" to d?.id, "rate" to record.sampleRate)
+        }
+        return record
+    }
+
+    /**
+     * Utterances until the collector stops. Needs RECORD_AUDIO. The microphone is the first of
+     * [sources] (Android audio sources) the phone opens; if the first stretch of speech it gives
+     * is muffled (hardly anything above 1 kHz: [Clarity.isMuffled]), the next one is tried, and
+     * so on; the first clear one stays and goes to [clear] (to start with it next time). If none
+     * is, the least muffled one stays: the phone itself is covered (a pocket, a hand). With
+     * [capture], the whole session as the microphone gave it (up to [CAPTURE_SECONDS]) is handed
+     * to it at the end, to replay it on the bench (the owner's opt-in recordings).
+     */
+    fun utterances(
+        capture: ((FloatArray) -> Unit)? = null,
+        sources: List<Int> = SOURCES,
+        clear: (Int) -> Unit = {},
+    ): Flow<Utterance> = flow {
+        val rate = Segmenter.RATE
+        var si = 0
+        var record: AudioRecord? = null
+        while (si < sources.size && record == null) record = open(sources[si]).also { if (it == null) si++ }
+        checkNotNull(record) { "microphone unavailable" }
+        // How muffled each source tried was (share of the voice's energy above 1 kHz); settled once one is clear.
+        val shares = HashMap<Int, Double>()
+        var settled = false
         val frame = ShortArray(Segmenter.FRAME)
         val seg = Segmenter()
         val captured = if (capture != null) ShortArray(CAPTURE_SECONDS * rate) else null
@@ -86,13 +117,8 @@ class Recorder {
         var barVoice = false
         _wave.value = Wave.EMPTY
         try {
-            record.startRecording()
-            // Which microphone Android gives: the phone's, or a headset's (earbuds).
-            record.routedDevice.let { d ->
-                Diag.log("mic.device", "type" to d?.type, "name" to d?.productName?.toString(), "id" to d?.id, "rate" to record.sampleRate, "format" to record.audioFormat)
-            }
             while (currentCoroutineContext().isActive && !stopRequested.get()) {
-                val n = record.read(frame, 0, frame.size)
+                val n = record!!.read(frame, 0, frame.size)
                 if (n <= 0) continue
                 if (captured != null && capturedSize + n <= captured.size) {
                     frame.copyInto(captured, capturedSize, 0, n)
@@ -123,12 +149,44 @@ class Recorder {
                     )
                     secFrames = 0; secSum = 0.0; secMax = 0f; secVoiced = 0
                 }
+                var next: Int? = null
                 for (u in out) {
                     if (u.final) {
                         finals++
                         Diag.log("mic.utterance", "id" to u.id, "seconds" to u.seconds)
+                        // Judge the microphone on a real stretch of speech.
+                        if (!settled && u.seconds >= JUDGE_SECONDS) {
+                            val source = sources[si]
+                            val share = Clarity.highShare(u.pcm)
+                            shares[source] = share
+                            Diag.log("mic.quality", "source" to nameOf(source), "highShare" to share, "muffled" to (share < Clarity.MUFFLED_SHARE))
+                            when {
+                                share >= Clarity.MUFFLED_SHARE -> { settled = true; clear(source) }
+                                si + 1 < sources.size -> next = si + 1
+                                else -> {
+                                    // All muffled: back to the least muffled one.
+                                    settled = true
+                                    val best = shares.maxByOrNull { it.value }!!.key
+                                    if (best != source) next = sources.indexOf(best)
+                                }
+                            }
+                        }
                     }
                     emit(u)
+                }
+                // Another microphone: the voice goes on in the same utterance flow.
+                var to = next
+                while (to != null && to < sources.size) {
+                    val opened = open(sources[to])
+                    if (opened != null) {
+                        runCatching { record!!.stop() }
+                        record!!.release()
+                        record = opened
+                        Diag.log("mic.switch", "from" to nameOf(sources[si]), "to" to nameOf(sources[to]))
+                        si = to
+                        break
+                    }
+                    to = if (settled) null else to + 1
                 }
             }
             // Stopped: what was being said still counts.
@@ -140,8 +198,8 @@ class Recorder {
             Diag.error("mic.error", e)
             throw e
         } finally {
-            runCatching { record.stop() }
-            record.release()
+            runCatching { record?.stop() }
+            record?.release()
             _level.value = 0f
             _speaking.value = false
             _wave.value = Wave.EMPTY
@@ -152,13 +210,36 @@ class Recorder {
         }
     }.flowOn(Dispatchers.IO)
 
-    private companion object {
-        /** The longest session recording sent (the owner's opt-in): 4 min, 7.7 MB. */
-        const val CAPTURE_SECONDS = 240
-        /** A bar every 60 ms; 64 of them, about four seconds. */
-        const val WAVE_FRAMES = 3
-        const val WAVE_BARS = 64
+    companion object {
+        /**
+         * The microphones tried, in order: speech recognition's (the default), unprocessed, the
+         * plain microphone, the camcorder's (often another capsule), live performance's.
+         */
+        val SOURCES = listOf(
+            MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            MediaRecorder.AudioSource.UNPROCESSED,
+            MediaRecorder.AudioSource.MIC,
+            MediaRecorder.AudioSource.CAMCORDER,
+            MediaRecorder.AudioSource.VOICE_PERFORMANCE,
+        )
 
-        fun dB(rms: Float): Float = (20 * kotlin.math.log10(rms.coerceAtLeast(1e-6f).toDouble())).toFloat()
+        fun nameOf(source: Int): String = when (source) {
+            MediaRecorder.AudioSource.VOICE_RECOGNITION -> "VOICE_RECOGNITION"
+            MediaRecorder.AudioSource.UNPROCESSED -> "UNPROCESSED"
+            MediaRecorder.AudioSource.MIC -> "MIC"
+            MediaRecorder.AudioSource.CAMCORDER -> "CAMCORDER"
+            MediaRecorder.AudioSource.VOICE_PERFORMANCE -> "VOICE_PERFORMANCE"
+            else -> source.toString()
+        }
+
+        /** A stretch of speech at least this long tells whether a microphone is muffled. */
+        private const val JUDGE_SECONDS = 1.5f
+        /** The longest session recording sent (the owner's opt-in): 4 min, 7.7 MB. */
+        private const val CAPTURE_SECONDS = 240
+        /** A bar every 60 ms; 64 of them, about four seconds. */
+        private const val WAVE_FRAMES = 3
+        private const val WAVE_BARS = 64
+
+        private fun dB(rms: Float): Float = (20 * kotlin.math.log10(rms.coerceAtLeast(1e-6f).toDouble())).toFloat()
     }
 }

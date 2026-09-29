@@ -119,6 +119,8 @@ object Graph {
         app = application
         Diag.start(http, scope) { settings.current.sendDiagnostics }
         ReciteSession.recordings = { settings.current.sendRecordings }
+        ReciteSession.microphone = { settings.current.reciteMic }
+        ReciteSession.clearMicrophone = { source -> if (settings.current.reciteMic != source) settings.update { it.copy(reciteMic = source) } }
         ReciteSession.referenceClip = {
             runCatching {
                 application.assets.open("diag/112001.wav").use { input ->

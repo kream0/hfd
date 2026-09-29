@@ -97,15 +97,15 @@ class ReciteSession(
                 while (true) {
                     val u = queue.removeFirstOrNull() ?: break
                     val text = withContext(recognizer) {
-                        // The phone's speech microphone is faint, sometimes muffled: clearer and at a
-                        // normal level first (the bench does the same, Clarity.prepare).
+                        // The phone's speech microphone is faint: at a normal level first (the bench
+                        // does the same, Clarity.prepare).
                         val pcm = Clarity.prepare(u.pcm)
                         if (u.final) {
                             heardChunks++
                             val st = AudioStats.of(u.pcm)
                             val gain = Level.normalize(u.pcm).second
                             // Hardly anything above 1 kHz: a pocket, a hand over the microphone…
-                            val muffled = Clarity.highShare(u.pcm) < Clarity.MUFFLED_SHARE
+                            val muffled = Clarity.isMuffled(u.pcm)
                             if (muffled != _ui.value.muffled) scope.launch { _ui.value = _ui.value.copy(muffled = muffled) }
                             Diag.log(
                                 "recite.chunk", "n" to heardChunks, "id" to u.id, "seconds" to st.seconds, "muffled" to muffled,
@@ -156,7 +156,9 @@ class ReciteSession(
                     val range = listOfNotNull(targets.firstOrNull()?.ref, targets.lastOrNull()?.ref).joinToString("-") { "${it.sura}_${it.aya}" }
                     Diag.attach("session-$fadilaId-$range", pcm, true)
                 } else null
-                recorder.utterances(capture).collect(::offer)
+                val preferred = microphone()
+                val sources = listOfNotNull(preferred.takeIf { it >= 0 }) + Recorder.SOURCES.filter { it != preferred }
+                recorder.utterances(capture, sources) { source -> scope.launch { clearMicrophone(source) } }.collect(::offer)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -305,6 +307,9 @@ class ReciteSession(
         @Volatile var referenceClip: () -> FloatArray? = { null }
         /** Whether the owner asked for recordings to be sent ([Diag.attach]). */
         @Volatile var recordings: () -> Boolean = { false }
+        /** The microphone last found clear (an Android audio source, -1 if none yet), and where to keep a new one. */
+        @Volatile var microphone: () -> Int = { -1 }
+        @Volatile var clearMicrophone: (Int) -> Unit = {}
         const val ERROR_MODEL = "model"
         const val ERROR_MIC = "mic"
         /** A reading's new words are shown over about this long. */
