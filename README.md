@@ -70,6 +70,8 @@ that the app updates itself from new releases. Android 8.0 or newer.
   open and close on the āya's own words, then every cut transcribed and checked) and stores its
   byte range in `assets/audio/badr-alturki.json`; the app fetches just those bytes (HTTP Range)
   and plays and saves them like an everyayah file.
+- **Play all** (Faḍāʾil tab): every passage one after the other, without stopping, as one
+  playlist; the notification, the mini player and the passage screen follow the one playing.
 - **Media session:** notification, lock screen and Bluetooth earbuds. Next / previous jump to the
   next / previous āya (a `ForwardingPlayer`), not the next repetition; the title reads like
   "Āyat al-Kursī · 2:255 · 3/5". Play on the earbuds with the app closed resumes exactly where
@@ -93,9 +95,12 @@ that the app updates itself from new releases. Android 8.0 or newer.
   reveal (the āya plays), rate. A full test of a faḍīla is suggested once all its āyāt are
   memorised, then every 30 days.
 - **Recite** (Tarteel-style, on every passage): recite from memory into the microphone and the
-  app follows along, revealing each word once said, marking skipped (struck through) and wrong
-  words, with *Hint* for the next word (counted as a mistake). Speech is cut at the pauses and
-  recognised **on the phone** by [whisper.cpp](https://github.com/ggml-org/whisper.cpp) with
+  app follows along live, lighting up each word once said (the text shows dim by default; the
+  eye button hides it), marking skipped (struck through) and wrong words, with *Hint* for the
+  next word (counted as a mistake). The microphone is cut into utterances at short pauses
+  (`:core` `Segmenter`); while one goes on, what was said so far is recognised again every
+  second, each reading replacing the last (`Follower`), so the text keeps up without waiting
+  for a pause. Speech is recognised **on the phone** by [whisper.cpp](https://github.com/ggml-org/whisper.cpp) with
   Tarteel's Qur'an model [`whisper-tiny-ar-quran`](https://huggingface.co/tarteel-ai/whisper-tiny-ar-quran)
   (Apache-2.0; 43 MB, downloaded once from this repo's `speech-model` release and checked by
   SHA-256). What was heard is aligned letter by letter with the text (`:core` `Tracker`,
@@ -103,6 +108,9 @@ that the app updates itself from new releases. Android 8.0 or newer.
   mistakes). Each finished āya is a review in the log with its mistakes (none → Good, a few →
   Hard, more → Again), so it drives FSRS; Stats shows recitations and accuracy, and the
   progress keeps each āya's weak words. No audio is stored or sent. 64-bit ARM phones only.
+  `.github/workflows/recite.yml` benches the whole pipeline on EveryAyah recitations brought
+  down to the owner's phone microphone level (`tools/recite/`): words right and how soon they
+  show.
 - **Home and Stats:** today's goal (minutes of practice), streak, due reviews, continue where
   you left off, per-faḍīla progress (memorised / total, next review), a dot-matrix calendar,
   total āyāt memorised and listening time.

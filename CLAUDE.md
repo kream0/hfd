@@ -63,6 +63,12 @@
   for users: saved āyāt whose size no longer matches their range are deleted at start, and the
   stream cache is keyed by the range. The report prints each repair with its scores.
 
+- Recite: `.github/workflows/recite.yml` (on pushes touching `:core` `recite/**`, the bench or
+  `tools/recite/**`) streams EveryAyah passages at the owner's microphone level through the exact
+  pipeline (`Segmenter`, `Level`, the JNI's decoding in `tools/recite/decoder.c`, `Follower`)
+  with the phone's recognition time, and prints words right / wrong / missed and how soon they
+  show per case (`ReciteBench`, "Report" step). Run it after any change to Recite's logic.
+
 ## Debugging on the owner's phone
 - The app posts diagnostics (`app/src/main/java/app/hfd/diag/Diag.kt`: `Diag.log(event, …)`) to
   a ntfy.sh topic, kept 12 h. The sandbox can't reach ntfy.sh: write the time into
