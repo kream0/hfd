@@ -44,6 +44,12 @@ VARIANTS = {
     "muffled": dict(gap=0.3, tempo=1.0, level=-40, room=-58, af="lowpass=f=700,lowpass=f=700"),
     # …or handling / breath rumble louder than the voice.
     "rumble": dict(gap=0.3, tempo=1.0, level=-38, room=-60, rumble=-32),
+    # The owner's session of 29 Sept, 21:32 (earbuds on, the phone away from the mouth): the voice
+    # at −50 dB with 95 % of it below 300 Hz, under handling rumble.
+    "pocket": dict(gap=0.3, tempo=1.0, level=-50, room=-64, rumble=-42, af="lowpass=f=400,lowpass=f=400,lowpass=f=400"),
+    # Earbuds' microphone on the classic Bluetooth call link (SCO, CVSD): 8 kHz, 300–3400 Hz, at
+    # the level of a microphone near the mouth. (LE Audio and mSBC keep 16 kHz: like "flow".)
+    "sco": dict(gap=0.3, tempo=1.0, level=-28, room=-62, af="highpass=f=300,lowpass=f=3400,aresample=8000,aresample=16000"),
 }
 # (passage, reciter, variant, the āyāt recited in order: all by default). Restarting, repeating
 # and skipping are the reciter's, not mistakes of the app: the recited words should all end right.
@@ -71,6 +77,12 @@ CASES = [(p, r, "flow", None) for p in PASSAGES if p != "imran-opening" for r in
     ("imran-opening", "husary", "rumble", [1, 2, 3, 4]),
     ("fatiha", "dossary", "rumble", None),
     ("baqara-opening", "alafasy", "rumble", None),
+    ("imran-opening", "maher", "pocket", [1, 2, 3, 4]),
+    ("fatiha", "husary", "pocket", None),
+    ("imran-opening", "maher", "sco", None),
+    ("fatiha", "alafasy", "sco", None),
+    ("baqara-opening", "husary", "sco", None),
+    ("ikhlas", "dossary", "sco", None),
 ]
 
 
