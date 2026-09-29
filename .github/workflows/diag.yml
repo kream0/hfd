@@ -3,7 +3,9 @@ name: Diagnostics
 # Prints what the app sent to its diagnostics topic (app/.../diag/Diag.kt → ntfy.sh, kept 12 h),
 # for reading with get_job_logs: the dev sandbox can't reach ntfy.sh. Touch .github/diag.trigger
 # (e.g. write the time into it) and push to read the latest. Recordings (only when the owner
-# switched them on) are downloaded and transcribed here with the app's model, on a PC.
+# switched them on) are downloaded, measured and transcribed here (the app's model, and a large
+# general one to tell a sound problem from a model problem); whole Recite sessions are kept in the
+# Actions cache for the Recite bench (recite.yml replays them through the app's pipeline).
 on:
   push:
     branches: ['**']
@@ -18,7 +20,7 @@ permissions:
 jobs:
   print:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Diagnostics of the last 12 hours
         run: |
@@ -44,7 +46,48 @@ jobs:
                   print(t, s, e, " ".join(f"{k}={v}" for k, v in d.items()))
           '
           ls rec | head -50
-      - name: Transcribe the recordings on a PC (app's model and parameters)
+      - name: The recordings' sound (level, and where the energy lies)
+        run: |
+          if [ -z "$(ls rec)" ]; then echo "No recordings"; exit 0; fi
+          pip install --quiet numpy
+          python3 - <<'PY'
+          import glob, numpy as np
+          for path in sorted(glob.glob("rec/*.wav")):
+              raw = open(path, "rb").read()
+              i = raw.find(b"data")
+              x = np.frombuffer(raw[i + 8:], dtype="<i2").astype(np.float32) / 32768
+              n = len(x) // 320
+              e = np.sqrt(np.mean(x[:n * 320].reshape(n, 320) ** 2, axis=1) + 1e-12)
+              s = np.abs(np.fft.rfft(x)) ** 2
+              f = np.fft.rfftfreq(len(x), 1 / 16000)
+              edges = [0, 120, 300, 1000, 2000, 4000, 8001]
+              b = [s[(f >= a) & (f < c)].sum() for a, c in zip(edges, edges[1:])]
+              bands = "/".join(f"{100 * v / sum(b):.1f}" for v in b)
+              print(f"{path}: {len(x) / 16000:.1f} s, loud {20 * np.log10(np.percentile(e, 90)):.1f} dB, "
+                    f"quiet {20 * np.log10(np.percentile(e, 10)):.1f} dB, bands 0-120/120-300/300-1k/1-2k/2-4k/4-8k Hz: {bands} %")
+          PY
+      - name: Keep the owner's session recordings for the Recite bench (the Actions cache, not published)
+        uses: actions/cache/restore@v5
+        with:
+          path: owner-rec
+          key: owner-rec-${{ github.run_id }}
+          restore-keys: owner-rec-
+      - id: keep
+        run: |
+          mkdir -p owner-rec
+          new=0
+          for f in rec/*-session-*.wav; do
+            [ -e "$f" ] || continue
+            [ -e "owner-rec/$(basename "$f")" ] || { cp "$f" owner-rec/; new=1; }
+          done
+          ls -l owner-rec
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+      - if: steps.keep.outputs.new == '1'
+        uses: actions/cache/save@v5
+        with:
+          path: owner-rec
+          key: owner-rec-${{ github.run_id }}
+      - name: Transcribe the recordings on a PC (the app's model; and a large general one on sessions)
         run: |
           if [ -z "$(ls rec)" ]; then echo "No recordings"; exit 0; fi
           git clone -q --depth 1 --branch v1.7.6 https://github.com/ggml-org/whisper.cpp
@@ -52,5 +95,11 @@ jobs:
           cmake --build whisper.cpp/build -j"$(nproc)" --config Release --target whisper-cli >/dev/null
           curl -sSfL -o model.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-tiny-ar-quran-q8_0.bin
           for f in rec/*.wav; do
-            whisper.cpp/build/bin/whisper-cli -m model.bin -l ar -nt -np -bs 1 -bo 1 -mc 0 -f "$f" 2>/dev/null | tr '\n' ' ' | sed "s|^|$f: |"; echo
+            whisper.cpp/build/bin/whisper-cli -m model.bin -l ar -nt -np -bs 1 -bo 1 -mc 0 -f "$f" 2>/dev/null | tr '\n' ' ' | sed "s|^|tiny-quran $f: |"; echo
           done
+          if ls rec/*-session-*.wav >/dev/null 2>&1; then
+            curl -sSfL -o large.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin
+            for f in rec/*-session-*.wav; do
+              whisper.cpp/build/bin/whisper-cli -m large.bin -l ar -nt -np -t "$(nproc)" -f "$f" 2>/dev/null | tr '\n' ' ' | sed "s|^|large-v3-turbo $f: |"; echo
+            done
+          fi

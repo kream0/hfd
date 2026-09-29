@@ -32,6 +32,7 @@ class Segmenter {
     var inSpeech = false
         private set
 
+    private val highPass = HighPass()
     private val pre = ArrayDeque<FloatArray>()
     private val chunk = ArrayList<FloatArray>()
     private val chunkRms = ArrayList<Float>()
@@ -41,9 +42,13 @@ class Segmenter {
     private var voicedAtPartial = 0
     private var id = 0
 
-    /** Takes the next frame; returns what is ready for the recogniser (usually nothing). */
-    fun feed(frame: FloatArray): List<Utterance> {
-        if (frame.isEmpty()) return emptyList()
+    /**
+     * Takes the next frame (as the microphone gives it: the rumble below the voice is taken away
+     * here, [HighPass]); returns what is ready for the recogniser (usually nothing).
+     */
+    fun feed(raw: FloatArray): List<Utterance> {
+        if (raw.isEmpty()) return emptyList()
+        val frame = highPass.filter(raw)
         rms = rmsOf(frame)
         val rise = if (inSpeech) NOISE_RISE_SPEECH else NOISE_RISE
         noise = if (rms < noise) rms * 0.3f + noise * 0.7f else noise * (1 - rise) + rms * rise

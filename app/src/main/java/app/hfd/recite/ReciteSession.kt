@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,6 +41,8 @@ data class ReciteUi(
     val heard: String? = null,
     val results: List<AyahResult> = emptyList(),
     val error: String? = null,
+    /** The microphone sounds muffled (a pocket, a hand over it): hardly any of the voice's sounds reach it. */
+    val muffled: Boolean = false,
 ) {
     val done: Boolean get() = next == null
 }
@@ -47,9 +50,10 @@ data class ReciteUi(
 /**
  * Reciting [targets] aloud from memory, Tarteel-style: the microphone is cut into utterances
  * ([Recorder]), each recognised on the phone (whisper.cpp, Tarteel's model) again and again as
- * it grows, so the text follows the reciter as they go ([Follower]); every āya finished (on an
- * utterance's final reading) is written to the progress log ([record]) with its mistakes and the
- * rating that follows. Main-thread API.
+ * it grows, so the text follows the reciter as they go ([Follower]), word by word on screen. The
+ * reciter may go back (start an āya over, say a phrase again) without it counting as a mistake:
+ * the āyāt finished are written to the progress log ([record]) with their mistakes and the
+ * rating that follows only at the end, as they stand then. Main-thread API.
  */
 class ReciteSession(
     val fadilaId: String,
@@ -70,9 +74,14 @@ class ReciteSession(
     private var whisper: Whisper? = null
     private var listenJob: Job? = null
     private val consumer: Job
-    private var logged = 0
     private var heardChunks = 0
-    private var ayahStartedAt = System.currentTimeMillis()
+    private val startedAt = System.currentTimeMillis()
+    /** When each āya was first finished, and those already written to the log. */
+    private val finishedAt = LinkedHashMap<AyahRef, Long>()
+    private val recorded = HashSet<AyahRef>()
+    /** Words shown as followed so far (flat index): they catch up with the tracker one at a time. */
+    private var shown = 0
+    private var reveal: Job? = null
 
     private val _ui = MutableStateFlow(snapshot(ReciteUi(targets, emptyList(), null)))
     val ui: StateFlow<ReciteUi> = _ui.asStateFlow()
@@ -92,13 +101,15 @@ class ReciteSession(
                         if (u.final) {
                             heardChunks++
                             val st = AudioStats.of(u.pcm)
+                            // Almost nothing above 300 Hz (the rumble below 120 Hz is filtered out already).
+                            val muffled = st.bands.drop(1).sum() < MUFFLED_PERCENT
+                            if (muffled != _ui.value.muffled) scope.launch { _ui.value = _ui.value.copy(muffled = muffled) }
                             Diag.log(
-                                "recite.chunk", "n" to heardChunks, "id" to u.id, "seconds" to st.seconds,
+                                "recite.chunk", "n" to heardChunks, "id" to u.id, "seconds" to st.seconds, "muffled" to muffled,
                                 "gainDb" to (20 * kotlin.math.log10(gain.toDouble())).toFloat(),
                                 "peakDb" to st.peakDb, "loudDb" to st.loudDb, "quietDb" to st.quietDb, "dc" to st.dc, "clipped" to st.clipped,
                                 "zcr" to st.zcr, "bands" to st.bands.joinToString("/"),
                             )
-                            Diag.attach("chunk$heardChunks", u.pcm, recordings())
                         }
                         loadedWhisper()?.transcribe(pcm)
                     }
@@ -124,7 +135,6 @@ class ReciteSession(
         Diag.log("recite.start", "fadila" to fadilaId, "ayat" to targets.size, "from" to targets.firstOrNull()?.ref?.key, "model" to file?.length(), "done" to tracker.done)
         if (file == null) return
         _ui.value = _ui.value.copy(listening = true, error = null, loading = whisper == null)
-        ayahStartedAt = System.currentTimeMillis()
         // Load the model now rather than on the first chunk.
         scope.launch {
             val w = withContext(recognizer) { loadedWhisper() }
@@ -136,7 +146,14 @@ class ReciteSession(
         }
         listenJob = scope.launch {
             try {
-                recorder.utterances().collect(::offer)
+                // The owner's opt-in recordings: the whole session, to replay it on the bench.
+                val capture: ((FloatArray) -> Unit)? = if (recordings()) { pcm ->
+                    Diag.log("recite.session", "fadila" to fadilaId, "from" to targets.firstOrNull()?.ref?.key, "to" to targets.lastOrNull()?.ref?.key, "seconds" to pcm.size / 16_000f)
+                    // The name says what was recited: session-<passage>-<from>-<to>, e.g. session-imran-opening-3_1-3_9.
+                    val range = listOfNotNull(targets.firstOrNull()?.ref, targets.lastOrNull()?.ref).joinToString("-") { "${it.sura}_${it.aya}" }
+                    Diag.attach("session-$fadilaId-$range", pcm, true)
+                } else null
+                recorder.utterances(capture).collect(::offer)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -161,11 +178,18 @@ class ReciteSession(
         val dropped = queue.count { it.id <= lastId && it.final }
         queue.removeAll { it.id <= lastId }
         _ui.value = _ui.value.copy(pending = (_ui.value.pending - dropped).coerceAtLeast(0))
+        // The hinted word shows at once.
+        shown = maxOf(shown, tracker.position)
         afterProgress(null, final = true)
     }
 
-    /** A whole utterance heard (the screenshot test). */
-    fun onHeard(text: String) = onHeard(++lastId, text, final = true)
+    /** A whole utterance heard, shown at once (the screenshot test). */
+    fun onHeard(text: String) {
+        onHeard(++lastId, text, final = true)
+        reveal?.cancel()
+        shown = tracker.position
+        _ui.value = snapshot(_ui.value)
+    }
 
     /** A reading of utterance [id]: partial ones move the text on, the final one stays. */
     private fun onHeard(id: Int, text: String, final: Boolean) {
@@ -177,7 +201,9 @@ class ReciteSession(
 
     fun close() {
         Diag.log("recite.close", "position" to tracker.position, "done" to tracker.done)
+        recordFinished()
         recorder.stop()
+        reveal?.cancel()
         listenJob?.cancel()
         consumer.cancel()
         wake.close()
@@ -188,26 +214,64 @@ class ReciteSession(
         }.invokeOnCompletion { recognizer.close() }
     }
 
-    /** After a [final] reading (or a hint) the āyāt finished are recorded; a partial one only shows. */
+    /** After a reading (or a hint): the text follows; at the end of the passage, the āyāt are recorded. */
     private fun afterProgress(heard: String?, final: Boolean) {
         val finished = tracker.finished()
         if (final) {
             val now = System.currentTimeMillis()
-            for (r in finished.drop(logged)) {
-                Diag.log("recite.ayah", "ref" to r.ref.key, "words" to r.words, "mistakes" to r.mistakes.joinToString(","), "rating" to r.rating.name)
-                record(Event.Recite(now, r.ref.key, r.words, r.mistakes, r.rating, now - ayahStartedAt))
-                ayahStartedAt = now
+            for (r in finished) finishedAt.putIfAbsent(r.ref, now)
+            if (tracker.done) {
+                recordFinished()
+                recorder.stop()
             }
-            logged = finished.size
-            if (tracker.done) recorder.stop()
         }
-        _ui.value = snapshot(_ui.value.copy(heard = heard ?: _ui.value.heard, results = finished))
+        _ui.value = _ui.value.copy(heard = heard ?: _ui.value.heard, results = finished)
+        catchUp()
     }
 
-    private fun snapshot(base: ReciteUi): ReciteUi = base.copy(
-        status = targets.indices.map { a -> targets[a].words.indices.map { w -> tracker.statusOf(a, w) } },
-        next = if (tracker.done) null else tracker.locate(tracker.position),
-    )
+    /**
+     * The words shown follow the tracker one at a time, like a reading pointer (a reading often
+     * brings several at once); going back shows at once.
+     */
+    private fun catchUp() {
+        if (tracker.position <= shown) {
+            shown = tracker.position
+            _ui.value = snapshot(_ui.value)
+            return
+        }
+        _ui.value = snapshot(_ui.value)
+        if (reveal?.isActive == true) return
+        reveal = scope.launch {
+            while (shown < tracker.position) {
+                val behind = tracker.position - shown
+                shown++
+                _ui.value = snapshot(_ui.value)
+                delay((REVEAL_MS / behind).coerceIn(35L, 140L))
+            }
+        }
+    }
+
+    /** The āyāt finished, as they stand now, into the progress log (each once). */
+    private fun recordFinished() {
+        var previous = startedAt
+        for (r in tracker.finished()) {
+            val at = finishedAt[r.ref] ?: System.currentTimeMillis()
+            if (recorded.add(r.ref)) {
+                Diag.log("recite.ayah", "ref" to r.ref.key, "words" to r.words, "mistakes" to r.mistakes.joinToString(","), "rating" to r.rating.name)
+                record(Event.Recite(System.currentTimeMillis(), r.ref.key, r.words, r.mistakes, r.rating, (at - previous).coerceAtLeast(0)))
+            }
+            previous = at
+        }
+    }
+
+    private fun snapshot(base: ReciteUi): ReciteUi {
+        var flat = 0
+        val status = targets.indices.map { a ->
+            targets[a].words.indices.map { w -> if (flat + w < shown) tracker.statusOf(a, w) else WordStatus.PENDING }
+                .also { flat += targets[a].words.size }
+        }
+        return base.copy(status = status, next = if (shown >= tracker.size) null else tracker.locate(shown))
+    }
 
     /** On the recognition thread only. */
     private fun loadedWhisper(): Whisper? {
@@ -240,6 +304,10 @@ class ReciteSession(
         @Volatile var recordings: () -> Boolean = { false }
         const val ERROR_MODEL = "model"
         const val ERROR_MIC = "mic"
+        /** A reading's new words are shown over about this long. */
+        private const val REVEAL_MS = 700L
+        /** Share of the energy above 300 Hz under which the microphone sounds muffled. */
+        private const val MUFFLED_PERCENT = 10
 
         fun targets(refs: List<AyahRef>, text: (AyahRef) -> String?): List<ReciteTarget> =
             refs.map { ReciteTarget(it, Arabic.words(text(it).orEmpty())) }

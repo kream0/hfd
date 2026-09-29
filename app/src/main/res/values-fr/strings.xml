@@ -259,4 +259,5 @@
     <string name="play_all">Tout écouter</string>
     <string name="play_all_pause">Pause</string>
     <string name="play_all_title">Toutes les faḍāʾil</string>
+    <string name="recite_muffled">Le micro semble étouffé : le téléphone est-il dans une poche, ou couvert ?</string>
 </resources>

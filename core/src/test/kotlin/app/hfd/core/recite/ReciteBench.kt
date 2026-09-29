@@ -31,7 +31,7 @@ class ReciteBench {
         Decoder(System.getenv("HFD_DECODER"), System.getenv("HFD_MODEL")).use { decoder ->
             for (c in cases) {
                 val r = Simulation(c, Wav.read(File(dir, c.wav)), decoder).run()
-                totals += r
+                if (!c.owner) totals += r
                 report.append(r.line()).append('\n')
                 if (r.detail.isNotEmpty()) report.append(r.detail)
                 println(r.line())
@@ -48,6 +48,9 @@ class ReciteBench {
  * when the reciter went back and said it again).
  */
 class Case(val id: String, val refs: List<AyahRef>, val wav: String, val spans: Map<AyahRef, Pair<Double, Double>>) {
+    /** One of the owner's own sessions: what was said and when isn't known (tools/recite/owner.py). */
+    val owner: Boolean get() = spans.isEmpty()
+
     companion object {
         /** `id  2:1-5  file.wav  2:1@0.52-2.10,2:2@2.40-8.01,…` */
         fun parse(line: String): Case {
@@ -56,7 +59,7 @@ class Case(val id: String, val refs: List<AyahRef>, val wav: String, val spans: 
             val (a0, a1) = if ('-' in range) range.split('-').map(String::toInt) else listOf(range.toInt(), range.toInt())
             val refs = (a0..a1).map { AyahRef(s.toInt(), it) }
             val spans = LinkedHashMap<AyahRef, Pair<Double, Double>>()
-            for (item in p[3].split(',').filter { it.isNotBlank() }) {
+            for (item in p.getOrElse(3) { "" }.split(',').filter { it.isNotBlank() }) {
                 val (ref, times) = item.split('@')
                 val (rs, ra) = ref.split(':').map(String::toInt)
                 val (t0, t1) = times.split('-').map(String::toDouble)
@@ -81,6 +84,9 @@ class Result(
     val detail: String,
 ) {
     fun line(): String {
+        if (id.startsWith("owner-")) {
+            return String.format(Locale.US, "%-34s OWNER'S SESSION: ok %d, wrong %d, missed %d, pending %d of %d words  calls %d+%d", id, ok, wrong, missed, pending, said, partials, finals)
+        }
         val l = lags.sorted()
         fun q(f: Double) = if (l.isEmpty()) Double.NaN else l[((l.size - 1) * f).toInt()]
         val skip = (if (skipped > 0) "  skipped $skippedMissed/$skipped missed" else "") +
@@ -194,7 +200,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         var said = 0; var ok = 0; var wrong = 0; var missed = 0; var pending = 0
         var skipped = 0; var skippedMissed = 0
         var unreached = 0; var unreachedMarked = 0
-        val lastRecited = targets.indexOfLast { it.ref in case.spans }
+        // The owner's sessions: every word counted as it ended (what was said isn't known).
+        val lastRecited = if (case.owner) targets.lastIndex else targets.indexOfLast { it.ref in case.spans }
         val lags = ArrayList<Double>()
         val detail = StringBuilder()
         for ((a, t) in targets.withIndex()) {
@@ -207,7 +214,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             for ((w, word) in t.words.withIndex()) {
                 val st = tracker.status[flat + w]
                 acc += weights[w]
-                if (span != null) {
+                if (span != null || case.owner) {
                     said++
                     when (st) {
                         WordStatus.OK -> ok++
@@ -215,8 +222,10 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                         WordStatus.MISSED -> missed++
                         else -> pending++
                     }
-                    val end = span.first + (span.second - span.first) * acc / total
-                    if (!shownAt[flat + w].isNaN()) lags += shownAt[flat + w] - end
+                    if (span != null) {
+                        val end = span.first + (span.second - span.first) * acc / total
+                        if (!shownAt[flat + w].isNaN()) lags += shownAt[flat + w] - end
+                    }
                 } else if (a > lastRecited) {
                     unreached++
                     if (st != WordStatus.PENDING) unreachedMarked++
@@ -233,16 +242,16 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                         WordStatus.PENDING -> "·"
                     },
                 )
-                if (span != null && st != WordStatus.OK) marks.append("(").append(word).append(")")
+                if ((span != null || case.owner) && st != WordStatus.OK) marks.append("(").append(word).append(")")
                 marks.append(' ')
             }
             flat += t.words.size
-            detail.append("    ${t.ref}${if (span == null) (if (a > lastRecited) " (not reached)" else " (not recited)") else ""}: $marks\n")
+            detail.append("    ${t.ref}${if (span == null && !case.owner) (if (a > lastRecited) " (not reached)" else " (not recited)") else ""}: $marks\n")
         }
         val bad = said - ok + (skipped - skippedMissed) + unreachedMarked
         return Result(
             case.id, said, ok, wrong, missed, pending, skipped, skippedMissed, unreached, unreachedMarked, lags, flips, partials, finals,
-            if (bad > 0) detail.toString() + readings else "",
+            if (bad > 0 || case.owner) detail.toString() + readings else "",
         )
     }
 

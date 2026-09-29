@@ -28,7 +28,9 @@ data class AyahResult(
  * differently from the Uthmani text (يَـٰٓأَيُّهَا / يا أيها). A chunk may also start further on
  * (words the recogniser dropped, or the reciter skipped): the words passed over are MISSED, which
  * a clear match allows, so the tracker never stays stuck behind the reciter. Or a little before:
- * a reciter often says the last words again before going on, and those change nothing.
+ * a reciter often says the last words again before going on, and those change nothing. Or
+ * further back: the reciter starts an āya over (or the passage), and the recitation goes back
+ * there with no mistake — the words after it are to be recited again.
  */
 class Tracker(val targets: List<ReciteTarget>) {
     private val flat: List<String> = targets.flatMap { it.words }
@@ -74,7 +76,9 @@ class Tracker(val targets: List<ReciteTarget>) {
     }
 
     /** Where the recitation stands, to come back to ([reset]). */
-    class Mark internal constructor(internal val position: Int, internal val status: Array<WordStatus>)
+    class Mark internal constructor(internal val position: Int, internal val status: Array<WordStatus>) {
+        internal fun statusAt(w: Int): WordStatus = status[w]
+    }
 
     fun mark(): Mark = Mark(position, status.copyOf())
 
@@ -92,19 +96,100 @@ class Tracker(val targets: List<ReciteTarget>) {
 
     /**
      * Takes a chunk of recognised speech. Returns the number of words it moved on by (0 when the
-     * chunk didn't match the text well enough to follow it: noise, or another passage).
+     * chunk didn't match the text well enough to follow it: noise, or another passage; less
+     * than 0 when the reciter went back).
      */
     fun feed(heard: String): Int {
-        if (done) return 0
         val hWords = heard.split(Regex("\\s+")).map { Arabic.skeleton(it) }.filter { it.isNotEmpty() }
         if (hWords.isEmpty()) return 0
-        val moved = align(hWords)
-        if (moved > 0 || !letters[position]) return moved
-        // The disconnected letters (الٓمٓ, حمٓ…) are recited as long held notes, which the model
-        // doesn't hear as words (it makes up منذر, فرق…): whatever is heard while they're next
-        // counts as them, and the rest of the chunk may be the words after.
-        status[position++] = WordStatus.OK
-        return 1 + if (done) 0 else align(hWords)
+        if (!done) {
+            val moved = align(hWords)
+            if (moved > 0) return moved
+            // The disconnected letters (الٓمٓ, حمٓ…) are recited as long held notes, which the model
+            // doesn't hear as words (it makes up منذر, فرق…): whatever is heard while they're next
+            // counts as them, and the rest of the chunk may be the words after.
+            if (letters[position]) {
+                status[position++] = WordStatus.OK
+                return 1 + if (done) 0 else maxOf(0, align(hWords))
+            }
+        }
+        return back(hWords)
+    }
+
+    /**
+     * The chunk starts with words already recited, said again: a phrase repeated, an āya or the
+     * passage started over (and maybe on past where the recitation was). It goes back there:
+     * those words take the status they have now (a correction counts), and the words after the
+     * chunk are pending again, not mistakes. Takes a clear match (a scrap may be anywhere).
+     */
+    private fun back(hWords: List<String>): Int {
+        if (position == 0) return 0
+        val h = hWords.joinToString("")
+        val e = StringBuilder()
+        val owner = ArrayList<Int>()
+        val end = minOf(flat.size, position + maxOf(MIN_WINDOW, hWords.size * 3))
+        for (w in 0 until end) {
+            e.append(skel[w])
+            repeat(skel[w].length) { owner += w }
+        }
+        val n = e.length
+        val m = h.length
+        if (n == 0 || m == 0) return 0
+        // The whole chunk against any stretch of what was recited (starting anywhere for free).
+        val d = Array(n + 1) { IntArray(m + 1) }
+        for (j in 0..m) d[0][j] = -j * GAP
+        for (i in 1..n) {
+            d[i][0] = 0
+            for (j in 1..m) {
+                val diag = d[i - 1][j - 1] + if (e[i - 1] == h[j - 1]) MATCH else -MISMATCH
+                d[i][j] = maxOf(diag, d[i - 1][j] - GAP, d[i][j - 1] - GAP)
+            }
+        }
+        // The best end; on a tie the latest (the nearest place to go back to).
+        var best = 1
+        for (i in 1..n) if (d[i][m] >= d[best][m]) best = i
+        val matched = BooleanArray(n)
+        val touched = BooleanArray(n)
+        var i = best
+        var j = m
+        var same = 0
+        while (i > 0 && j > 0) {
+            val eq = e[i - 1] == h[j - 1]
+            when {
+                d[i][j] == d[i - 1][j - 1] + (if (eq) MATCH else -MISMATCH) -> {
+                    touched[i - 1] = true
+                    if (eq) { matched[i - 1] = true; same++ }
+                    i--; j--
+                }
+                d[i][j] == d[i - 1][j] - GAP -> i--
+                else -> j--
+            }
+        }
+        val start = i
+        val span = best - start
+        if (span <= 0) return 0
+        val first = owner[start]
+        val lastWord = owner[best - 1]
+        // Starting at the position or after is going on, not back (align's to judge).
+        if (first >= position) return 0
+        // The last words said again (a correction) take less than going far back.
+        val least = if (lastWord >= position - BACK_WORDS) JUMP_MIN_LETTERS else BACK_MIN_LETTERS
+        if (same < least || same < JUMP_MATCH_FRACTION * m || same < JUMP_MATCH_FRACTION * span) return 0
+        for (w in first..lastWord) status[w] = statusOf(owner.indices.filter { owner[it] == w }, matched, touched, w)
+        for (w in lastWord + 1 until flat.size) status[w] = WordStatus.PENDING
+        val moved = lastWord + 1 - position
+        position = lastWord + 1
+        return moved
+    }
+
+    private fun statusOf(idx: List<Int>, matched: BooleanArray, touched: BooleanArray, w: Int): WordStatus {
+        val hits = idx.count { matched[it] }
+        return when {
+            idx.isEmpty() || letters[w] -> WordStatus.OK
+            hits == idx.size || (idx.size == 3 && hits == 2) || (idx.size >= 4 && hits >= idx.size * OK_FRACTION) -> WordStatus.OK
+            idx.any { touched[it] } -> WordStatus.WRONG
+            else -> WordStatus.MISSED
+        }
     }
 
     private fun align(hWords: List<String>): Int {
@@ -174,17 +259,7 @@ class Tracker(val targets: List<ReciteTarget>) {
         if (passed >= 2 && (same < JUMP_MATCH_FRACTION * m || ahead < JUMP_MATCH_FRACTION * span || ahead < enough)) return 0
         // Words up to the last one the chunk reached (a word cut at the end counts whole).
         val lastWord = owner[best - 1]
-        for (w in position..lastWord) {
-            val idx = owner.indices.filter { owner[it] == w }
-            val hits = idx.count { matched[it] }
-            val any = idx.any { touched[it] }
-            status[w] = when {
-                idx.isEmpty() || letters[w] -> WordStatus.OK
-                hits == idx.size || (idx.size == 3 && hits == 2) || (idx.size >= 4 && hits >= idx.size * OK_FRACTION) -> WordStatus.OK
-                any -> WordStatus.WRONG
-                else -> WordStatus.MISSED
-            }
-        }
+        for (w in position..lastWord) status[w] = statusOf(owner.indices.filter { owner[it] == w }, matched, touched, w)
         val moved = lastWord + 1 - position
         position = lastWord + 1
         return moved
@@ -203,6 +278,8 @@ class Tracker(val targets: List<ReciteTarget>) {
         const val SKIP_WORDS = 40
         /** Words already recited that a chunk may say again first. */
         const val BACK_WORDS = 8
+        /** Letters a chunk must match to take the recitation further back than [BACK_WORDS]. */
+        const val BACK_MIN_LETTERS = 8
         /** Share of the chunk's letters, and of the text's letters it spans, that must match for it to be followed. */
         const val MIN_MATCH_FRACTION = 0.6
         /**

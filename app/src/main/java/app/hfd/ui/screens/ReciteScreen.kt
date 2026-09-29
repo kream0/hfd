@@ -139,6 +139,12 @@ fun ReciteScreen(onClose: () -> Unit) {
         ui.heard?.let {
             Text(it, style = Type.label, color = P.textFaint, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp))
         }
+        if (ui.muffled && ui.listening) {
+            Text(
+                stringResource(R.string.recite_muffled), style = Type.label, color = P.accent, textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+            )
+        }
         if (ui.listening) Waveform(wave, Modifier.padding(horizontal = 24.dp, vertical = 6.dp))
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),

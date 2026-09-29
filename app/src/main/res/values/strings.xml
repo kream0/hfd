@@ -258,4 +258,5 @@
     <string name="play_all">Play all</string>
     <string name="play_all_pause">Pause</string>
     <string name="play_all_title">All the faḍāʾil</string>
+    <string name="recite_muffled">The microphone sounds muffled: is the phone in a pocket, or covered?</string>
 </resources>

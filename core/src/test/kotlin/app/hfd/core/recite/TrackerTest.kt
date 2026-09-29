@@ -173,4 +173,37 @@ class TrackerTest {
         assertEquals(2, f.feed("الرحمن الرحيم"))
         assertTrue(f.done)
     }
+
+    @Test
+    fun startingOverGoesBackWithoutMistakes() {
+        val ikhlas = listOf(target(112, 1), target(112, 2), target(112, 3), target(112, 4))
+        val t = Tracker(ikhlas)
+        t.feed("قل هو الله احد")
+        t.feed("الله الصمد")
+        assertEquals(6, t.position)
+        // Back to the first āya: the second is to be recited again, not a mistake.
+        assertEquals(-2, t.feed("قل هو الله احد"))
+        assertEquals(4, t.position)
+        assertTrue((0 until 2).all { t.statusOf(1, it) == WordStatus.PENDING })
+        t.feed("الله الصمد لم يلد ولم يولد")
+        assertEquals(10, t.position)
+        assertTrue((0 until 3).all { t.resultOf(it).mistakes.isEmpty() })
+        // Starting over and going on past where it was, in one breath.
+        val u = Tracker(ikhlas)
+        u.feed("قل هو الله احد الله الصمد")
+        u.feed("قل هو الله احد الله الصمد لم يلد ولم يولد ولم يكن")
+        assertEquals(12, u.position)
+        assertTrue((0 until 3).all { u.resultOf(it).mistakes.isEmpty() })
+        // A word said wrong, then said again right: the correction counts.
+        val v = Tracker(ikhlas)
+        v.feed("قل هو الله كريم الله الصمد")
+        assertEquals(WordStatus.WRONG, v.statusOf(0, 3))
+        v.feed("الله احد")
+        assertEquals(WordStatus.OK, v.statusOf(0, 3))
+        assertEquals(4, v.position)
+        // A scrap doesn't take it back.
+        v.feed("الله الصمد")
+        assertEquals(0, v.feed("الله"))
+        assertEquals(6, v.position)
+    }
 }

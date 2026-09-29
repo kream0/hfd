@@ -32,6 +32,13 @@ class Follower(val targets: List<ReciteTarget>) {
         val from = before?.position ?: tracker.position
         val clean = withoutOpening(text)
         tracker.feed(clean)
+        if (tracker.position < from || tracker.status.indices.any { it < from && tracker.status[it] != before?.statusAt(it) }) {
+            // Went back (a restart, a phrase said again): nothing of it is stable yet.
+            previous = tracker.status.copyOf()
+            stable = BooleanArray(tracker.size)
+            if (final) closed = id
+            return tracker.position - from
+        }
         val fellBack = tracker.position <= stable.indexOfLast { it }
         keepStable(from)
         // This reading lost stable words at its start: what it heard is after them.
@@ -41,7 +48,7 @@ class Follower(val targets: List<ReciteTarget>) {
         }
         val now = tracker.status
         val prev = previous
-        stable = BooleanArray(now.size) { prev != null && prev[it] == WordStatus.OK && now[it] == WordStatus.OK }
+        stable = BooleanArray(now.size) { it >= from && prev != null && prev[it] == WordStatus.OK && now[it] == WordStatus.OK }
         previous = now.copyOf()
         if (final) closed = id
         return tracker.position - from

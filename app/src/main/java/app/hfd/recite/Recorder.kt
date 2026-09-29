@@ -51,9 +51,13 @@ class Recorder {
     /** Drops what is being said and starts a new utterance (after a hint). */
     fun restart() = restartRequested.set(true)
 
-    /** Utterances until the collector stops. Needs RECORD_AUDIO. */
+    /**
+     * Utterances until the collector stops. Needs RECORD_AUDIO. With [capture], the whole
+     * session as the microphone gave it (up to [CAPTURE_SECONDS]) is handed to it at the end, to
+     * replay it on the bench (the owner's opt-in recordings).
+     */
     @SuppressLint("MissingPermission")
-    fun utterances(): Flow<Utterance> = flow {
+    fun utterances(capture: ((FloatArray) -> Unit)? = null): Flow<Utterance> = flow {
         val rate = Segmenter.RATE
         val minBuf = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         val record = AudioRecord(
@@ -64,6 +68,8 @@ class Recorder {
         check(record.state == AudioRecord.STATE_INITIALIZED) { "microphone unavailable" }
         val frame = ShortArray(Segmenter.FRAME)
         val seg = Segmenter()
+        val captured = if (capture != null) ShortArray(CAPTURE_SECONDS * rate) else null
+        var capturedSize = 0
         stopRequested.set(false)
         restartRequested.set(false)
         // A second of levels at a time, for the diagnostics.
@@ -81,9 +87,17 @@ class Recorder {
         _wave.value = Wave.EMPTY
         try {
             record.startRecording()
+            // Which microphone Android gives: the phone's, or a headset's (earbuds).
+            record.routedDevice.let { d ->
+                Diag.log("mic.device", "type" to d?.type, "name" to d?.productName?.toString(), "id" to d?.id, "rate" to record.sampleRate, "format" to record.audioFormat)
+            }
             while (currentCoroutineContext().isActive && !stopRequested.get()) {
                 val n = record.read(frame, 0, frame.size)
                 if (n <= 0) continue
+                if (captured != null && capturedSize + n <= captured.size) {
+                    frame.copyInto(captured, capturedSize, 0, n)
+                    capturedSize += n
+                }
                 if (restartRequested.getAndSet(false)) seg.restart()
                 val out = seg.feed(FloatArray(n) { frame[it] / 32768f })
                 // −60 dB → 0, −15 dB → 1: phone microphones for speech recognition are quiet.
@@ -131,10 +145,16 @@ class Recorder {
             _level.value = 0f
             _speaking.value = false
             _wave.value = Wave.EMPTY
+            if (captured != null && capturedSize > 0) {
+                val pcm = FloatArray(capturedSize) { captured[it] / 32768f }
+                capture?.let { handOver -> Thread { handOver(pcm) }.start() }
+            }
         }
     }.flowOn(Dispatchers.IO)
 
     private companion object {
+        /** The longest session recording sent (the owner's opt-in): 4 min, 7.7 MB. */
+        const val CAPTURE_SECONDS = 240
         /** A bar every 60 ms; 64 of them, about four seconds. */
         const val WAVE_FRAMES = 3
         const val WAVE_BARS = 64
