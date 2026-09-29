@@ -25,6 +25,8 @@ data class AudioStats(
     val zcr: Float,
     /** Share of the speech frames' energy in 0–300, 300–1k, 1–2k, 2–4k and 4–8k Hz, in %. */
     val bands: List<Int>,
+    /** The same shares, exactly (0…1). */
+    val shares: List<Double> = emptyList(),
 ) {
     companion object {
         private const val RATE = 16_000
@@ -85,6 +87,7 @@ data class AudioStats(
                 clipped = clipped / n.toFloat(),
                 zcr = crossings * RATE / n.toFloat(),
                 bands = energy.map { (it * 100 / total).toInt() },
+                shares = energy.map { it / total },
             )
         }
 
