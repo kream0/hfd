@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.0
+Recite follows you as you recite: words light up while you say them, and *Play all* plays every passage in a row.
+- Recite no longer waits for a pause: what you've said is recognised again every second, so the text keeps up (about 1.5 s behind). The text shows by default, dim until recited; the eye button hides it and the app remembers. The red box around the next word is gone: the next word glows softly while the app listens.
+- More accurate: short stretches are recognised (the model dropped words on long ones), a word heard right stays right, a letter misheard in a short word isn't counted as your mistake, and if words are missed the app catches up with you instead of getting stuck. On recordings of five passages by four reciters, at your phone's microphone level, 97 % of the words are followed right.
+- *Play all* (Faḍāʾil tab): all forty passages one after the other, without stopping. The notification and the mini player show the passage playing.
+
 ## 1.7.1
 Badr at-Turkī: ash-Sharḥ 5–6 and al-ʿAlaq 8–9 now start and end on their own words.
 - Ash-Sharḥ 5 and 6 are the same words: the first came out a fraction of a second long. In al-ʿAlaq, 8 held its repetition by the reciter at the start of 9. Āyāt already saved download again when you open the passage.
