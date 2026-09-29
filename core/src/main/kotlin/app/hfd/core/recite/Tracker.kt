@@ -62,6 +62,16 @@ class Tracker(val targets: List<ReciteTarget>) {
         return AyahResult(t.ref, t.words.size, mistakes)
     }
 
+    /** Where the recitation stands, to come back to ([reset]). */
+    class Mark internal constructor(internal val position: Int, internal val status: Array<WordStatus>)
+
+    fun mark(): Mark = Mark(position, status.copyOf())
+
+    fun reset(to: Mark) {
+        position = to.position
+        to.status.copyInto(status)
+    }
+
     /** The reciter asked for the next word: it counts as a mistake and the position moves on. */
     fun hint(): String? {
         if (done) return null

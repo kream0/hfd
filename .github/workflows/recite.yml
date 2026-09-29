@@ -1,0 +1,63 @@
+name: Recite bench
+
+# The Recite pipeline (:core Segmenter, Level, Follower/Tracker, and the app's decoding with the
+# app's model) on real recitations brought down to the owner's phone microphone level
+# (tools/recite/prepare.py). Prints how many words end right and how soon they show; read it with
+# get_job_logs.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'core/src/main/kotlin/app/hfd/core/recite/**'
+      - 'core/src/test/kotlin/app/hfd/core/recite/ReciteBench.kt'
+      - 'tools/recite/**'
+      - '.github/workflows/recite.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recite-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+      - name: ffmpeg, numpy, whisper.cpp, the app's model and decoding
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          pip install --quiet numpy
+          mkdir -p work && cd work
+          git clone -q --depth 1 --branch v1.7.6 https://github.com/ggml-org/whisper.cpp
+          cmake -S whisper.cpp -B whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF >/dev/null
+          cmake --build whisper.cpp/build -j"$(nproc)" --config Release --target whisper >/dev/null
+          curl -sSfL -o model.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-tiny-ar-quran-q8_0.bin
+          echo "ef01ab441b004f9e6f1ea98d397b43452b3a45efab7c3928ab37af655dde8b52  model.bin" | sha256sum -c
+          gcc -O2 -o decoder ../tools/recite/decoder.c -Iwhisper.cpp/include -Iwhisper.cpp/ggml/include \
+            whisper.cpp/build/src/libwhisper.so -Wl,-rpath,$PWD/whisper.cpp/build/src:$PWD/whisper.cpp/build/ggml/src
+      - name: Recordings (EveryAyah, at the phone's level)
+        run: python3 tools/recite/prepare.py work/bench
+      - name: Bench
+        env:
+          HFD_BENCH: ${{ github.workspace }}/work/bench
+          HFD_DECODER: ${{ github.workspace }}/work/decoder
+          HFD_MODEL: ${{ github.workspace }}/work/model.bin
+        run: ./gradlew --no-daemon -q :core:test --tests app.hfd.core.recite.ReciteBench
+      - name: Report
+        if: always()
+        run: cat work/bench/report.txt || true

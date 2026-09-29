@@ -1,0 +1,285 @@
+package app.hfd.core.recite
+
+import app.hfd.core.Assets
+import app.hfd.core.quran.AyahRef
+import org.junit.Assume
+import org.junit.Test
+import java.io.BufferedOutputStream
+import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.Locale
+import kotlin.random.Random
+
+/**
+ * The Recite pipeline on real recitations, as the phone runs it. Each case (tools/recite/prepare.py:
+ * EveryAyah recordings of a passage, brought down to the level and noise of the owner's phone
+ * microphone) is fed to [Segmenter] frame by frame on a simulated clock; each utterance goes
+ * through [Level] to the app's decoding (tools/recite/decoder.c: the JNI's parameters, the same
+ * model) and takes the phone's recognition time (1.25 s + 0.04 s per second of audio, from the
+ * diagnostics); the text is followed by [Follower]. Reports how many words end right and how long
+ * after being said each word shows. Runs only in .github/workflows/recite.yml (HFD_BENCH set).
+ */
+class ReciteBench {
+    @Test
+    fun bench() {
+        val dir = System.getenv("HFD_BENCH")
+        Assume.assumeTrue("HFD_BENCH not set", dir != null)
+        val cases = File(dir, "cases.tsv").readLines().filter { it.isNotBlank() && !it.startsWith("#") }.map(Case::parse)
+        val report = StringBuilder()
+        val totals = Totals()
+        Decoder(System.getenv("HFD_DECODER"), System.getenv("HFD_MODEL")).use { decoder ->
+            for (c in cases) {
+                val r = Simulation(c, Wav.read(File(dir, c.wav)), decoder).run()
+                totals += r
+                report.append(r.line()).append('\n')
+                if (r.detail.isNotEmpty()) report.append(r.detail)
+                println(r.line())
+            }
+        }
+        report.append('\n').append(totals.line()).append('\n')
+        File(dir, "report.txt").writeText(report.toString())
+        println(totals.line())
+    }
+}
+
+/** A recording of [refs] (the passage recited), with where each āya recited lies in it. */
+class Case(val id: String, val refs: List<AyahRef>, val wav: String, val spans: Map<AyahRef, Pair<Double, Double>>) {
+    companion object {
+        /** `id  2:1-5  file.wav  2:1@0.52-2.10,2:2@2.40-8.01,…` */
+        fun parse(line: String): Case {
+            val p = line.split('\t')
+            val (s, range) = p[1].split(':')
+            val (a0, a1) = if ('-' in range) range.split('-').map(String::toInt) else listOf(range.toInt(), range.toInt())
+            val refs = (a0..a1).map { AyahRef(s.toInt(), it) }
+            val spans = p[3].split(',').filter { it.isNotBlank() }.associate { item ->
+                val (ref, times) = item.split('@')
+                val (rs, ra) = ref.split(':').map(String::toInt)
+                val (t0, t1) = times.split('-').map(String::toDouble)
+                AyahRef(rs, ra) to (t0 to t1)
+            }
+            return Case(p[0], refs, p[2], spans)
+        }
+    }
+}
+
+class Result(
+    val id: String,
+    /** Words recited (their āya is in the audio), and how they ended. */
+    val said: Int, val ok: Int, val wrong: Int, val missed: Int, val pending: Int,
+    /** Words of āyāt left out of the audio, and how many of them ended MISSED. */
+    val skipped: Int, val skippedMissed: Int,
+    /** Seconds from the end of each word said to its first showing. */
+    val lags: List<Double>,
+    val flips: Int, val partials: Int, val finals: Int,
+    val detail: String,
+) {
+    fun line(): String {
+        val l = lags.sorted()
+        fun q(f: Double) = if (l.isEmpty()) Double.NaN else l[((l.size - 1) * f).toInt()]
+        val skip = if (skipped > 0) "  skipped $skippedMissed/$skipped missed" else ""
+        return String.format(
+            Locale.US, "%-34s ok %3d/%-3d wrong %2d missed %2d pending %2d  lag p50 %4.1f p90 %4.1f s  flips %2d  calls %d+%d%s",
+            id, ok, said, wrong, missed, pending, q(0.5), q(0.9), flips, partials, finals, skip,
+        )
+    }
+}
+
+class Totals {
+    private var said = 0
+    private var ok = 0
+    private var wrong = 0
+    private var missed = 0
+    private var pending = 0
+    private val lags = ArrayList<Double>()
+    private var cases = 0
+
+    operator fun plusAssign(r: Result) {
+        said += r.said; ok += r.ok; wrong += r.wrong; missed += r.missed; pending += r.pending
+        lags += r.lags
+        cases++
+    }
+
+    fun line(): String {
+        val l = lags.sorted()
+        fun q(f: Double) = if (l.isEmpty()) Double.NaN else l[((l.size - 1) * f).toInt()]
+        return String.format(
+            Locale.US, "ALL %d cases: ok %d/%d (%.1f %%), wrong %d, missed %d, pending %d; lag p50 %.1f s, p90 %.1f s",
+            cases, ok, said, 100.0 * ok / maxOf(1, said), wrong, missed, pending, q(0.5), q(0.9),
+        )
+    }
+}
+
+private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder) {
+    private val targets = case.refs.map { ReciteTarget(it, Arabic.words(Assets.quran.text(it).orEmpty())) }
+    private val follower = Follower(targets)
+    private val tracker = follower.tracker
+    private val n = tracker.size
+    private val shownAt = DoubleArray(n) { Double.NaN }
+    private var last = Array(n) { WordStatus.PENDING }
+    private var flips = 0
+    private var partials = 0
+    private var finals = 0
+    private val queue = ArrayDeque<Utterance>()
+    private var inFlight: Triple<Utterance, String, Double>? = null
+    private val readings = StringBuilder()
+
+    fun run(): Result {
+        val seg = Segmenter()
+        val frame = Segmenter.FRAME
+        var t = 0.0
+        var i = 0
+        while (i + frame <= pcm.size) {
+            t = (i + frame) / RATE
+            seg.feed(pcm.copyOfRange(i, i + frame)).forEach(::offer)
+            step(t)
+            i += frame
+        }
+        // The reciter stops, and presses stop a second later.
+        val rnd = Random(1)
+        repeat(50) {
+            t += frame / RATE
+            seg.feed(FloatArray(frame) { (rnd.nextFloat() - 0.5f) * 0.0005f }).forEach(::offer)
+            step(t)
+        }
+        seg.end()?.let(::offer)
+        while (inFlight != null || queue.isNotEmpty()) {
+            t = maxOf(t, inFlight?.third ?: t)
+            step(t)
+        }
+        return result()
+    }
+
+    /** A newer reading of the utterance waiting replaces it (the app's queue does the same). */
+    private fun offer(u: Utterance) {
+        if (queue.lastOrNull()?.let { !it.final && it.id == u.id } == true) queue.removeLast()
+        queue.addLast(u)
+    }
+
+    private fun step(t: Double) {
+        inFlight?.let { (u, text, at) ->
+            if (t >= at) {
+                follower.heard(u.id, text, u.final)
+                readings.append(String.format(Locale.US, "      %6.1f s  #%d %s %4.1f s: %s\n", at, u.id, if (u.final) "final  " else "partial", u.seconds, text))
+                observe(at)
+                inFlight = null
+            }
+        }
+        if (inFlight == null) {
+            val u = queue.removeFirstOrNull() ?: return
+            if (u.final) finals++ else partials++
+            val text = decoder.transcribe(Level.normalize(u.pcm).first)
+            inFlight = Triple(u, text, t + 1.25 + 0.04 * u.seconds)
+        }
+    }
+
+    private fun observe(t: Double) {
+        val now = tracker.status
+        for (w in 0 until n) {
+            if (now[w] != WordStatus.PENDING && shownAt[w].isNaN()) shownAt[w] = t
+            else if (!shownAt[w].isNaN() && now[w] != last[w]) flips++
+        }
+        last = now.copyOf()
+    }
+
+    private fun result(): Result {
+        var flat = 0
+        var said = 0; var ok = 0; var wrong = 0; var missed = 0; var pending = 0
+        var skipped = 0; var skippedMissed = 0
+        val lags = ArrayList<Double>()
+        val detail = StringBuilder()
+        for (t in targets) {
+            val span = case.spans[t.ref]
+            // Each word's end, spread over the āya by its letters.
+            val weights = t.words.map { Arabic.skeleton(it).length + 1.0 }
+            val total = weights.sum()
+            var acc = 0.0
+            val marks = StringBuilder()
+            for ((w, word) in t.words.withIndex()) {
+                val st = tracker.status[flat + w]
+                acc += weights[w]
+                if (span != null) {
+                    said++
+                    when (st) {
+                        WordStatus.OK -> ok++
+                        WordStatus.WRONG -> wrong++
+                        WordStatus.MISSED -> missed++
+                        else -> pending++
+                    }
+                    val end = span.first + (span.second - span.first) * acc / total
+                    if (!shownAt[flat + w].isNaN()) lags += shownAt[flat + w] - end
+                } else {
+                    skipped++
+                    if (st == WordStatus.MISSED) skippedMissed++
+                }
+                marks.append(
+                    when (st) {
+                        WordStatus.OK -> "✓"
+                        WordStatus.WRONG -> "✗"
+                        WordStatus.MISSED -> "–"
+                        WordStatus.HINTED -> "?"
+                        WordStatus.PENDING -> "·"
+                    },
+                )
+                if (span != null && st != WordStatus.OK) marks.append("(").append(word).append(")")
+                marks.append(' ')
+            }
+            flat += t.words.size
+            detail.append("    ${t.ref}${if (span == null) " (not recited)" else ""}: $marks\n")
+        }
+        val bad = said - ok + (skipped - skippedMissed)
+        return Result(
+            case.id, said, ok, wrong, missed, pending, skipped, skippedMissed, lags, flips, partials, finals,
+            if (bad > 0) detail.toString() + readings else "",
+        )
+    }
+
+    companion object {
+        const val RATE = Segmenter.RATE.toDouble()
+    }
+}
+
+/** The app's decoding, as a process: 4-byte little-endian sample count, float32 samples → a line of text. */
+private class Decoder(exe: String, model: String) : AutoCloseable {
+    private val process = ProcessBuilder(exe, model).redirectError(ProcessBuilder.Redirect.DISCARD).start()
+    private val out = BufferedOutputStream(process.outputStream)
+    private val input = process.inputStream.bufferedReader(Charsets.UTF_8)
+
+    fun transcribe(pcm: FloatArray): String {
+        val buf = ByteBuffer.allocate(4 + 4 * pcm.size).order(ByteOrder.LITTLE_ENDIAN)
+        buf.putInt(pcm.size)
+        for (x in pcm) buf.putFloat(x)
+        out.write(buf.array())
+        out.flush()
+        return input.readLine()?.trim() ?: error("decoder stopped")
+    }
+
+    override fun close() {
+        runCatching { out.close() }
+        process.waitFor()
+    }
+}
+
+/** 16-bit PCM WAV, mono 16 kHz. */
+object Wav {
+    fun read(file: File): FloatArray {
+        val b = ByteBuffer.wrap(file.readBytes()).order(ByteOrder.LITTLE_ENDIAN)
+        require(String(b.array(), 0, 4) == "RIFF" && String(b.array(), 8, 4) == "WAVE") { "$file is not a WAV file" }
+        var at = 12
+        while (at + 8 <= b.limit()) {
+            val id = String(b.array(), at, 4)
+            val size = b.getInt(at + 4)
+            if (id == "fmt ") {
+                require(b.getShort(at + 8 + 2).toInt() == 1 && b.getInt(at + 8 + 4) == Segmenter.RATE && b.getShort(at + 8 + 14).toInt() == 16) {
+                    "$file: want 16-bit mono 16 kHz"
+                }
+            }
+            if (id == "data") {
+                val n = minOf(size, b.limit() - at - 8) / 2
+                return FloatArray(n) { b.getShort(at + 8 + 2 * it) / 32768f }
+            }
+            at += 8 + size + (size and 1)
+        }
+        error("$file has no data")
+    }
+}
