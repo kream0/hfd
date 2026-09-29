@@ -114,7 +114,7 @@ class AppViewModel : ViewModel() {
 
     /** From the notification: show what's playing (or what would resume). */
     fun openPlaying() {
-        val id = Graph.nowPlaying.value?.session?.fadilaId ?: return
+        val id = Graph.nowPlaying.value?.fadilaId ?: return
         if (Graph.content.content.value?.fadila(id) != null) {
             flow = null
             fadila = id

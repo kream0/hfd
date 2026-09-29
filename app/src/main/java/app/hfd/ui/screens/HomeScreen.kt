@@ -124,7 +124,7 @@ fun HomeScreen(app: AppViewModel) {
                 stringResource(R.string.home_continue_test, f.title.text) to { app.test(f) }
             }
             else -> null
-        } ?: np?.session?.let { ps -> c.fadila(ps.fadilaId)?.let { f -> stringResource(R.string.home_continue_listen, f.title.text) to { app.openFadila(f.id) } } }
+        } ?: np?.let { playing -> c.fadila(playing.fadilaId)?.let { f -> stringResource(R.string.home_continue_listen, f.title.text) to { app.openFadila(f.id) } } }
         if (cont != null) {
             Spacer(Modifier.height(10.dp))
             Row(

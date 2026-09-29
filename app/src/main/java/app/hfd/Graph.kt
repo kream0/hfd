@@ -13,6 +13,7 @@ import app.hfd.download.AudioDownloader
 import app.hfd.download.AudioStore
 import app.hfd.playback.NowPlaying
 import app.hfd.playback.PlaybackEngine
+import app.hfd.playback.PlaySession
 import app.hfd.playback.TimingsRepo
 import app.hfd.playback.PlayerConnection
 import app.hfd.recite.ModelState
@@ -80,6 +81,15 @@ object Graph {
             model = { (speech.state.value as? ModelState.Ready)?.file },
             record = { progress.record(it) },
         )
+    }
+
+    /** Every faḍīla, one after the other in the reference list's order, as one playlist. */
+    fun playAll(title: String, lang: String) {
+        val c = content.content.value ?: return
+        val ayat = c.fadail.flatMap { it.ayat }
+        if (ayat.isEmpty()) return
+        val parts = c.fadail.map { PlaySession.Part(it.id, it.title.pick(lang), it.ayat.size) }
+        player.play(PlaySession(PlaySession.ALL, title, ayat, 0, ayat.lastIndex, parts = parts))
     }
 
     fun closeRecite() {

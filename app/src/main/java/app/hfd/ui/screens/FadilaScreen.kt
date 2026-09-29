@@ -99,7 +99,7 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
         if (f != null) Graph.downloads.ensure(settings.reciterInfo, autoAudio(f, settings))
     }
 
-    val current: AyahRef? = np?.takeIf { it.session.fadilaId == id }?.item?.ref
+    val current: AyahRef? = np?.takeIf { it.fadilaId == id }?.item?.ref
 
     // Keep the playing āya in view, unless the reader has just scrolled away by hand.
     LaunchedEffect(listState.isScrollInProgress) {

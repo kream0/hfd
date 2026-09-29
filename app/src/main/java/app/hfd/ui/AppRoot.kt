@@ -105,7 +105,7 @@ fun AppRoot(app: AppViewModel) {
                 }
                 val np by Graph.nowPlaying.collectAsStateWithLifecycle()
                 val playing = np
-                if (playing != null && app.fadila != playing.session.fadilaId) {
+                if (playing != null && app.fadila != playing.fadilaId) {
                     MiniPlayer(playing, onOpen = app::openPlaying)
                 }
                 BottomNav(tab = app.tab, onTab = app::selectTab)
@@ -169,7 +169,7 @@ private fun MiniPlayer(np: NowPlaying, onOpen: () -> Unit) {
     ) {
         Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(np.session.title, style = Type.title, color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(np.title, style = Type.title, color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     listOf(itemLabel(np.item), np.reciter.short.uppercase()).filter { it.isNotBlank() }.joinToString("  ·  "),
                     style = Type.label,

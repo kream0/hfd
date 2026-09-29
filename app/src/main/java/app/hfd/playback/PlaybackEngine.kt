@@ -32,7 +32,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.nullable
 import java.io.File
 
-/** What is being listened to: a faḍīla, or a sub-range of it (indices into its āyāt). */
+/**
+ * What is being listened to: a faḍīla, or a sub-range of it (indices into its āyāt); or every
+ * faḍīla one after the other ([ALL], with its [parts]).
+ */
 @Serializable
 data class PlaySession(
     val fadilaId: String,
@@ -49,7 +52,30 @@ data class PlaySession(
     val basmala: Boolean? = null,
     /** Lets a caller recognise the end of its own request (e.g. a Learn step). */
     val tag: String? = null,
-)
+    /** Playing all: each faḍīla's run of [ayat], in order. */
+    val parts: List<Part> = emptyList(),
+) {
+    @Serializable
+    data class Part(val fadilaId: String, val title: String, val count: Int)
+
+    /** The faḍīla āya [index] of [ayat] belongs to (itself, unless playing all). */
+    fun fadilaAt(index: Int): String = partAt(index)?.fadilaId ?: fadilaId
+
+    fun titleAt(index: Int): String = partAt(index)?.title ?: title
+
+    private fun partAt(index: Int): Part? {
+        var end = 0
+        for (p in parts) {
+            end += p.count
+            if (index < end) return p
+        }
+        return parts.lastOrNull()
+    }
+
+    companion object {
+        const val ALL = "all"
+    }
+}
 
 /** Saved on every change so playback resumes exactly there (in the app or from earbuds). */
 @Serializable
@@ -75,7 +101,11 @@ data class NowPlaying(
     val sleep: Sleep?,
     /** The plan played to its end. */
     val ended: Boolean = false,
-)
+) {
+    /** The faḍīla playing (when playing all, the one of the current āya). */
+    val fadilaId: String get() = session.fadilaAt(item?.cursor?.index ?: 0)
+    val title: String get() = session.titleAt(item?.cursor?.index ?: 0)
+}
 
 /**
  * Turns a [PlanSpec] into what ExoPlayer plays. The plan can be endless, so the player gets a
@@ -307,8 +337,8 @@ class PlaybackEngine(
         return Items.build(
             item = item,
             spec = spec,
-            fadilaId = session.fadilaId,
-            fadilaTitle = session.title,
+            fadilaId = session.fadilaAt(item.cursor.index),
+            fadilaTitle = session.titleAt(item.cursor.index),
             reciter = reciter,
             basmalaLabel = context.getString(R.string.basmala_label),
             gapMs = { gap -> Timing.gapMs(durationOf(gap.ref), gap.factor) },

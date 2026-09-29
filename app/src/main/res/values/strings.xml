@@ -255,4 +255,7 @@
     <string name="recite_again">Again</string>
     <string name="stats_recited">Recited aloud</string>
     <string name="stats_recited_value">%1$d recitations · %2$d%% of words right</string>
+    <string name="play_all">Play all</string>
+    <string name="play_all_pause">Pause</string>
+    <string name="play_all_title">All the faḍāʾil</string>
 </resources>

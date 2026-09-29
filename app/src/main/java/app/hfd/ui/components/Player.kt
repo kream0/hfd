@@ -169,7 +169,7 @@ fun PlayerPanel(f: Fadila, modifier: Modifier = Modifier) {
     val ranges by Graph.ranges.ranges.collectAsStateWithLifecycle()
     val range = remember(ranges, f) { Graph.ranges.get(f.id, f.size) }
     val title = f.title.text
-    val isThis = np?.session?.fadilaId == f.id
+    val isThis = np?.fadilaId == f.id
     val playing = isThis && ui.playWhenReady
 
     Column(
