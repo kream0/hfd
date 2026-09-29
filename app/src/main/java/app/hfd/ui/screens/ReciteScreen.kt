@@ -93,6 +93,7 @@ fun ReciteScreen(onClose: () -> Unit) {
     val model by Graph.speech.state.collectAsStateWithLifecycle()
     val level by s.level.collectAsStateWithLifecycle()
     val wave by s.wave.collectAsStateWithLifecycle()
+    val listeningWith by s.mic.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val showText = settings.reciteShowText
     val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -146,6 +147,27 @@ fun ReciteScreen(onClose: () -> Unit) {
             )
         }
         if (ui.listening) Waveform(wave, Modifier.padding(horizontal = 24.dp, vertical = 6.dp))
+        listeningWith?.let { m ->
+            // Which microphone listens; with earbuds connected, a tap switches (listening goes on).
+            val switchable = m.headset || m.headsetAvailable
+            Text(
+                when {
+                    m.headset -> stringResource(R.string.recite_mic_headset, m.name ?: stringResource(R.string.recite_mic_earbuds))
+                    m.headsetAvailable -> stringResource(R.string.recite_mic_phone_switch)
+                    else -> stringResource(R.string.recite_mic_phone)
+                },
+                style = Type.label, color = P.textDim, textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (switchable) Modifier.clickable {
+                            Graph.settings.update { it.copy(reciteHeadset = !m.headset) }
+                            s.restartListening()
+                        } else Modifier,
+                    )
+                    .padding(horizontal = 20.dp, vertical = 4.dp),
+            )
+        }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,

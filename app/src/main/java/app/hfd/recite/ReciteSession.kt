@@ -1,5 +1,6 @@
 package app.hfd.recite
 
+import android.media.AudioManager
 import app.hfd.core.progress.Event
 import app.hfd.core.quran.AyahRef
 import app.hfd.core.recite.Arabic
@@ -65,7 +66,7 @@ class ReciteSession(
 ) {
     private val follower = Follower(targets)
     private val tracker = follower.tracker
-    private val recorder = Recorder()
+    private val recorder = Recorder(audioManager())
     private val recognizer = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     /** Utterances waiting: final ones in order, and a partial one replaced by the next reading. */
     private val queue = ArrayDeque<Utterance>()
@@ -88,6 +89,8 @@ class ReciteSession(
     val ui: StateFlow<ReciteUi> = _ui.asStateFlow()
     val level: StateFlow<Float> = recorder.level
     val wave: StateFlow<Wave> = recorder.wave
+    /** The microphone listened with (the earbuds' or the phone's), while listening. */
+    val mic: StateFlow<Mic?> = recorder.mic
 
     init {
         // Recognition runs one reading at a time while the recorder goes on; a partial reading
@@ -152,13 +155,16 @@ class ReciteSession(
                 // The owner's opt-in recordings: the whole session, to replay it on the bench.
                 val capture: ((FloatArray) -> Unit)? = if (recordings()) { pcm ->
                     Diag.log("recite.session", "fadila" to fadilaId, "from" to targets.firstOrNull()?.ref?.key, "to" to targets.lastOrNull()?.ref?.key, "seconds" to pcm.size / 16_000f)
-                    // The name says what was recited: session-<passage>-<from>-<to>, e.g. session-imran-opening-3_1-3_9.
+                    // The name says what was recited and when: session-<passage>-<from>-<to>-<HHmmss>,
+                    // e.g. session-imran-opening-3_1-3_9-213243 (several in a run don't overwrite each other).
                     val range = listOfNotNull(targets.firstOrNull()?.ref, targets.lastOrNull()?.ref).joinToString("-") { "${it.sura}_${it.aya}" }
-                    Diag.attach("session-$fadilaId-$range", pcm, true)
+                    val time = java.text.SimpleDateFormat("HHmmss", java.util.Locale.ROOT).format(java.util.Date())
+                    Diag.attach("session-$fadilaId-$range-$time", pcm, true)
                 } else null
-                val preferred = microphone()
-                val sources = listOfNotNull(preferred.takeIf { it >= 0 }) + Recorder.SOURCES.filter { it != preferred }
-                recorder.utterances(capture, sources) { source -> scope.launch { clearMicrophone(source) } }.collect(::offer)
+                // The recorder counts utterances from 0 each time it starts: they go on after this
+                // session's (the follower ignores ids it is done with).
+                val base = lastId + 1
+                recorder.utterances(capture, headset()).collect { offer(Utterance(base + it.id, it.pcm, it.final)) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -172,6 +178,16 @@ class ReciteSession(
 
     /** Stops listening after what is being said has been handed over. */
     fun stop() = recorder.stop()
+
+    /** Listens again, on the microphone now chosen (earbuds or phone). */
+    fun restartListening() {
+        val job = listenJob?.takeIf { it.isActive } ?: return
+        recorder.stop()
+        scope.launch {
+            job.join()
+            start()
+        }
+    }
 
     /**
      * Shows the next word; it counts as a mistake. What was recited before stays, and the
@@ -307,9 +323,9 @@ class ReciteSession(
         @Volatile var referenceClip: () -> FloatArray? = { null }
         /** Whether the owner asked for recordings to be sent ([Diag.attach]). */
         @Volatile var recordings: () -> Boolean = { false }
-        /** The microphone last found clear (an Android audio source, -1 if none yet), and where to keep a new one. */
-        @Volatile var microphone: () -> Int = { -1 }
-        @Volatile var clearMicrophone: (Int) -> Unit = {}
+        /** The phone's audio (for connected earbuds' microphone), and whether to use earbuds when connected. */
+        @Volatile var audioManager: () -> AudioManager? = { null }
+        @Volatile var headset: () -> Boolean = { true }
         const val ERROR_MODEL = "model"
         const val ERROR_MIC = "mic"
         /** A reading's new words are shown over about this long. */

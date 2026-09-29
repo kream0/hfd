@@ -1,7 +1,9 @@
 package app.hfd.recite
 
 import android.annotation.SuppressLint
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import app.hfd.core.recite.Clarity
@@ -28,10 +30,17 @@ class Wave(val levels: FloatArray, val voiced: BooleanArray) {
 }
 
 /**
- * The microphone, as utterances for the recogniser ([Segmenter]): the speech so far every second
- * while the reciter goes on, then whole at the pause. 16 kHz mono floats.
+ * The microphone Recite listens with: a headset's ([name], e.g. the owner's earbuds) or the
+ * phone's; [headsetAvailable] when earbuds with a microphone are connected (to offer them).
  */
-class Recorder {
+data class Mic(val headset: Boolean, val name: String?, val headsetAvailable: Boolean)
+
+/**
+ * The microphone, as utterances for the recogniser ([Segmenter]): the speech so far every second
+ * while the reciter goes on, then whole at the pause. 16 kHz mono floats. With [audio], connected
+ * earbuds' microphone is used ([HeadsetMic]).
+ */
+class Recorder(private val audio: AudioManager? = null) {
     private val _level = MutableStateFlow(0f)
     /** Voice level 0…1, for the listening indicator. */
     val level: StateFlow<Float> = _level.asStateFlow()
@@ -43,6 +52,10 @@ class Recorder {
     /** The live waveform shown while listening, newest bar last. */
     val wave: StateFlow<Wave> = _wave.asStateFlow()
 
+    private val _mic = MutableStateFlow<Mic?>(null)
+    /** The microphone in use while listening. */
+    val mic: StateFlow<Mic?> = _mic.asStateFlow()
+
     private val stopRequested = AtomicBoolean(false)
     private val restartRequested = AtomicBoolean(false)
 
@@ -52,51 +65,52 @@ class Recorder {
     /** Drops what is being said and starts a new utterance (after a hint). */
     fun restart() = restartRequested.set(true)
 
-    /** Opens and starts [source] (an Android audio source), or null where the phone doesn't offer it. */
+    /** Opens and starts [source] (an Android audio source) on [device] if given, or null if the phone refuses. */
     @SuppressLint("MissingPermission")
-    private fun open(source: Int): AudioRecord? {
+    private fun open(source: Int, device: AudioDeviceInfo?): AudioRecord? {
         val rate = Segmenter.RATE
         val minBuf = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         val record = runCatching {
             AudioRecord(source, rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(minBuf, rate) * 2)
         }.getOrNull()
-        Diag.log("mic.open", "source" to nameOf(source), "state" to record?.state, "minBuffer" to minBuf)
+        Diag.log("mic.open", "source" to nameOf(source), "state" to record?.state, "minBuffer" to minBuf, "preferred" to device?.type)
         if (record == null) return null
+        if (device != null) runCatching { record.setPreferredDevice(device) }
         if (record.state != AudioRecord.STATE_INITIALIZED || runCatching { record.startRecording() }.isFailure ||
             record.recordingState != AudioRecord.RECORDSTATE_RECORDING
         ) {
             record.release()
             return null
         }
-        // Which microphone Android gives: the phone's, or a headset's (earbuds).
-        record.routedDevice.let { d ->
-            Diag.log("mic.device", "source" to nameOf(source), "type" to d?.type, "name" to d?.productName?.toString(), "id" to d?.id, "rate" to record.sampleRate)
-        }
         return record
     }
 
     /**
-     * Utterances until the collector stops. Needs RECORD_AUDIO. The microphone is the first of
-     * [sources] (Android audio sources) the phone opens; if the first stretch of speech it gives
-     * is muffled (hardly anything above 1 kHz: [Clarity.isMuffled]), the next one is tried, and
-     * so on; the first clear one stays and goes to [clear] (to start with it next time). If none
-     * is, the least muffled one stays: the phone itself is covered (a pocket, a hand). With
-     * [capture], the whole session as the microphone gave it (up to [CAPTURE_SECONDS]) is handed
-     * to it at the end, to replay it on the bench (the owner's opt-in recordings).
+     * Utterances until the collector stops. Needs RECORD_AUDIO. With [headset] and earbuds with a
+     * microphone connected, they are listened to; otherwise the phone's microphone. Its first
+     * stretch of speech tells how muffled it is (diagnostics). With [capture], the whole session as
+     * the microphone gave it (up to [CAPTURE_SECONDS]) is handed to it at the end, to replay it on
+     * the bench (the owner's opt-in recordings).
      */
-    fun utterances(
-        capture: ((FloatArray) -> Unit)? = null,
-        sources: List<Int> = SOURCES,
-        clear: (Int) -> Unit = {},
-    ): Flow<Utterance> = flow {
+    fun utterances(capture: ((FloatArray) -> Unit)? = null, headset: Boolean = true): Flow<Utterance> = flow {
         val rate = Segmenter.RATE
-        var si = 0
-        var record: AudioRecord? = null
-        while (si < sources.size && record == null) record = open(sources[si]).also { if (it == null) si++ }
-        checkNotNull(record) { "microphone unavailable" }
-        // How muffled each source tried was (share of the voice's energy above 1 kHz); settled once one is clear.
-        val shares = HashMap<Int, Double>()
-        var settled = false
+        val link = audio?.let(::HeadsetMic)
+        val earbuds = link?.available()
+        val linked = headset && link != null && earbuds != null && link.connect(earbuds)
+        val onEarbuds = if (linked) open(MediaRecorder.AudioSource.VOICE_COMMUNICATION, link!!.input(earbuds!!)) else null
+        if (linked && onEarbuds == null) link!!.release()
+        val record = checkNotNull(
+            onEarbuds ?: open(MediaRecorder.AudioSource.VOICE_RECOGNITION, null) ?: open(MediaRecorder.AudioSource.MIC, null),
+        ) { "microphone unavailable" }
+        // Which microphone Android gives: the phone's, or the earbuds'.
+        val routed = record.routedDevice
+        Diag.log(
+            "mic.device", "source" to nameOf(record.audioSource), "type" to routed?.type, "name" to routed?.productName?.toString(),
+            "id" to routed?.id, "rate" to record.sampleRate, "earbuds" to earbuds?.productName?.toString(),
+        )
+        val onHeadset = onEarbuds != null && (routed == null || HeadsetMic.isHeadset(routed))
+        _mic.value = Mic(onHeadset, if (onHeadset) (routed ?: earbuds)?.productName?.toString() else null, earbuds != null)
+        var judged = false
         val frame = ShortArray(Segmenter.FRAME)
         val seg = Segmenter()
         val captured = if (capture != null) ShortArray(CAPTURE_SECONDS * rate) else null
@@ -118,7 +132,7 @@ class Recorder {
         _wave.value = Wave.EMPTY
         try {
             while (currentCoroutineContext().isActive && !stopRequested.get()) {
-                val n = record!!.read(frame, 0, frame.size)
+                val n = record.read(frame, 0, frame.size)
                 if (n <= 0) continue
                 if (captured != null && capturedSize + n <= captured.size) {
                     frame.copyInto(captured, capturedSize, 0, n)
@@ -149,44 +163,18 @@ class Recorder {
                     )
                     secFrames = 0; secSum = 0.0; secMax = 0f; secVoiced = 0
                 }
-                var next: Int? = null
                 for (u in out) {
                     if (u.final) {
                         finals++
                         Diag.log("mic.utterance", "id" to u.id, "seconds" to u.seconds)
-                        // Judge the microphone on a real stretch of speech.
-                        if (!settled && u.seconds >= JUDGE_SECONDS) {
-                            val source = sources[si]
+                        // How clear the microphone is, on a real stretch of speech.
+                        if (!judged && u.seconds >= JUDGE_SECONDS) {
+                            judged = true
                             val share = Clarity.highShare(u.pcm)
-                            shares[source] = share
-                            Diag.log("mic.quality", "source" to nameOf(source), "highShare" to share, "muffled" to (share < Clarity.MUFFLED_SHARE))
-                            when {
-                                share >= Clarity.MUFFLED_SHARE -> { settled = true; clear(source) }
-                                si + 1 < sources.size -> next = si + 1
-                                else -> {
-                                    // All muffled: back to the least muffled one.
-                                    settled = true
-                                    val best = shares.maxByOrNull { it.value }!!.key
-                                    if (best != source) next = sources.indexOf(best)
-                                }
-                            }
+                            Diag.log("mic.quality", "source" to nameOf(record.audioSource), "headset" to onHeadset, "highShare" to share, "muffled" to (share < Clarity.MUFFLED_SHARE))
                         }
                     }
                     emit(u)
-                }
-                // Another microphone: the voice goes on in the same utterance flow.
-                var to = next
-                while (to != null && to < sources.size) {
-                    val opened = open(sources[to])
-                    if (opened != null) {
-                        runCatching { record!!.stop() }
-                        record!!.release()
-                        record = opened
-                        Diag.log("mic.switch", "from" to nameOf(sources[si]), "to" to nameOf(sources[to]))
-                        si = to
-                        break
-                    }
-                    to = if (settled) null else to + 1
                 }
             }
             // Stopped: what was being said still counts.
@@ -198,8 +186,10 @@ class Recorder {
             Diag.error("mic.error", e)
             throw e
         } finally {
-            runCatching { record?.stop() }
-            record?.release()
+            runCatching { record.stop() }
+            record.release()
+            if (onEarbuds != null) link!!.release()
+            _mic.value = null
             _level.value = 0f
             _speaking.value = false
             _wave.value = Wave.EMPTY
@@ -211,28 +201,15 @@ class Recorder {
     }.flowOn(Dispatchers.IO)
 
     companion object {
-        /**
-         * The microphones tried, in order: speech recognition's (the default), unprocessed, the
-         * plain microphone, the camcorder's (often another capsule), live performance's.
-         */
-        val SOURCES = listOf(
-            MediaRecorder.AudioSource.VOICE_RECOGNITION,
-            MediaRecorder.AudioSource.UNPROCESSED,
-            MediaRecorder.AudioSource.MIC,
-            MediaRecorder.AudioSource.CAMCORDER,
-            MediaRecorder.AudioSource.VOICE_PERFORMANCE,
-        )
-
         fun nameOf(source: Int): String = when (source) {
             MediaRecorder.AudioSource.VOICE_RECOGNITION -> "VOICE_RECOGNITION"
+            MediaRecorder.AudioSource.VOICE_COMMUNICATION -> "VOICE_COMMUNICATION"
             MediaRecorder.AudioSource.UNPROCESSED -> "UNPROCESSED"
             MediaRecorder.AudioSource.MIC -> "MIC"
-            MediaRecorder.AudioSource.CAMCORDER -> "CAMCORDER"
-            MediaRecorder.AudioSource.VOICE_PERFORMANCE -> "VOICE_PERFORMANCE"
             else -> source.toString()
         }
 
-        /** A stretch of speech at least this long tells whether a microphone is muffled. */
+        /** A stretch of speech at least this long tells whether the microphone is muffled. */
         private const val JUDGE_SECONDS = 1.5f
         /** The longest session recording sent (the owner's opt-in): 4 min, 7.7 MB. */
         private const val CAPTURE_SECONDS = 240

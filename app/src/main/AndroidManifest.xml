@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Recite mode: the recitation is recognised on the phone; audio is never stored or sent. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Recite: the earbuds' microphone (communication mode, HeadsetMic). -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 

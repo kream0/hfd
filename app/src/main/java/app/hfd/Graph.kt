@@ -1,6 +1,7 @@
 package app.hfd
 
 import android.app.Application
+import android.media.AudioManager
 import androidx.annotation.StringRes
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.ContentRepo
@@ -119,8 +120,8 @@ object Graph {
         app = application
         Diag.start(http, scope) { settings.current.sendDiagnostics }
         ReciteSession.recordings = { settings.current.sendRecordings }
-        ReciteSession.microphone = { settings.current.reciteMic }
-        ReciteSession.clearMicrophone = { source -> if (settings.current.reciteMic != source) settings.update { it.copy(reciteMic = source) } }
+        ReciteSession.audioManager = { application.getSystemService(AudioManager::class.java) }
+        ReciteSession.headset = { settings.current.reciteHeadset }
         ReciteSession.referenceClip = {
             runCatching {
                 application.assets.open("diag/112001.wav").use { input ->

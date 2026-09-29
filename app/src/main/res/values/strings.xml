@@ -258,5 +258,9 @@
     <string name="play_all">Play all</string>
     <string name="play_all_pause">Pause</string>
     <string name="play_all_title">All the faḍāʾil</string>
-    <string name="recite_muffled">The microphone sounds muffled: is the phone in a pocket, or covered?</string>
+    <string name="recite_muffled">The microphone hears you muffled (phone in a pocket, covered?): hold it in front of you, or use your earbuds\' microphone.</string>
+    <string name="recite_mic_headset">Microphone: %1$s · use the phone\'s</string>
+    <string name="recite_mic_earbuds">earbuds</string>
+    <string name="recite_mic_phone">Microphone: phone</string>
+    <string name="recite_mic_phone_switch">Microphone: phone · use the earbuds</string>
 </resources>
