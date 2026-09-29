@@ -18,15 +18,12 @@ class Utterance(val id: Int, val pcm: FloatArray, val final: Boolean) {
  */
 class Segmenter {
     /**
-     * The room's noise level (RMS): the quietest moments of the last three seconds. (Speech
-     * always has some, between its sounds; a level creeping up during speech, as before, took
-     * the soft sounds of a slow recitation — a ghunna, a madd — for silence and cut words.)
+     * The room's noise level (RMS): down at once to a quieter moment, up slowly — five times
+     * slower during speech, or the soft sounds of a slow recitation (a ghunna, a madd) would
+     * pass for silence after a few seconds and cut words.
      */
     var noise = 0.01f
         private set
-    private val recent = FloatArray(NOISE_FRAMES)
-    private var recentCount = 0
-    private val sorted = FloatArray(NOISE_FRAMES)
     /** The last frame's RMS. */
     var rms = 0f
         private set
@@ -48,12 +45,8 @@ class Segmenter {
     fun feed(frame: FloatArray): List<Utterance> {
         if (frame.isEmpty()) return emptyList()
         rms = rmsOf(frame)
-        recent[recentCount % NOISE_FRAMES] = rms
-        recentCount++
-        val n0 = minOf(recentCount, NOISE_FRAMES)
-        recent.copyInto(sorted, 0, 0, n0)
-        sorted.sort(0, n0)
-        noise = sorted[minOf(n0 - 1, NOISE_RANK)].coerceAtLeast(1e-5f)
+        val rise = if (inSpeech) NOISE_RISE_SPEECH else NOISE_RISE
+        noise = if (rms < noise) rms * 0.3f + noise * 0.7f else noise * (1 - rise) + rms * rise
         voiced = rms > maxOf(noise * VOICE_OVER_NOISE, MIN_RMS)
         if (!inSpeech) {
             pre.addLast(frame)
@@ -151,9 +144,9 @@ class Segmenter {
         private const val SOFT_MAX_FRAMES = 500 // 10 s
         const val MAX_FRAMES = 1000 // 20 s
         private const val SPLIT_SEARCH_FRAMES = 100
-        /** The noise level: the 5th quietest frame of the last 3 s. */
-        private const val NOISE_FRAMES = 150
-        private const val NOISE_RANK = 4
+        /** How fast the noise level rises, per frame (20 s, or 100 s during speech, to follow a louder room). */
+        private const val NOISE_RISE = 0.001f
+        private const val NOISE_RISE_SPEECH = 0.0002f
         /** Voice: this much over the room's noise (×2.5 ≈ 8 dB), and above MIN_RMS (≈ −54 dB). */
         private const val VOICE_OVER_NOISE = 2.5f
         private const val MIN_RMS = 0.002f

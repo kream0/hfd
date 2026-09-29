@@ -139,9 +139,9 @@ class Tracker(val targets: List<ReciteTarget>) {
         // Too little in common, either way: not this text, or scraps the recogniser half heard
         // (a four-letter word sharing two letters with the next words isn't them). Don't move.
         if (best == 0 || span <= 0 || same < MIN_MATCH_FRACTION * m || same < MIN_MATCH_FRACTION * span) return 0
-        // Passing over words takes a clear match.
+        // Passing over words takes a clear match, at least as long as what it passes over.
         val passed = owner[start] - position
-        if (passed >= 2 && (same < JUMP_MATCH_FRACTION * m || same < JUMP_MATCH_FRACTION * span || same < JUMP_MIN_LETTERS)) return 0
+        if (passed >= 2 && (same < JUMP_MATCH_FRACTION * m || same < JUMP_MATCH_FRACTION * span || same < maxOf(JUMP_MIN_LETTERS, start))) return 0
         // Words up to the last one the chunk reached (a word cut at the end counts whole).
         val lastWord = owner[best - 1]
         for (w in position..lastWord) {
@@ -167,9 +167,12 @@ class Tracker(val targets: List<ReciteTarget>) {
         const val SKIP_WORDS = 40
         /** Share of the chunk's letters, and of the text's letters it spans, that must match for it to be followed. */
         const val MIN_MATCH_FRACTION = 0.6
-        /** The same, when the chunk passes over two words or more; and at least this many letters. */
+        /**
+         * The same, when the chunk passes over two words or more; and at least this many letters,
+         * and as many as it passes over.
+         */
         const val JUMP_MATCH_FRACTION = 0.75
-        const val JUMP_MIN_LETTERS = 12
+        const val JUMP_MIN_LETTERS = 4
         /**
          * Share of a (long) word's letters that must match for it to count as right; a
          * three-letter word may have one wrong. At the phone's level the model often mishears a
