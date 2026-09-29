@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.10.0
+Recite listens with your earbuds' microphone, and follows again after a pause.
+- With earbuds connected, Recite now listens through their microphone. Until now Android kept the phone's own, which, away from your mouth, heard your voice muffled and too faint to be recognised. A line under the waveform says which microphone listens; tap it to switch. While listening the earbuds are in call mode.
+- After stopping and starting the microphone again in a recitation, what you said next was ignored for a while and the text didn't move: fixed.
+- The muffled-voice warning now says what to do.
+
 ## 1.9.0
 Recite follows word by word and lets you go back; it points out a muffled microphone and tries the phone's others.
 - Word by word: the words you say light up one after the other.
