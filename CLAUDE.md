@@ -59,7 +59,9 @@
   ranges from `tools/audio/align.py` (`.github/workflows/audio.yml`, ~45 min, commits
   `assets/audio/<id>.json`; set `SURAS` in the workflow for a quick trial that writes nothing).
   Read its report: every cut is transcribed; "to look at" lines are misreadings or bad cuts.
-  If passages change, re-run it (the `:core` test requires every passage āya).
+  If passages change, re-run it (the `:core` test requires every passage āya). Re-timing is safe
+  for users: saved āyāt whose size no longer matches their range are deleted at start, and the
+  stream cache is keyed by the range. The report prints each repair with its scores.
 
 ## Debugging on the owner's phone
 - The app posts diagnostics (`app/src/main/java/app/hfd/diag/Diag.kt`: `Diag.log(event, …)`) to
