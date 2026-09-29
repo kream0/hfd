@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.2
+Recite keeps following in a noisy room, and when you say words again before going on.
+- In a noisy room your voice is only a little louder than the background: the app took most of it for silence and lost track. Now, once you've started, it keeps listening until your voice really stops.
+- Saying the end of an āya again before going on (as one does to find the next words) no longer throws the app off: the repeated words change nothing and it follows on.
+- On recordings at your phone's level, noisy rooms included, 95 % of the words are followed right.
+
 ## 1.8.1
 Recite moves on from the disconnected letters (الم، حم، يس…), and shows what the microphone hears.
 - The speech model can't hear the long held letters as words (it made up منذر, فرق on your الم, so the text stayed on the first word). Whatever you say while they're next now counts as them: al-Baqara, Āl ʿImrān, as-Sajda, Yā-Sīn, Ghāfir and ad-Dukhān no longer get stuck at the start.
