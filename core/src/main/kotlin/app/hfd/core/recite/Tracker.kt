@@ -139,9 +139,10 @@ class Tracker(val targets: List<ReciteTarget>) {
         // Too little in common, either way: not this text, or scraps the recogniser half heard
         // (a four-letter word sharing two letters with the next words isn't them). Don't move.
         if (best == 0 || span <= 0 || same < MIN_MATCH_FRACTION * m || same < MIN_MATCH_FRACTION * span) return 0
-        // Passing over words takes a clear match, at least as long as what it passes over.
+        // Passing over words takes a clear match, as long as what it passes over (up to a phrase).
         val passed = owner[start] - position
-        if (passed >= 2 && (same < JUMP_MATCH_FRACTION * m || same < JUMP_MATCH_FRACTION * span || same < maxOf(JUMP_MIN_LETTERS, start))) return 0
+        val enough = start.coerceIn(JUMP_MIN_LETTERS, JUMP_ENOUGH_LETTERS)
+        if (passed >= 2 && (same < JUMP_MATCH_FRACTION * m || same < JUMP_MATCH_FRACTION * span || same < enough)) return 0
         // Words up to the last one the chunk reached (a word cut at the end counts whole).
         val lastWord = owner[best - 1]
         for (w in position..lastWord) {
@@ -168,11 +169,12 @@ class Tracker(val targets: List<ReciteTarget>) {
         /** Share of the chunk's letters, and of the text's letters it spans, that must match for it to be followed. */
         const val MIN_MATCH_FRACTION = 0.6
         /**
-         * The same, when the chunk passes over two words or more; and at least this many letters,
-         * and as many as it passes over.
+         * The same, when the chunk passes over two words or more; and as many letters as it
+         * passes over, at least [JUMP_MIN_LETTERS], at most [JUMP_ENOUGH_LETTERS] (a skipped āya).
          */
         const val JUMP_MATCH_FRACTION = 0.75
         const val JUMP_MIN_LETTERS = 4
+        const val JUMP_ENOUGH_LETTERS = 16
         /**
          * Share of a (long) word's letters that must match for it to count as right; a
          * three-letter word may have one wrong. At the phone's level the model often mishears a
