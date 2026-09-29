@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.1
+Badr at-Turkī: ash-Sharḥ 5–6 and al-ʿAlaq 8–9 now start and end on their own words.
+- Ash-Sharḥ 5 and 6 are the same words: the first came out a fraction of a second long. In al-ʿAlaq, 8 held its repetition by the reciter at the start of 9. Āyāt already saved download again when you open the passage.
+
 ## 1.7.0
 New reciter: Badr at-Turkī (the reciter chip under the player, or Settings → Listening).
 - His recitation is only published as whole sūras: the app fetches just each āya from them. A few āyāt (al-Wāqiʿa, al-Aʿlā, ash-Sharḥ 5–6, al-ʿAlaq 8–9) may start or end a word early or late; the passage still plays through without a gap.

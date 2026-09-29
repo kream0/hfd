@@ -4,8 +4,10 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import app.hfd.core.playback.EveryAyah
 import app.hfd.core.playback.Reciter
+import app.hfd.core.playback.Reciters
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.JsonFile
+import app.hfd.playback.TimingsRepo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +23,7 @@ import java.io.File
  * Āya MP3s kept on the phone: files/audio/<everyayah folder>/<SSSAAA>.mp3 (not backed up; they
  * can always be downloaded again). Also remembers each recitation's length, which gaps need.
  */
-class AudioStore(context: Context, private val scope: CoroutineScope) {
+class AudioStore(context: Context, private val scope: CoroutineScope, private val timings: TimingsRepo) {
     val root = File(context.filesDir, "audio")
 
     /** "Folder/002255.mp3" keys of the files on disk. */
@@ -36,12 +38,25 @@ class AudioStore(context: Context, private val scope: CoroutineScope) {
 
     init {
         scope.launch(Dispatchers.IO) {
+            val stale = ArrayList<String>()
             val found = root.listFiles()?.flatMap { dir ->
-                dir.listFiles { f -> f.name.endsWith(".mp3") && f.length() > 0 }?.map { "${dir.name}/${it.name}" }.orEmpty()
+                // A whole-sūra recitation re-timed by an update: an āya saved from the old cut
+                // (another length than its range now) goes, to be fetched again.
+                val t = Reciters.byFolder(dir.name)?.let { timings.of(it) }
+                dir.listFiles { f -> f.name.endsWith(".mp3") && f.length() > 0 }.orEmpty().filter { f ->
+                    val range = t?.let { EveryAyah.refOf(f.name)?.let(it::bytes) }
+                    val old = range != null && f.length() != range.last - range.first + 1
+                    if (old) { f.delete(); stale += "${dir.name}/${f.name}" }
+                    !old
+                }.map { "${dir.name}/${it.name}" }
             }.orEmpty()
             _files.update { it + found }
             val saved = durationsFile.read()
-            synchronized(durations) { saved.forEach { (k, v) -> durations.putIfAbsent(k, v) } }
+            synchronized(durations) {
+                saved.forEach { (k, v) -> durations.putIfAbsent(k, v) }
+                stale.forEach { durations.remove(it) }
+            }
+            if (stale.isNotEmpty()) durationsFile.write(synchronized(durations) { HashMap(durations) })
         }
     }
 

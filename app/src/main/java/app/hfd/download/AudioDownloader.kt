@@ -165,10 +165,12 @@ class AudioDownloader(
         val target = store.file(task.reciter, task.ref)
         target.parentFile?.mkdirs()
         val part = java.io.File(target.parentFile, target.name + ".part")
-        var offset = part.length()
-        // A whole-sūra recitation: the āya is a byte range of its sūra's file.
+        // A whole-sūra recitation: the āya is a byte range of its sūra's file. Never resumed (a
+        // part may be from a range an update has since moved; an āya is a few hundred KB).
         val t = timings.of(task.reciter)
         val range = t?.let { it.bytes(task.ref) ?: throw IOException("No timing for ${task.ref}") }
+        if (range != null) part.delete()
+        var offset = part.length()
         val request = Request.Builder()
             .url(if (t != null) t.url(task.ref) ?: throw IOException("No file for ${task.ref}") else EveryAyah.url(task.reciter, task.ref))
             .apply {

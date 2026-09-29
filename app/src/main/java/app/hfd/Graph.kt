@@ -55,7 +55,7 @@ object Graph {
     val settings: Settings by lazy { Settings(app) }
     val updater: Updater by lazy { Updater(app, http, settings, scope) }
     val content: ContentRepo by lazy { ContentRepo(app, scope) }
-    val audio: AudioStore by lazy { AudioStore(app, scope) }
+    val audio: AudioStore by lazy { AudioStore(app, scope, timings) }
     val timings: TimingsRepo by lazy { TimingsRepo(app) }
     val downloads: AudioDownloader by lazy { AudioDownloader(app, audio, http, scope, timings) }
     val player: PlayerConnection by lazy { PlayerConnection(app) }

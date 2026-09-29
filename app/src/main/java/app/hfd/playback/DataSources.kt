@@ -64,7 +64,8 @@ class AyahResolver(private val store: AudioStore, private val timings: TimingsRe
                 .setUri(Uri.parse(url))
                 .setPosition(bytes.first + dataSpec.position)
                 .setLength(length)
-                .setKey("rg:$key")
+                // With the range: an update that re-times the āya doesn't replay the old cut.
+                .setKey("rg:$key@${bytes.first}-${bytes.last}")
                 .build()
         }
         return dataSpec.buildUpon()
