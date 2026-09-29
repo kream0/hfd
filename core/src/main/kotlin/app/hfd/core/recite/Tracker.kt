@@ -27,7 +27,8 @@ data class AyahResult(
  * moves on. Letter-level alignment copes with the recogniser splitting or merging words
  * differently from the Uthmani text (يَـٰٓأَيُّهَا / يا أيها). A chunk may also start further on
  * (words the recogniser dropped, or the reciter skipped): the words passed over are MISSED, which
- * a clear match allows, so the tracker never stays stuck behind the reciter.
+ * a clear match allows, so the tracker never stays stuck behind the reciter. Or a little before:
+ * a reciter often says the last words again before going on, and those change nothing.
  */
 class Tracker(val targets: List<ReciteTarget>) {
     private val flat: List<String> = targets.flatMap { it.words }
@@ -111,28 +112,37 @@ class Tracker(val targets: List<ReciteTarget>) {
         val end = minOf(flat.size, position + maxOf(MIN_WINDOW, hWords.size * 3) + SKIP_WORDS)
         val e = StringBuilder()
         val owner = ArrayList<Int>()
-        for (w in position until end) {
+        // The last words recited too, for a chunk that starts by saying them again.
+        for (w in maxOf(0, position - BACK_WORDS) until end) {
             e.append(skel[w])
             repeat(skel[w].length) { owner += w }
         }
         val n = e.length
         val m = h.length
+        /** Letters of words already recited, before the position. */
+        val p = owner.indexOfFirst { it >= position }.let { if (it < 0) n else it }
         // Semi-global alignment scored like Needleman-Wunsch: the whole chunk against a stretch of
         // the expected text from the position. Matches earn more than gaps cost, so a skipped word
         // shows up as a gap rather than the chunk being cut short against a wrong word; passing
-        // over words before the chunk's start costs a quarter of a gap.
+        // over words before the chunk's start costs a quarter of a gap (nothing for those already
+        // recited).
         val d = Array(n + 1) { IntArray(m + 1) }
         for (j in 0..m) d[0][j] = -j * GAP
         for (i in 1..n) {
-            d[i][0] = -i * SKIP
+            d[i][0] = d[i - 1][0] - if (i - 1 < p) 0 else SKIP
             for (j in 1..m) {
                 val diag = d[i - 1][j - 1] + if (e[i - 1] == h[j - 1]) MATCH else -MISMATCH
                 d[i][j] = maxOf(diag, d[i - 1][j] - GAP, d[i][j - 1] - GAP)
             }
         }
-        // The best end; on a tie the fewest words, never running ahead of what was recited.
-        var best = 0
-        for (i in 1..n) if (d[i][m] > d[best][m]) best = i
+        // The best end among the words not recited yet; on a tie the fewest words, never running
+        // ahead of what was recited. A chunk that ends better among the words already recited
+        // only said them again: it doesn't move.
+        var best = -1
+        for (i in p + 1..n) if (best < 0 || d[i][m] > d[best][m]) best = i
+        var again = d[0][m]
+        for (i in 1..p) again = maxOf(again, d[i][m])
+        if (best < 0 || d[best][m] < again) return 0
         // Trace back: which expected letters were matched, substituted, or skipped.
         val matched = BooleanArray(n)
         val touched = BooleanArray(n)
@@ -151,16 +161,17 @@ class Tracker(val targets: List<ReciteTarget>) {
                 else -> j--
             }
         }
-        // Letters passed over before the chunk's start (i > 0 when j reached 0).
-        val start = if (j == 0) i else 0
+        // Where the chunk starts among the words not recited yet (letters before it passed over).
+        val start = maxOf(if (j == 0) i else 0, p)
         val span = best - start
+        val ahead = (start until best).count { matched[it] }
         // Too little in common, either way: not this text, or scraps the recogniser half heard
         // (a four-letter word sharing two letters with the next words isn't them). Don't move.
-        if (best == 0 || span <= 0 || same < MIN_MATCH_FRACTION * m || same < MIN_MATCH_FRACTION * span) return 0
+        if (span <= 0 || same < MIN_MATCH_FRACTION * m || ahead < MIN_MATCH_FRACTION * span) return 0
         // Passing over words takes a clear match, as long as what it passes over (up to a phrase).
         val passed = owner[start] - position
-        val enough = start.coerceIn(JUMP_MIN_LETTERS, JUMP_ENOUGH_LETTERS)
-        if (passed >= 2 && (same < JUMP_MATCH_FRACTION * m || same < JUMP_MATCH_FRACTION * span || same < enough)) return 0
+        val enough = (start - p).coerceIn(JUMP_MIN_LETTERS, JUMP_ENOUGH_LETTERS)
+        if (passed >= 2 && (same < JUMP_MATCH_FRACTION * m || ahead < JUMP_MATCH_FRACTION * span || ahead < enough)) return 0
         // Words up to the last one the chunk reached (a word cut at the end counts whole).
         val lastWord = owner[best - 1]
         for (w in position..lastWord) {
@@ -190,6 +201,8 @@ class Tracker(val targets: List<ReciteTarget>) {
         const val MIN_WINDOW = 12
         /** Words that may be passed over before a chunk (a dropped or skipped āya). */
         const val SKIP_WORDS = 40
+        /** Words already recited that a chunk may say again first. */
+        const val BACK_WORDS = 8
         /** Share of the chunk's letters, and of the text's letters it spans, that must match for it to be followed. */
         const val MIN_MATCH_FRACTION = 0.6
         /**

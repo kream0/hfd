@@ -47,7 +47,10 @@ class Segmenter {
         rms = rmsOf(frame)
         val rise = if (inSpeech) NOISE_RISE_SPEECH else NOISE_RISE
         noise = if (rms < noise) rms * 0.3f + noise * 0.7f else noise * (1 - rise) + rms * rise
-        voiced = rms > maxOf(noise * VOICE_OVER_NOISE, MIN_RMS)
+        // Hysteresis: speech starts clearly over the noise, and goes on until the level is back
+        // near it (in a noisy room the voice is only ~10 dB over it: most of its sounds would
+        // otherwise pass for silence, and the utterance fall apart).
+        voiced = if (inSpeech) rms > maxOf(noise * KEEP_OVER_NOISE, MIN_RMS * 0.7f) else rms > maxOf(noise * VOICE_OVER_NOISE, MIN_RMS)
         if (!inSpeech) {
             pre.addLast(frame)
             if (pre.size > PRE_ROLL_FRAMES) pre.removeFirst()
@@ -147,8 +150,10 @@ class Segmenter {
         /** How fast the noise level rises, per frame (20 s, or 100 s during speech, to follow a louder room). */
         private const val NOISE_RISE = 0.001f
         private const val NOISE_RISE_SPEECH = 0.0002f
-        /** Voice: this much over the room's noise (×2.5 ≈ 8 dB), and above MIN_RMS (≈ −54 dB). */
-        private const val VOICE_OVER_NOISE = 2.5f
+        /** Voice starts this much over the room's noise (×2 ≈ 6 dB), and above MIN_RMS (≈ −54 dB)… */
+        private const val VOICE_OVER_NOISE = 2f
+        /** …and goes on while over this (×1.8 ≈ 5 dB). */
+        private const val KEEP_OVER_NOISE = 1.8f
         private const val MIN_RMS = 0.002f
 
         fun rmsOf(frame: FloatArray): Float {

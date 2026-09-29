@@ -154,4 +154,23 @@ class TrackerTest {
         // Other words still need to be heard.
         assertEquals(0, u.feed("منذر"))
     }
+
+    @Test
+    fun wordsSaidAgainBeforeGoingOnChangeNothing() {
+        val t = Tracker(listOf(target(112, 1), target(112, 2), target(112, 3), target(112, 4)))
+        assertEquals(4, t.feed("قل هو الله احد"))
+        // The reciter says the end of the āya again, then goes on.
+        assertEquals(2, t.feed("الله احد الله الصمد"))
+        assertTrue((0 until 4).all { t.statusOf(0, it) == WordStatus.OK })
+        assertTrue((0 until 2).all { t.statusOf(1, it) == WordStatus.OK })
+        // Only words already recited: nothing moves.
+        assertEquals(0, t.feed("الله الصمد"))
+        assertEquals(6, t.position)
+        // Words that are both said again and next go on (al-Fātiḥa 3 after the basmala and 2).
+        val f = Tracker(listOf(target(1, 1), target(1, 2), target(1, 3)))
+        f.feed("بسم الله الرحمن الرحيم")
+        f.feed("الحمد لله رب العالمين")
+        assertEquals(2, f.feed("الرحمن الرحيم"))
+        assertTrue(f.done)
+    }
 }
