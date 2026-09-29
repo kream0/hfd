@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.0
+Recite follows word by word and lets you go back; it points out a muffled microphone and tries the phone's others.
+- Word by word: the words you say light up one after the other.
+- Going back: start an āya over (back to Alif Lām Mīm), or say a phrase again, and the text goes back there with no mistake. Mistakes are counted when you finish, as they stand then, so a correction counts.
+- Your phone's microphone gives a muffled voice (almost nothing above 1 kHz; on recordings muffled like that the speech model loses most words). When the voice comes in muffled, the app now tries the phone's other microphones and keeps the clearest; if all are muffled it says so (a pocket, a hand over the phone).
+- The rumble of handling and breath on the microphone is filtered out.
+- *Send recordings* (Settings → About) now sends the whole session, so it can be replayed exactly on the test bench.
+
 ## 1.8.2
 Recite keeps following in a noisy room, and when you say words again before going on.
 - In a noisy room your voice is only a little louder than the background: the app took most of it for silence and lost track. Now, once you've started, it keeps listening until your voice really stops.

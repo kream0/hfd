@@ -110,8 +110,9 @@ that the app updates itself from new releases. Android 8.0 or newer.
   progress keeps each āya's weak words. No audio is stored or sent. 64-bit ARM phones only.
   The reciter may go back (start an āya over, say a phrase again): the text goes back there with
   no mistake, and the results are written to the log at the end, as they stand. Before
-  recognition the rumble below 120 Hz is filtered out and a muffled voice (hardly anything above
-  1 kHz, as on the owner's phone) is made clearer (`Clarity`). `.github/workflows/recite.yml`
+  recognition the rumble below 120 Hz is filtered out; a muffled voice (hardly anything above
+  1 kHz, as on the owner's phone: `Clarity`) is pointed out and the phone's other microphones
+  are tried, the clearest kept. `.github/workflows/recite.yml`
   benches the whole pipeline on EveryAyah recitations brought down to the owner's phone
   microphone level — noise, a muffled microphone, rumble, restarts, repetitions — and on the
   owner's own sessions when they send them (`tools/recite/`): words right and how soon they show.
