@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import app.hfd.core.recite.Segmenter
+import app.hfd.core.recite.Utterance
 import app.hfd.diag.Diag
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -16,12 +18,10 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.sqrt
 
 /**
- * The microphone, cut into chunks of speech: a chunk starts when the voice rises above the
- * room's noise (with a little audio before it) and ends at a pause, so each one holds a few
- * words to a few āyāt for the recogniser. 16 kHz mono floats.
+ * The microphone, as utterances for the recogniser ([Segmenter]): the speech so far every second
+ * while the reciter goes on, then whole at the pause. 16 kHz mono floats.
  */
 class Recorder {
     private val _level = MutableStateFlow(0f)
@@ -32,14 +32,18 @@ class Recorder {
     val speaking: StateFlow<Boolean> = _speaking.asStateFlow()
 
     private val stopRequested = AtomicBoolean(false)
+    private val restartRequested = AtomicBoolean(false)
 
-    /** Ends [chunks] after handing over what was being said (unlike cancelling, which drops it). */
+    /** Ends [utterances] after handing over what was being said (unlike cancelling, which drops it). */
     fun stop() = stopRequested.set(true)
 
-    /** Chunks of speech until the collector stops. Needs RECORD_AUDIO. */
+    /** Drops what is being said and starts a new utterance (after a hint). */
+    fun restart() = restartRequested.set(true)
+
+    /** Utterances until the collector stops. Needs RECORD_AUDIO. */
     @SuppressLint("MissingPermission")
-    fun chunks(): Flow<FloatArray> = flow {
-        val rate = Whisper.SAMPLE_RATE
+    fun utterances(): Flow<Utterance> = flow {
+        val rate = Segmenter.RATE
         val minBuf = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         val record = AudioRecord(
             MediaRecorder.AudioSource.VOICE_RECOGNITION, rate,
@@ -47,72 +51,48 @@ class Recorder {
         )
         Diag.log("mic.open", "state" to record.state, "minBuffer" to minBuf, "rate" to record.sampleRate, "source" to "VOICE_RECOGNITION")
         check(record.state == AudioRecord.STATE_INITIALIZED) { "microphone unavailable" }
-        val frame = ShortArray(FRAME)
-        val pre = ArrayDeque<FloatArray>()
-        val chunk = ArrayList<FloatArray>()
-        var noise = 0.01f
-        var silentFrames = 0
-        var voicedFrames = 0
-        var inSpeech = false
+        val frame = ShortArray(Segmenter.FRAME)
+        val seg = Segmenter()
         stopRequested.set(false)
+        restartRequested.set(false)
         // A second of levels at a time, for the diagnostics.
         var secFrames = 0
         var secSum = 0.0
         var secMax = 0f
         var secVoiced = 0
-        var sent = 0
+        var finals = 0
         try {
             record.startRecording()
             while (currentCoroutineContext().isActive && !stopRequested.get()) {
-                val n = record.read(frame, 0, FRAME)
+                val n = record.read(frame, 0, frame.size)
                 if (n <= 0) continue
-                val f = FloatArray(n) { frame[it] / 32768f }
-                var sum = 0.0
-                for (x in f) sum += x * x
-                val rms = sqrt(sum / n).toFloat()
-                // The noise floor follows the quietest moments, slowly.
-                noise = if (rms < noise) rms * 0.3f + noise * 0.7f else noise * 0.999f + rms * 0.001f
-                val voiced = rms > maxOf(noise * VOICE_OVER_NOISE, MIN_RMS)
+                if (restartRequested.getAndSet(false)) seg.restart()
+                val out = seg.feed(FloatArray(n) { frame[it] / 32768f })
                 // −60 dB → 0, −15 dB → 1: phone microphones for speech recognition are quiet.
-                _level.value = ((dB(rms) + 60f) / 45f).coerceIn(0f, 1f)
+                _level.value = ((dB(seg.rms) + 60f) / 45f).coerceIn(0f, 1f)
+                _speaking.value = seg.inSpeech
                 secFrames++
-                secSum += rms
-                secMax = maxOf(secMax, rms)
-                if (voiced) secVoiced++
+                secSum += seg.rms
+                secMax = maxOf(secMax, seg.rms)
+                if (seg.voiced) secVoiced++
                 if (secFrames == 50) {
                     Diag.log(
                         "mic.second", "avgDb" to dB((secSum / secFrames).toFloat()), "maxDb" to dB(secMax),
-                        "noiseDb" to dB(noise), "voiced" to secVoiced, "inSpeech" to inSpeech, "chunks" to sent,
+                        "noiseDb" to dB(seg.noise), "voiced" to secVoiced, "inSpeech" to seg.inSpeech, "utterances" to finals,
                     )
                     secFrames = 0; secSum = 0.0; secMax = 0f; secVoiced = 0
                 }
-                if (!inSpeech) {
-                    pre.addLast(f)
-                    if (pre.size > PRE_ROLL_FRAMES) pre.removeFirst()
-                    if (voiced) {
-                        inSpeech = true
-                        _speaking.value = true
-                        chunk.addAll(pre)
-                        pre.clear()
-                        silentFrames = 0
-                        voicedFrames = 1
+                for (u in out) {
+                    if (u.final) {
+                        finals++
+                        Diag.log("mic.utterance", "id" to u.id, "seconds" to u.seconds)
                     }
-                    continue
-                }
-                chunk += f
-                if (voiced) { silentFrames = 0; voicedFrames++ } else silentFrames++
-                val long = chunk.size >= MAX_CHUNK_FRAMES
-                if (silentFrames >= PAUSE_FRAMES || long) {
-                    Diag.log("mic.chunk", "seconds" to chunk.size * FRAME / rate.toFloat(), "voiced" to voicedFrames, "sent" to (voicedFrames >= MIN_VOICED_FRAMES), "long" to long)
-                    if (voicedFrames >= MIN_VOICED_FRAMES) { sent++; emit(join(chunk)) }
-                    chunk.clear()
-                    inSpeech = false
-                    _speaking.value = false
+                    emit(u)
                 }
             }
             // Stopped: what was being said still counts.
-            if (inSpeech && voicedFrames >= MIN_VOICED_FRAMES) emit(join(chunk))
-            Diag.log("mic.stop", "chunks" to sent, "requested" to stopRequested.get())
+            seg.end()?.let { finals++; emit(it) }
+            Diag.log("mic.stop", "utterances" to finals, "requested" to stopRequested.get())
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -126,25 +106,7 @@ class Recorder {
         }
     }.flowOn(Dispatchers.IO)
 
-    private fun join(frames: List<FloatArray>): FloatArray {
-        val out = FloatArray(frames.sumOf { it.size })
-        var at = 0
-        for (f in frames) { f.copyInto(out, at); at += f.size }
-        return out
-    }
-
-    companion object {
-        /** 20 ms frames. */
-        private const val FRAME = 320
-        private const val PRE_ROLL_FRAMES = 15 // 300 ms kept before the voice starts
-        private const val PAUSE_FRAMES = 35 // 700 ms of silence ends a chunk
-        private const val MIN_VOICED_FRAMES = 10 // at least 200 ms of voice
-        // 20 s at most: the model reads 30 s windows and slips beyond ~25 s (tools/model/evaluate.py).
-        private const val MAX_CHUNK_FRAMES = 1000
-        /** Voice: this much over the room's noise (×2.5 ≈ 8 dB), and above MIN_RMS (≈ −54 dB). */
-        private const val VOICE_OVER_NOISE = 2.5f
-        private const val MIN_RMS = 0.002f
-
-        private fun dB(rms: Float): Float = (20 * kotlin.math.log10(rms.coerceAtLeast(1e-6f).toDouble())).toFloat()
+    private companion object {
+        fun dB(rms: Float): Float = (20 * kotlin.math.log10(rms.coerceAtLeast(1e-6f).toDouble())).toFloat()
     }
 }

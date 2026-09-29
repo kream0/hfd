@@ -5,6 +5,11 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,13 +40,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
@@ -70,7 +73,7 @@ import app.hfd.ui.text
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
 
-/** Reciting a passage aloud from memory: words appear as they are recited, mistakes in red. */
+/** Reciting a passage aloud from memory: words light up as they are recited, mistakes in red. */
 @Composable
 fun ReciteScreen(onClose: () -> Unit) {
     val session by Graph.recite.collectAsStateWithLifecycle()
@@ -85,7 +88,7 @@ fun ReciteScreen(onClose: () -> Unit) {
     val model by Graph.speech.state.collectAsStateWithLifecycle()
     val level by s.level.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var showText by rememberSaveable { mutableStateOf(false) }
+    val showText = settings.reciteShowText
     val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) s.start() else Graph.toast(R.string.recite_mic_denied)
     }
@@ -122,7 +125,7 @@ fun ReciteScreen(onClose: () -> Unit) {
         LaunchedEffect(ui.next?.first) { ui.next?.first?.let { list.animateScrollToItem(it) } }
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list) {
             itemsIndexed(ui.targets) { a, t ->
-                AyahWords(t, ui.status.getOrNull(a).orEmpty(), current = ui.next?.takeIf { it.first == a }?.second, showText, settings.arabicSize)
+                AyahWords(t, ui.status.getOrNull(a).orEmpty(), current = ui.next?.takeIf { it.first == a }?.second, showText, settings.arabicSize, ui.listening)
             }
             if (ui.done && ui.results.isNotEmpty()) item { Summary(ui.results, onAgain = { f?.let { Graph.openRecite(it.id, ui.targets.map { t -> t.ref }) } }, onClose) }
         }
@@ -140,7 +143,7 @@ fun ReciteScreen(onClose: () -> Unit) {
                 if (ui.listening) s.stop() else listen()
             }
             IconBtn(
-                if (showText) Ic.Hidden else Ic.Visible, { showText = !showText }, bordered = true, size = 48.dp,
+                if (showText) Ic.Hidden else Ic.Visible, { Graph.settings.update { it.copy(reciteShowText = !it.reciteShowText) } }, bordered = true, size = 48.dp,
                 contentDescription = stringResource(if (showText) R.string.recite_hide_text else R.string.recite_show_text),
             )
         }
@@ -183,11 +186,20 @@ private fun ModelCard(model: ModelState) {
     }
 }
 
-/** An āya's words, right to left: hidden until recited (unless [showText]), then marked. */
+/**
+ * An āya's words, right to left: dim until recited (or hidden, without [showText]), then in full
+ * colour; mistakes in red, hints in yellow. The next word to say is a little brighter, and
+ * breathes while listening.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, showText: Boolean, size: Int) {
+private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, showText: Boolean, size: Int, listening: Boolean) {
     val style = Type.quran(size)
+    val breath = if (current != null && listening) {
+        rememberInfiniteTransition(label = "next").animateFloat(
+            0.35f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "breath",
+        ).value
+    } else 0.6f
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         FlowRow(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -195,21 +207,27 @@ private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, 
         ) {
             t.words.forEachIndexed { w, word ->
                 val st = status.getOrElse(w) { WordStatus.PENDING }
+                val next = w == current
                 val hidden = st == WordStatus.PENDING && !showText
                 val color = when (st) {
-                    WordStatus.PENDING -> if (hidden) Color.Transparent else P.textFaint
+                    WordStatus.PENDING -> when {
+                        hidden -> Color.Transparent
+                        next -> lerp(P.textFaint, P.text, breath)
+                        else -> P.textFaint
+                    }
                     WordStatus.OK -> P.text
                     WordStatus.WRONG, WordStatus.MISSED -> P.accent
                     WordStatus.HINTED -> P.saveYellow
                 }
-                val shape = RoundedCornerShape(8.dp)
                 Text(
                     word,
                     style = style.copy(textDecoration = if (st == WordStatus.MISSED) TextDecoration.LineThrough else null),
                     color = color,
                     modifier = Modifier
-                        .then(if (hidden) Modifier.clip(shape).background(P.surfaceHigh) else Modifier)
-                        .then(if (w == current) Modifier.border(1.dp, P.accent, shape) else Modifier)
+                        .then(
+                            if (hidden) Modifier.clip(RoundedCornerShape(8.dp)).background(if (next) lerp(P.surfaceHigh, P.outline, breath) else P.surfaceHigh)
+                            else Modifier,
+                        )
                         .padding(horizontal = 2.dp),
                 )
             }

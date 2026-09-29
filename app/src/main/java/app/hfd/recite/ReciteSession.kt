@@ -5,9 +5,10 @@ import app.hfd.core.quran.AyahRef
 import app.hfd.core.recite.Arabic
 import app.hfd.core.recite.AudioStats
 import app.hfd.core.recite.AyahResult
+import app.hfd.core.recite.Follower
 import app.hfd.core.recite.Level
 import app.hfd.core.recite.ReciteTarget
-import app.hfd.core.recite.Tracker
+import app.hfd.core.recite.Utterance
 import app.hfd.core.recite.WordStatus
 import app.hfd.diag.Diag
 import kotlinx.coroutines.CancellationException
@@ -33,7 +34,7 @@ data class ReciteUi(
     val listening: Boolean = false,
     /** Loading the model (first start of the session). */
     val loading: Boolean = false,
-    /** Chunks of speech waiting for recognition. */
+    /** Whole utterances waiting for recognition. */
     val pending: Int = 0,
     /** The last thing heard, as recognised (shown small, for trust). */
     val heard: String? = null,
@@ -44,10 +45,11 @@ data class ReciteUi(
 }
 
 /**
- * Reciting [targets] aloud from memory, Tarteel-style: the microphone is cut into chunks at the
- * pauses, each chunk is recognised on the phone (whisper.cpp, Tarteel's model) and followed on
- * the text by [Tracker]; every āya finished is written to the progress log ([record]) with its
- * mistakes and the rating that follows. Main-thread API.
+ * Reciting [targets] aloud from memory, Tarteel-style: the microphone is cut into utterances
+ * ([Recorder]), each recognised on the phone (whisper.cpp, Tarteel's model) again and again as
+ * it grows, so the text follows the reciter as they go ([Follower]); every āya finished (on an
+ * utterance's final reading) is written to the progress log ([record]) with its mistakes and the
+ * rating that follows. Main-thread API.
  */
 class ReciteSession(
     val fadilaId: String,
@@ -56,10 +58,15 @@ class ReciteSession(
     private val model: () -> File?,
     private val record: (Event) -> Unit,
 ) {
-    private val tracker = Tracker(targets)
+    private val follower = Follower(targets)
+    private val tracker = follower.tracker
     private val recorder = Recorder()
     private val recognizer = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-    private val chunks = Channel<FloatArray>(Channel.UNLIMITED)
+    /** Utterances waiting: final ones in order, and a partial one replaced by the next reading. */
+    private val queue = ArrayDeque<Utterance>()
+    private val wake = Channel<Unit>(Channel.CONFLATED)
+    /** The last utterance the recorder handed over. */
+    private var lastId = -1
     private var whisper: Whisper? = null
     private var listenJob: Job? = null
     private val consumer: Job
@@ -72,26 +79,41 @@ class ReciteSession(
     val level: StateFlow<Float> = recorder.level
 
     init {
-        // Recognition runs one chunk at a time, in order, while the next is being recorded.
+        // Recognition runs one reading at a time while the recorder goes on; a partial reading
+        // left waiting is replaced by the newer one, so the text never lags far behind.
         consumer = scope.launch {
-            for (chunk in chunks) {
-                // The phone's speech microphone is faint: bring the voice to a normal level first.
-                val (pcm, gain) = Level.normalize(chunk)
-                heardChunks++
-                val st = AudioStats.of(chunk)
-                Diag.log(
-                    "recite.chunk", "n" to heardChunks, "seconds" to st.seconds, "gainDb" to (20 * kotlin.math.log10(gain.toDouble())).toFloat(),
-                    "peakDb" to st.peakDb, "loudDb" to st.loudDb, "quietDb" to st.quietDb, "dc" to st.dc, "clipped" to st.clipped,
-                    "zcr" to st.zcr, "bands" to st.bands.joinToString("/"),
-                )
-                val text = withContext(recognizer) {
-                    Diag.attach("chunk$heardChunks", chunk, recordings())
-                    loadedWhisper()?.transcribe(pcm)
+            for (x in wake) {
+                while (true) {
+                    val u = queue.removeFirstOrNull() ?: break
+                    val text = withContext(recognizer) {
+                        // The phone's speech microphone is faint: bring the voice to a normal level first.
+                        val (pcm, gain) = Level.normalize(u.pcm)
+                        if (u.final) {
+                            heardChunks++
+                            val st = AudioStats.of(u.pcm)
+                            Diag.log(
+                                "recite.chunk", "n" to heardChunks, "id" to u.id, "seconds" to st.seconds,
+                                "gainDb" to (20 * kotlin.math.log10(gain.toDouble())).toFloat(),
+                                "peakDb" to st.peakDb, "loudDb" to st.loudDb, "quietDb" to st.quietDb, "dc" to st.dc, "clipped" to st.clipped,
+                                "zcr" to st.zcr, "bands" to st.bands.joinToString("/"),
+                            )
+                            Diag.attach("chunk$heardChunks", u.pcm, recordings())
+                        }
+                        loadedWhisper()?.transcribe(pcm)
+                    }
+                    if (u.final) _ui.value = _ui.value.copy(pending = (_ui.value.pending - 1).coerceAtLeast(0))
+                    if (text != null) onHeard(u.id, text, u.final)
                 }
-                _ui.value = _ui.value.copy(pending = (_ui.value.pending - 1).coerceAtLeast(0))
-                if (text != null) onHeard(text)
             }
         }
+    }
+
+    private fun offer(u: Utterance) {
+        lastId = maxOf(lastId, u.id)
+        if (queue.lastOrNull()?.let { !it.final && it.id == u.id } == true) queue.removeLast()
+        queue.addLast(u)
+        if (u.final) _ui.value = _ui.value.copy(pending = _ui.value.pending + 1)
+        wake.trySend(Unit)
     }
 
     /** Starts listening (the caller has the microphone permission). */
@@ -113,10 +135,7 @@ class ReciteSession(
         }
         listenJob = scope.launch {
             try {
-                recorder.chunks().collect { chunk ->
-                    _ui.value = _ui.value.copy(pending = _ui.value.pending + 1)
-                    chunks.send(chunk)
-                }
+                recorder.utterances().collect(::offer)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -131,19 +150,28 @@ class ReciteSession(
     /** Stops listening after what is being said has been handed over. */
     fun stop() = recorder.stop()
 
-    /** Shows the next word; it counts as a mistake. */
+    /**
+     * Shows the next word; it counts as a mistake. What was recited before stays, and the
+     * recorder starts a new utterance from here.
+     */
     fun hint() {
-        tracker.hint() ?: return
-        afterProgress(null)
+        follower.hint(through = lastId) ?: return
+        recorder.restart()
+        val dropped = queue.count { it.id <= lastId && it.final }
+        queue.removeAll { it.id <= lastId }
+        _ui.value = _ui.value.copy(pending = (_ui.value.pending - dropped).coerceAtLeast(0))
+        afterProgress(null, final = true)
     }
 
-    /** A chunk of recognised speech (also used by the screenshot test). */
-    fun onHeard(text: String) {
-        val clean = withoutOpening(text)
+    /** A whole utterance heard (the screenshot test). */
+    fun onHeard(text: String) = onHeard(++lastId, text, final = true)
+
+    /** A reading of utterance [id]: partial ones move the text on, the final one stays. */
+    private fun onHeard(id: Int, text: String, final: Boolean) {
         val before = tracker.position
-        val moved = tracker.feed(clean)
-        Diag.log("recite.heard", "text" to text, "clean" to clean, "from" to before, "to" to tracker.position, "moved" to moved, "done" to tracker.done)
-        afterProgress(text.ifBlank { null })
+        val moved = follower.heard(id, text, final)
+        Diag.log(if (final) "recite.heard" else "recite.partial", "id" to id, "text" to text, "from" to before, "to" to tracker.position, "moved" to moved, "done" to tracker.done)
+        afterProgress(text.ifBlank { null }, final)
     }
 
     fun close() {
@@ -151,7 +179,7 @@ class ReciteSession(
         recorder.stop()
         listenJob?.cancel()
         consumer.cancel()
-        chunks.close()
+        wake.close()
         // Freed on the recognition thread, after any chunk still being recognised.
         scope.launch(recognizer) {
             whisper?.close()
@@ -159,16 +187,19 @@ class ReciteSession(
         }.invokeOnCompletion { recognizer.close() }
     }
 
-    private fun afterProgress(heard: String?) {
+    /** After a [final] reading (or a hint) the āyāt finished are recorded; a partial one only shows. */
+    private fun afterProgress(heard: String?, final: Boolean) {
         val finished = tracker.finished()
-        val now = System.currentTimeMillis()
-        for (r in finished.drop(logged)) {
-            Diag.log("recite.ayah", "ref" to r.ref.key, "words" to r.words, "mistakes" to r.mistakes.joinToString(","), "rating" to r.rating.name)
-            record(Event.Recite(now, r.ref.key, r.words, r.mistakes, r.rating, now - ayahStartedAt))
-            ayahStartedAt = now
+        if (final) {
+            val now = System.currentTimeMillis()
+            for (r in finished.drop(logged)) {
+                Diag.log("recite.ayah", "ref" to r.ref.key, "words" to r.words, "mistakes" to r.mistakes.joinToString(","), "rating" to r.rating.name)
+                record(Event.Recite(now, r.ref.key, r.words, r.mistakes, r.rating, now - ayahStartedAt))
+                ayahStartedAt = now
+            }
+            logged = finished.size
+            if (tracker.done) recorder.stop()
         }
-        logged = finished.size
-        if (tracker.done) recorder.stop()
         _ui.value = snapshot(_ui.value.copy(heard = heard ?: _ui.value.heard, results = finished))
     }
 
@@ -200,26 +231,6 @@ class ReciteSession(
         Diag.log("whisper.selftest", "expected" to "قُلْ هُوَ ٱللَّهُ أَحَدٌ", "text" to text, "ms" to System.currentTimeMillis() - started)
     }
 
-    /**
-     * Drops the isti'ādha and, at the start of a sūra, the basmala: recited before the text but
-     * not part of it here.
-     */
-    private fun withoutOpening(text: String): String {
-        var words = text.split(Regex("\\s+")).filter { it.isNotBlank() }
-        fun startsWith(phrase: String): Int {
-            val p = Arabic.words(phrase).map { Arabic.skeleton(it) }
-            val w = words.take(p.size).map { Arabic.skeleton(it) }
-            return if (w == p) p.size else 0
-        }
-        words = words.drop(startsWith(ISTIADHA))
-        if (!tracker.done) {
-            val (a, w) = tracker.locate(tracker.position)
-            val ref = targets[a].ref
-            if (w == 0 && ref.aya == 1 && ref.sura != 1 && ref.sura != 9) words = words.drop(startsWith(BASMALA))
-        }
-        return words.joinToString(" ")
-    }
-
     companion object {
         @Volatile private var selfTested = false
         /** The reference clip for [selfTest], set by the app (a WAV in the assets). */
@@ -228,8 +239,6 @@ class ReciteSession(
         @Volatile var recordings: () -> Boolean = { false }
         const val ERROR_MODEL = "model"
         const val ERROR_MIC = "mic"
-        private const val ISTIADHA = "أعوذ بالله من الشيطان الرجيم"
-        private const val BASMALA = "بسم الله الرحمن الرحيم"
 
         fun targets(refs: List<AyahRef>, text: (AyahRef) -> String?): List<ReciteTarget> =
             refs.map { ReciteTarget(it, Arabic.words(text(it).orEmpty())) }

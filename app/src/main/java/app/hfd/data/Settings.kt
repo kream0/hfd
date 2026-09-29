@@ -45,6 +45,8 @@ data class AppSettings(
     val sendDiagnostics: Boolean = true,
     /** Also a few Recite recordings, to debug recognition (off; the owner switches it on). */
     val sendRecordings: Boolean = false,
+    /** Recite shows the text (words light up as they are recited); off, it stays hidden until recited. */
+    val reciteShowText: Boolean = true,
     /** The review reminder; its time in minutes after midnight. */
     val remindReviews: Boolean = false,
     val reviewsAt: Int = 19 * 60,
@@ -112,6 +114,7 @@ class Settings(context: Context) {
             learnOrder = enumOr(prefs.getString("learnOrder", null), d.learnOrder),
             sendDiagnostics = prefs.getBoolean("sendDiagnostics", d.sendDiagnostics),
             sendRecordings = prefs.getBoolean("sendRecordings", d.sendRecordings),
+            reciteShowText = prefs.getBoolean("reciteShowText", d.reciteShowText),
             remindReviews = prefs.getBoolean("remindReviews", d.remindReviews),
             reviewsAt = prefs.getInt("reviewsAt", d.reviewsAt).coerceIn(0, 24 * 60 - 1),
         )
@@ -134,6 +137,7 @@ class Settings(context: Context) {
             .putString("learnOrder", s.learnOrder.name)
             .putBoolean("sendDiagnostics", s.sendDiagnostics)
             .putBoolean("sendRecordings", s.sendRecordings)
+            .putBoolean("reciteShowText", s.reciteShowText)
             .putBoolean("remindReviews", s.remindReviews)
             .putInt("reviewsAt", s.reviewsAt)
             // Settings of removed features (1.6.0: passage reminders, the location they needed).
