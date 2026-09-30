@@ -70,6 +70,42 @@ jobs:
               print(f"{path}: {len(x) / 16000:.1f} s, loud {20 * np.log10(np.percentile(e, 90)):.1f} dB, "
                     f"quiet {20 * np.log10(np.percentile(e, 10)):.1f} dB, bands 0-120/120-300/300-1k/1-2k/2-4k/4-8k Hz: {bands} %")
           PY
+      - name: The owner's kept sessions, finely (third-octave levels of the voice, against a reference recitation)
+        # A sharp drop at one frequency is a filter in the phone's audio path; a gentle slope is the
+        # voice itself, or how it reaches the microphone (cloth, bone conduction in earbuds…).
+        uses: actions/cache/restore@v5
+        with:
+          path: owner-rec
+          key: owner-rec-none
+          restore-keys: owner-rec-
+      - run: |
+          pip install --quiet numpy
+          python3 - <<'PY'
+          import glob, numpy as np
+          def read(path):
+              raw = open(path, "rb").read()
+              i = raw.find(b"data")
+              return np.frombuffer(raw[i + 8:], dtype="<i2").astype(np.float32) / 32768
+          centres = [100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300]
+          print("third-octave levels of the voiced frames, dB from the loudest band:")
+          print(f"{'':44s}" + "".join(f"{c:>6d}" for c in centres))
+          for path in ["app/src/main/assets/diag/112001.wav"] + sorted(glob.glob("owner-rec/*.wav")) + sorted(glob.glob("rec/*.wav")):
+              x = read(path)
+              n = len(x) // 512
+              if n < 4:
+                  continue
+              fr = x[:n * 512].reshape(n, 512) * np.hanning(512)
+              e = np.sqrt(np.mean(fr ** 2, axis=1))
+              voiced = fr[e >= np.percentile(e, 60)]
+              p = (np.abs(np.fft.rfft(voiced, axis=1)) ** 2).mean(axis=0)
+              f = np.fft.rfftfreq(512, 1 / 16000)
+              lv = []
+              for c in centres:
+                  band = p[(f >= c / 2 ** (1 / 6)) & (f < c * 2 ** (1 / 6))]
+                  lv.append(10 * np.log10(band.sum() + 1e-20))
+              top = max(lv)
+              print(f"{path.split('/')[-1][:44]:44s}" + "".join(f"{v - top:6.0f}" for v in lv))
+          PY
       - name: Keep the owner's session recordings for the Recite bench (the Actions cache, not published)
         uses: actions/cache/restore@v5
         with:
