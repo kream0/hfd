@@ -78,6 +78,10 @@ jobs:
           path: owner-rec
           key: owner-rec-none
           restore-keys: owner-rec-
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: app/src/main/assets/diag
+          path: repo
       - run: |
           pip install --quiet numpy
           python3 - <<'PY'
@@ -89,7 +93,7 @@ jobs:
           centres = [100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300]
           print("third-octave levels of the voiced frames, dB from the loudest band:")
           print(f"{'':44s}" + "".join(f"{c:>6d}" for c in centres))
-          for path in ["app/src/main/assets/diag/112001.wav"] + sorted(glob.glob("owner-rec/*.wav")) + sorted(glob.glob("rec/*.wav")):
+          for path in ["repo/app/src/main/assets/diag/112001.wav"] + sorted(glob.glob("owner-rec/*.wav")) + sorted(glob.glob("rec/*.wav")):
               x = read(path)
               n = len(x) // 512
               if n < 4:
