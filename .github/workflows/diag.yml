@@ -33,8 +33,12 @@ jobs:
                   continue
               att = m.get("attachment")
               if att:
-                  urllib.request.urlretrieve(att["url"], "rec/" + att["name"])
-                  print("recording", att["name"], att.get("size"))
+                  # ntfy keeps attachments ~3 h: older ones are gone (404).
+                  try:
+                      urllib.request.urlretrieve(att["url"], "rec/" + att["name"])
+                      print("recording", att["name"], att.get("size"))
+                  except Exception as e:
+                      print("recording", att["name"], "not available:", e)
                   continue
               for line in m.get("message", "").splitlines():
                   try:
