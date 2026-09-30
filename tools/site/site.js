@@ -128,9 +128,10 @@
     const rr = (x, y, w, h, rad) => { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, rad) : ctx.rect(x, y, w, h); };
     for (const [r0, c0] of [[0, 0], [0, n - 7], [n - 7, 0]]) {
       const X = (c0 + q) * cell, Y = (r0 + q) * cell;
-      ctx.fillStyle = T.qrFg; rr(X, Y, 7 * cell, 7 * cell, cell * 1.8); ctx.fill();
-      ctx.fillStyle = T.qrBg; rr(X + cell, Y + cell, 5 * cell, 5 * cell, cell * 1.2); ctx.fill();
-      ctx.fillStyle = T.qrFg; rr(X + 2 * cell, Y + 2 * cell, 3 * cell, 3 * cell, cell * .9); ctx.fill();
+      // Rounded, not so much that scanners miss them (1.8 / 1.2 / 0.9 cells didn't decode).
+      ctx.fillStyle = T.qrFg; rr(X, Y, 7 * cell, 7 * cell, cell * 1.2); ctx.fill();
+      ctx.fillStyle = T.qrBg; rr(X + cell, Y + cell, 5 * cell, 5 * cell, cell * .8); ctx.fill();
+      ctx.fillStyle = T.qrFg; rr(X + 2 * cell, Y + 2 * cell, 3 * cell, 3 * cell, cell * .6); ctx.fill();
     }
     for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
       if (QR[r][c] !== "1" || finder(r, c)) continue;

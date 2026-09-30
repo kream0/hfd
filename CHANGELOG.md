@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.11.0
+A paper theme: warm paper instead of white, with black ink, like a printed muṣḥaf.
+- Settings → Appearance → Theme: System (follows the phone's dark mode), Dark, or Paper.
+- The status and navigation bars follow the theme you choose.
+- The app now has a website: https://kream0.github.io/hfd/
+
 ## 1.10.0
 Recite listens with your earbuds' microphone, and follows again after a pause.
 - With earbuds connected, Recite now listens through their microphone. Until now Android kept the phone's own, which, away from your mouth, heard your voice muffled and too faint to be recognised. A line under the waveform says which microphone listens; tap it to switch. While listening the earbuds are in call mode.
