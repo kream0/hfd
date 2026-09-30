@@ -32,7 +32,7 @@ import java.io.FileOutputStream
  * Renders the main screens with Robolectric's native graphics, in French (the website's language)
  * and in both themes (`<screen>.png` black, `<screen>-paper.png` paper, in the same state), so
  * layouts and the Qur'an text rendering can be checked without a phone. Run by
- * .github/workflows/screenshots.yml, which turns them into the website's docs/screenshots/*.webp.
+ * .github/workflows/screenshots.yml, which turns them into the website's WebPs in docs/screenshots.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

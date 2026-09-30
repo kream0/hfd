@@ -36,6 +36,11 @@ is_quran_txt() {
 is_meta_xml() { grep -q '<sura index="114"' "$1"; }
 
 T=https://tanzil.net
+# Tanzil unreachable (its certificate expired on 30 Sept 2026): the copies already committed stay.
+if ! curl -fsS --max-time 30 -A "$UA" -o /dev/null "$T/" && [ -s "$OUT/quran-uthmani.txt" ] && [ -s "$OUT/suras.json" ]; then
+  echo "::warning::tanzil.net unreachable; keeping the committed Qur'an data"
+  exit 0
+fi
 fetch "$OUT/quran-uthmani.txt" is_quran_txt \
   "$T/pub/download/index.php?marks=true&sajdah=true&rub=true&quranType=uthmani&outType=txt-2&agree=true" \
   "$T/pub/download/index.php?quranType=uthmani&outType=txt-2&marks=true&sajdah=true&rub=true&alef=true&agree=true"

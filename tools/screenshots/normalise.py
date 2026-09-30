@@ -14,6 +14,8 @@ from PIL import Image
 src, dst = sys.argv[1], sys.argv[2]
 os.makedirs(dst, exist_ok=True)
 shots = sorted(glob.glob(os.path.join(src, "*.png")))
+if not shots:
+    sys.exit("no screenshots in " + src)
 heights = [Image.open(p).size for p in shots]
 # Crop from the top to the smallest height (keeping the bottom), as for phone screenshots.
 h0 = min(h for _, h in heights)
