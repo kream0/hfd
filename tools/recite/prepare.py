@@ -77,6 +77,8 @@ CASES = [(p, r, "flow", None) for p in PASSAGES if p != "imran-opening" for r in
     ("imran-opening", "husary", "rumble", [1, 2, 3, 4]),
     ("fatiha", "dossary", "rumble", None),
     ("baqara-opening", "alafasy", "rumble", None),
+    ("fatiha", "alafasy", "muffled", [1, 2, 3, 5, 6, 7]),
+    ("ikhlas", "husary", "muffled", [1, 2, 1, 2, 3, 4]),
     ("imran-opening", "maher", "pocket", [1, 2, 3, 4]),
     ("fatiha", "husary", "pocket", None),
     ("imran-opening", "maher", "sco", None),

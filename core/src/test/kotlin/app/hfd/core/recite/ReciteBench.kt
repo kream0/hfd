@@ -28,6 +28,11 @@ class ReciteBench {
         val cases = File(dir, "cases.tsv").readLines().filter { it.isNotBlank() && !it.startsWith("#") }.map(Case::parse)
         val report = StringBuilder()
         val totals = Totals()
+        // The cases also run with the recogniser primed with the text before (Follower.context):
+        // degraded audio, the owner's sessions, and going back / skipping (where priming could make
+        // it hear what it expects instead of what was said), plus clean al-Fātiḥa.
+        val primedPlain = Totals()
+        val primed = Totals()
         Decoder(System.getenv("HFD_DECODER"), System.getenv("HFD_MODEL")).use { decoder ->
             for (c in cases) {
                 val pcm = Wav.read(File(dir, c.wav))
@@ -36,19 +41,25 @@ class ReciteBench {
                 report.append(r.line()).append('\n')
                 if (r.detail.isNotEmpty()) report.append(r.detail)
                 println(r.line())
-                // Muffled recordings (and the owner's) once more with the highs raised, to compare.
-                if (c.owner || "muffled" in c.id) {
-                    val boosted = Simulation(c, pcm, decoder, boost = true).run()
-                    val line = "+boost " + boosted.line()
+                if (c.owner || PRIMED.any { it in c.id } || c.id.startsWith("fatiha-") && c.id.endsWith("-flow")) {
+                    val p = Simulation(c, pcm, decoder, prompt = true).run()
+                    if (!c.owner) { primedPlain += r; primed += p }
+                    val line = "+ctx " + p.line()
                     report.append(line).append('\n')
-                    if (c.owner) report.append(boosted.detail)
+                    if (p.detail.isNotEmpty()) report.append(p.detail)
                     println(line)
                 }
             }
         }
         report.append('\n').append(totals.line()).append('\n')
+        report.append("PRIMED CASES without the text before: ").append(primedPlain.line()).append('\n')
+        report.append("PRIMED CASES with the text before:    ").append(primed.line()).append('\n')
         File(dir, "report.txt").writeText(report.toString())
         println(totals.line())
+    }
+
+    companion object {
+        private val PRIMED = listOf("muffled", "pocket", "noisy", "sco", "-skip", "-again")
     }
 }
 
@@ -132,7 +143,7 @@ class Totals {
     }
 }
 
-private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val boost: Boolean = false) {
+private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val boost: Boolean = false, val prompt: Boolean = false) {
     private val targets = case.refs.map { ReciteTarget(it, Arabic.words(Assets.quran.text(it).orEmpty())) }
     private val follower = Follower(targets)
     private val tracker = follower.tracker
@@ -190,7 +201,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         if (inFlight == null) {
             val u = queue.removeFirstOrNull() ?: return
             if (u.final) finals++ else partials++
-            val text = decoder.transcribe(Clarity.prepare(u.pcm, boost))
+            val text = decoder.transcribe(Clarity.prepare(u.pcm, boost), if (prompt) follower.context(u.id) else "")
             inFlight = Triple(u, text, t + 1.25 + 0.04 * u.seconds)
         }
     }
@@ -269,16 +280,22 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     }
 }
 
-/** The app's decoding, as a process: 4-byte little-endian sample count, float32 samples → a line of text. */
+/**
+ * The app's decoding, as a process: 4-byte little-endian sample count, float32 samples, 4-byte
+ * prompt length and its UTF-8 bytes → a line of text.
+ */
 private class Decoder(exe: String, model: String) : AutoCloseable {
     private val process = ProcessBuilder(exe, model).redirectError(ProcessBuilder.Redirect.DISCARD).start()
     private val out = BufferedOutputStream(process.outputStream)
     private val input = process.inputStream.bufferedReader(Charsets.UTF_8)
 
-    fun transcribe(pcm: FloatArray): String {
-        val buf = ByteBuffer.allocate(4 + 4 * pcm.size).order(ByteOrder.LITTLE_ENDIAN)
+    fun transcribe(pcm: FloatArray, prompt: String = ""): String {
+        val text = prompt.toByteArray(Charsets.UTF_8)
+        val buf = ByteBuffer.allocate(4 + 4 * pcm.size + 4 + text.size).order(ByteOrder.LITTLE_ENDIAN)
         buf.putInt(pcm.size)
         for (x in pcm) buf.putFloat(x)
+        buf.putInt(text.size)
+        buf.put(text)
         out.write(buf.array())
         out.flush()
         return input.readLine()?.trim() ?: error("decoder stopped")
