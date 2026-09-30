@@ -9,6 +9,8 @@ on:
   push:
     branches: ['**']
     tags: ['v*']
+    # The website alone doesn't need a build (and a site push mustn't cancel a release build).
+    paths-ignore: ['docs/**', '.github/workflows/pages.yml', 'README.md', 'tools/site/**']
   release:
     types: [published]
   workflow_dispatch:

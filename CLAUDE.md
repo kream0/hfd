@@ -41,10 +41,19 @@
   `fetch` downloads the Tanzil text/metadata/translations and commits them (pull before your
   next push), `verify` prints what each cited source says (read it with `get_job_logs`).
 - UI checks without a phone: `.github/workflows/screenshots.yml` renders the main screens with
-  Robolectric (`app/src/testDebug/.../ScreenshotTest.kt`) and commits PNGs to `docs/screenshots`
-  (pull before your next push, then look at them). It runs on pushes touching `app/src/testDebug`
-  or `tools/screenshots.trigger`; the session token can't dispatch or cancel workflows (403), so
-  touch that file to re-render.
+  Robolectric (`app/src/testDebug/.../ScreenshotTest.kt`, French, each screen in black then paper
+  in the same state) and commits them to `docs/screenshots` as the website's 840 px WebPs
+  (`<screen>.webp`, `<screen>-paper.webp`; `tools/screenshots/normalise.py`). Pull before your
+  next push, then look at them (convert to PNG with Pillow). It runs on pushes touching
+  `app/src/testDebug`, `tools/screenshots/**` or `tools/screenshots.trigger`; the session token
+  can't dispatch or cancel workflows (403), so touch that file to re-render.
+- The website (French): `tools/site/build.py` writes `docs/index.html`, `icon.png` and `og.png`
+  from `tools/site/template.html` + `site.js`, the bundled Tanzil text (verbatim, with its
+  reference), `fadail.json` (only verified virtues, with their sources) and the screenshots;
+  `pip install pillow fonttools segno`. Check it with Playwright (Chromium in `/opt/pw-browsers`,
+  the global `playwright` node module) at 1440 and 390 px in both schemes before pushing. The
+  *Site* workflow (`pages.yml`) publishes `docs/` on pushes touching it (a bot's screenshot commit
+  doesn't trigger it: push `docs/` yourself). No Glyph Matrix for this app (the owner).
 - Recite mode's speech model: `.github/workflows/model.yml` (on pushes touching `tools/model/**`)
   converts Tarteel's Hugging Face models with whisper.cpp v1.7.6 (`convert.sh`), scores them on
   EveryAyah clips (`evaluate.py`, word error per model and decoding), and uploads the files to

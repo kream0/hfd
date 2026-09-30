@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HFD</title>
+<meta name="theme-color" content="#000000">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="HFD">
+<meta property="og:description" content="Apprendre par cœur les sourates et versets aux vertus établies, à l'oreille et āya par āya. Pour Android, façon Nothing OS.">
+<meta property="og:url" content="https://kream0.github.io/hfd/">
+<meta property="og:image" content="https://kream0.github.io/hfd/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<script>try{var t=localStorage.getItem("hfd-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}</script>
+<meta name="description" content="HFD, l'app Android pour apprendre par cœur les passages du Coran aux vertus établies : écouter, répéter, réciter de mémoire, suivre chaque āya. Hors ligne, sans compte.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+@font-face {
+  font-family: "Doto App";
+  src: url(data:font/woff;base64,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) format("woff");
+  font-weight: 900;
+  font-display: swap;
+}
+
+/* Layout: a Nothing OS spec sheet (the same as the app: black or paper, dot-matrix type, one
+   red). The app's own screens anchor the hero, and follow. */
+:root {
+  --bg: #000000;
+  --surface: #0D0D0D;
+  --surface-2: #1A1A1A;
+  --line: #2B2B2B;
+  --fg: #FFFFFF;
+  --dim: #9B9B9B;
+  --faint: #5A5A5A;
+  --dot-off: #262626;
+  --red: #D71921;
+  --on-red: #FFFFFF;
+  --inv: #FFFFFF;
+  --on-inv: #000000;
+  --s-orange: #F26B1D;
+  --s-yellow: #F5C518;
+  --s-green: #35D07F;
+  --shadow: rgba(0, 0, 0, 0.6);
+  /* The phone frames: defined once, the same in both themes, like a real phone. */
+  --device: #0A0A0A;
+  --device-rim: #2A2A2A;
+  --frame: #1B1B1C;
+  --frame-edge: #3A3A3C;
+  --grain: none;
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .27 0 0 0 0 .12 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --qr-bg: #FFFFFF;
+  --qr-fg: #000000;
+
+  --gutter: clamp(16px, 4vw, 44px);
+  --f-dot: "Doto App", "Doto", ui-monospace, monospace;
+  --f-sans: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --f-quran: "Amiri Quran", "Amiri", "Noto Naskh Arabic", serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #EEE8DA; --surface: #F7F3EA; --surface-2: #E3DCCB; --line: #D2C8B4;
+    --fg: #1C1A16; --dim: #6A6252; --faint: #A0957F; --dot-off: #D8CFBC;
+    --inv: #1C1A16; --on-inv: #F7F3EA;
+    --s-orange: #D9580B; --s-yellow: #B98B00; --s-green: #1E8A4C;
+    --shadow: rgba(70, 52, 20, 0.16);
+    --grain: var(--paper-grain);
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #EEE8DA; --surface: #F7F3EA; --surface-2: #E3DCCB; --line: #D2C8B4;
+  --fg: #1C1A16; --dim: #6A6252; --faint: #A0957F; --dot-off: #D8CFBC;
+  --inv: #1C1A16; --on-inv: #F7F3EA;
+  --s-orange: #D9580B; --s-yellow: #B98B00; --s-green: #1E8A4C;
+  --shadow: rgba(70, 52, 20, 0.16);
+  --grain: var(--paper-grain);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+html, body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: var(--grain), var(--bg);
+  color: var(--fg);
+  font-family: var(--f-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  padding-inline: var(--gutter);
+  padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; border-radius: 6px; }
+.wrap { max-width: 1180px; margin-inline: auto; }
+
+/* ---------- type ---------- */
+.label {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.label.red { color: var(--red); font-weight: 700; }
+.dotmark { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--red); vertical-align: 0.1em; margin-right: 10px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h2 {
+  font-family: var(--f-sans);
+  font-weight: 700;
+  font-size: clamp(30px, 4.4vw, 50px);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+}
+h2 .dots { font-family: var(--f-dot); font-weight: 900; letter-spacing: 0.02em; }
+p { margin: 0; }
+.lede { color: var(--dim); max-width: 60ch; font-size: 17px; }
+.ar { font-family: var(--f-quran); direction: rtl; unicode-bidi: isolate; font-weight: 400; }
+
+/* ---------- top bar ---------- */
+.top {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-block: 22px;
+}
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.brand svg { width: 34px; height: 34px; }
+.brand b { font-family: var(--f-dot); font-weight: 900; font-size: 24px; letter-spacing: 0.08em; }
+.top nav { display: flex; align-items: center; gap: 22px; }
+.top nav a { text-decoration: none; }
+.top nav a:hover { color: var(--fg); }
+.top nav .label { transition: color .2s; }
+.mode {
+  display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--line); border-radius: 99px;
+}
+.mode button {
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; font-weight: 700;
+  border: 0; border-radius: 99px; padding: 7px 12px; cursor: pointer;
+  background: transparent; color: var(--dim);
+}
+.mode button[aria-pressed="true"] { background: var(--inv); color: var(--on-inv); }
+
+/* ---------- hero ---------- */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: clamp(28px, 5vw, 72px);
+  align-items: center;
+  padding-block: clamp(24px, 6vw, 72px) clamp(56px, 8vw, 110px);
+  position: relative;
+}
+.hero-copy { display: grid; gap: 26px; min-width: 0; }
+.hero h1 {
+  font-family: var(--f-dot);
+  font-weight: 900;
+  font-size: clamp(84px, 15vw, 184px);
+  line-height: 0.86;
+  letter-spacing: 0.03em;
+  margin-left: -0.04em;
+  position: relative;
+  width: fit-content;
+}
+.hero h1 .pip {
+  position: absolute; right: -0.28em; top: 0.02em;
+  width: 0.13em; height: 0.13em; border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 0.25em rgba(215, 25, 33, 0.55);
+  animation: pip 2.4s ease-in-out infinite;
+}
+@keyframes pip { 50% { opacity: .35; } }
+.hero .claim {
+  font-size: clamp(21px, 2.3vw, 28px);
+  line-height: 1.3;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  max-width: 28ch;
+}
+.hero .claim em { font-style: normal; color: var(--dim); }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn {
+  display: inline-flex; align-items: center; gap: 12px;
+  min-height: 58px; padding: 0 26px 0 20px;
+  border-radius: 999px;
+  text-decoration: none; white-space: nowrap;
+  font-family: var(--f-mono); font-weight: 700; font-size: 16px; letter-spacing: .02em;
+  transition: transform .15s ease, background .2s, box-shadow .2s;
+}
+.btn:active { transform: scale(0.97); }
+.btn-dl { background: var(--red); color: var(--on-red); box-shadow: 0 10px 34px rgba(215, 25, 33, 0.28); }
+.btn-dl:hover { box-shadow: 0 12px 44px rgba(215, 25, 33, 0.45); }
+.btn-dl .play { width: 30px; height: 30px; border-radius: 50%; background: var(--on-red); display: grid; place-items: center; }
+.btn-dl .play svg { width: 13px; height: 13px; margin-left: 2px; }
+.btn-dl small { font-family: var(--f-mono); font-weight: 400; font-size: 11px; letter-spacing: .1em; opacity: .8; }
+.btn-ghost { border: 1px solid var(--line); color: var(--fg); padding: 0 22px; font-size: 14px; }
+.btn-ghost:hover { border-color: var(--dim); }
+.specs { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 0; margin: 0; list-style: none; }
+.specs li { display: flex; align-items: center; gap: 8px; }
+.specs li::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--faint); }
+
+.stage { display: grid; justify-items: center; gap: 18px; min-width: 0; }
+.stage .label { text-align: center; max-width: 40ch; line-height: 1.7; text-wrap: balance; }
+
+/* ---------- sections ---------- */
+section { padding-block: clamp(56px, 9vw, 120px); border-top: 1px solid var(--line); }
+.head { display: grid; gap: 16px; margin-bottom: clamp(32px, 5vw, 56px); }
+.head.split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; gap: 24px 48px; }
+.swipe { display: none; align-items: center; gap: 10px; margin-top: -8px; }
+.swipe i { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+.swipe i:first-child { background: var(--red); }
+
+/* ---------- screens ---------- */
+.shots {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(20px, 2.6vw, 36px);
+  align-items: start;
+}
+.shot { display: grid; gap: 18px; min-width: 0; }
+.shot:nth-child(even) { margin-top: 64px; }
+.shot figcaption { display: grid; gap: 6px; }
+.shot figcaption p { color: var(--dim); font-size: 15px; }
+figure { margin: 0; }
+.phone {
+  position: relative;
+  aspect-ratio: 840 / 1848;
+  border-radius: 30px;
+  background: var(--device);
+  border: 1px solid var(--line);
+  box-shadow: 0 0 0 5px var(--surface), 0 0 0 6px var(--line), 0 28px 60px var(--shadow);
+  overflow: hidden;
+  transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s;
+}
+.phone img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity .6s ease; }
+/* the same screen in the paper theme, lined up pixel for pixel: it fades in over the dark one */
+.phone img.paper { opacity: 0; }
+.shot:hover .phone { transform: translateY(-6px); box-shadow: 0 0 0 5px var(--surface), 0 0 0 6px var(--dim), 0 38px 70px var(--shadow); }
+/* ---------- hero pair: two of the app's screens, one in front of the other ---------- */
+.duo { position: relative; width: min(540px, 100%); aspect-ratio: 1 / 1.48; }
+.duo .phone { position: absolute; width: 54%; border-radius: 34px; }
+.duo .back { left: 0; top: 0; transform: rotate(-4deg); box-shadow: 0 0 0 5px var(--device), 0 0 0 7px var(--frame), 0 0 0 8px var(--frame-edge), 0 30px 60px var(--shadow); }
+.duo .front { right: 0; top: 16%; z-index: 2; box-shadow: 0 0 0 5px var(--device), 0 0 0 7px var(--frame), 0 0 0 8px var(--frame-edge), 0 40px 80px var(--shadow); }
+
+/* ---------- memorisation: the plan and each āya's strength ---------- */
+.memo { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
+.memo .copy { display: grid; gap: 20px; }
+.panel {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 28px;
+  padding: clamp(22px, 3.2vw, 36px); display: grid; gap: 22px; min-width: 0;
+}
+.panel .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.panel .passage strong { display: block; font-size: 20px; }
+.panel .passage small { font-family: var(--f-mono); font-size: 12px; letter-spacing: .12em; color: var(--dim); }
+.plan { width: 100%; height: 34px; display: block; }
+.big-chip {
+  font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; font-weight: 700;
+  padding: 8px 16px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap;
+  transition: color .3s; font-variant-numeric: tabular-nums;
+}
+.ayat { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.ayat li {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 14px;
+  padding: 6px 12px; border-radius: 16px; transition: background .3s;
+}
+.ayat li.on { background: var(--surface-2); }
+.ayat canvas { width: 30px; height: 30px; display: block; }
+.ayat .ar { font-size: clamp(22px, 2.4vw, 28px); line-height: 1.9; color: var(--dim); text-align: right; transition: color .3s; }
+.ayat li.on .ar { color: var(--fg); }
+.ayat .ref { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; color: var(--faint); }
+.scale { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 0; margin: 0; list-style: none; }
+.scale li { display: grid; gap: 8px; }
+.scale li i { height: 6px; border-radius: 99px; }
+.scale li span { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips span { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line); color: var(--dim); }
+
+/* ---------- virtues ---------- */
+.virtues { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 2.4vw, 28px); }
+.virtue {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 24px;
+  padding: 24px; display: grid; gap: 14px; align-content: start; min-width: 0;
+}
+.virtue .ar { font-size: 30px; line-height: 1.6; text-align: right; }
+.virtue h3 { font-size: 20px; letter-spacing: -0.01em; }
+.virtue h3 small { display: block; font-family: var(--f-mono); font-weight: 400; font-size: 11px; letter-spacing: .12em; color: var(--dim); margin-top: 4px; }
+.virtue blockquote { margin: 0; color: var(--fg); font-size: 15.5px; }
+.virtue .src { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .06em; color: var(--dim); }
+.virtue .src a { color: var(--dim); }
+.virtue .src a:hover { color: var(--red); }
+
+/* ---------- features ---------- */
+.feats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 clamp(28px, 5vw, 72px); }
+.feat { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 18px; padding-block: 26px; border-top: 1px solid var(--line); }
+.feat canvas { width: 56px; height: 56px; }
+.feat h3 { font-size: 21px; line-height: 1.25; margin-bottom: 8px; letter-spacing: -0.01em; }
+.feat p { color: var(--dim); font-size: 15.5px; }
+.feat .ar { font-size: 1.12em; }
+
+/* ---------- install ---------- */
+.install { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; }
+.steps li { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 16px; padding-block: 22px; border-top: 1px solid var(--line); }
+.steps li:last-child { border-bottom: 1px solid var(--line); }
+.steps .num { font-family: var(--f-dot); font-weight: 900; font-size: 58px; line-height: .9; color: var(--red); }
+.steps h3 { font-size: 21px; margin-bottom: 6px; }
+.steps p { color: var(--dim); font-size: 15.5px; }
+.qr-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 28px;
+  padding: 28px; display: grid; gap: 18px; justify-items: center; text-align: center; min-width: 0;
+}
+.qr-tile { background: var(--qr-bg); border-radius: 20px; padding: 16px; width: min(260px, 100%); }
+.qr-tile canvas { width: 100%; aspect-ratio: 1; display: block; }
+.link-row { display: flex; align-items: stretch; width: 100%; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.link-row code {
+  flex: 1; min-width: 0; font-family: var(--f-mono); font-size: 12px; padding: 12px 14px; text-align: left;
+  overflow-x: auto; white-space: nowrap; user-select: all; color: var(--dim);
+}
+.link-row button {
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; font-weight: 700;
+  border: 0; border-left: 1px solid var(--line); background: var(--surface-2); color: var(--fg);
+  padding: 0 16px; cursor: pointer; min-width: 88px;
+}
+.link-row button:hover { color: var(--red); }
+.install .cta { margin-top: 28px; }
+
+/* ---------- footer ---------- */
+footer { border-top: 1px solid var(--line); padding-block: 40px 56px; display: grid; gap: 20px; }
+footer .row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; align-items: center; }
+footer p { color: var(--faint); font-size: 14px; max-width: 76ch; }
+footer a { color: var(--dim); }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1020px) {
+  .shots { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 640px; margin-inline: auto; }
+  .shot:nth-child(even) { margin-top: 48px; }
+  .virtues { grid-template-columns: minmax(0, 1fr); max-width: 640px; }
+}
+@media (max-width: 900px) {
+  .hero, .memo, .install { grid-template-columns: minmax(0, 1fr); }
+  .head.split { grid-template-columns: minmax(0, 1fr); }
+  .feats { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  /* a swipeable strip, bleeding to the screen edges */
+  .shots {
+    display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 18px;
+    margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); padding-block: 8px 24px;
+    scroll-padding-inline: var(--gutter); max-width: none; scrollbar-width: none;
+  }
+  .shots::-webkit-scrollbar { display: none; }
+  .shot { flex: 0 0 68%; scroll-snap-align: start; }
+  .shot:nth-child(even) { margin-top: 0; }
+  .swipe { display: flex; }
+}
+@media (max-width: 560px) {
+  .top nav .hide-s { display: none; }
+  .top { gap: 10px; }
+  .brand b { font-size: 20px; }
+  .phone { border-radius: 24px; }
+  .duo .phone { border-radius: 22px; }
+  .qr-card .qr-tile { display: none; }
+  .scale { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .steps li { grid-template-columns: 52px minmax(0, 1fr); }
+  .steps .num { font-size: 44px; }
+  .btn { width: 100%; justify-content: center; }
+  .btn-dl small { display: none; }
+  .hero h1 .pip { right: -0.2em; }
+  .ayat li { grid-template-columns: 26px minmax(0, 1fr); padding-inline: 8px; }
+  .ayat .ref { grid-column: 2; text-align: right; }
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .phone img.paper { opacity: 1; }
+}
+:root[data-theme="light"] .phone img.paper { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#top" aria-label="HFD">
+      <svg viewBox="18 18 72 72" aria-hidden="true">
+        <circle cx="54" cy="54" r="35.5" fill="var(--device)" stroke="var(--device-rim)" stroke-width=".6"/>
+        <circle cx="31" cy="46.8" r="1.75" fill="#FFFFFF"/>
+        <circle cx="40.2" cy="46.8" r="1.75" fill="#FFFFFF"/>
+        <circle cx="49.4" cy="46.8" r="1.75" fill="#FFFFFF"/>
+        <circle cx="54" cy="46.8" r="1.75" fill="#FFFFFF"/>
+        <circle cx="58.6" cy="46.8" r="1.75" fill="#FFFFFF"/>
+        <circle cx="67.8" cy="46.8" r="1.75" fill="#FFFFFF"/>
+        <circle cx="72.4" cy="46.8" r="1.75" fill="#FFFFFF"/>
+        <circle cx="31" cy="51.4" r="1.75" fill="#FFFFFF"/>
+        <circle cx="40.2" cy="51.4" r="1.75" fill="#FFFFFF"/>
+        <circle cx="49.4" cy="51.4" r="1.75" fill="#FFFFFF"/>
+        <circle cx="67.8" cy="51.4" r="1.75" fill="#FFFFFF"/>
+        <circle cx="77" cy="51.4" r="1.75" fill="#FFFFFF"/>
+        <circle cx="31" cy="56" r="1.75" fill="#FFFFFF"/>
+        <circle cx="35.6" cy="56" r="1.75" fill="#FFFFFF"/>
+        <circle cx="40.2" cy="56" r="1.75" fill="#FFFFFF"/>
+        <circle cx="49.4" cy="56" r="1.75" fill="#FFFFFF"/>
+        <circle cx="54" cy="56" r="1.75" fill="#FFFFFF"/>
+        <circle cx="67.8" cy="56" r="1.75" fill="#FFFFFF"/>
+        <circle cx="77" cy="56" r="1.75" fill="#FFFFFF"/>
+        <circle cx="31" cy="60.6" r="1.75" fill="#FFFFFF"/>
+        <circle cx="40.2" cy="60.6" r="1.75" fill="#FFFFFF"/>
+        <circle cx="49.4" cy="60.6" r="1.75" fill="#FFFFFF"/>
+        <circle cx="67.8" cy="60.6" r="1.75" fill="#FFFFFF"/>
+        <circle cx="77" cy="60.6" r="1.75" fill="#FFFFFF"/>
+        <circle cx="31" cy="65.2" r="1.75" fill="#FFFFFF"/>
+        <circle cx="40.2" cy="65.2" r="1.75" fill="#FFFFFF"/>
+        <circle cx="49.4" cy="65.2" r="1.75" fill="#FFFFFF"/>
+        <circle cx="67.8" cy="65.2" r="1.75" fill="#FFFFFF"/>
+        <circle cx="72.4" cy="65.2" r="1.75" fill="#FFFFFF"/>
+        <circle cx="77" cy="37.6" r="2.4" fill="#D71921"/>
+      </svg>
+      <b>HFD</b>
+    </a>
+    <nav>
+      <a class="label hide-s" href="#ecrans">Écrans</a>
+      <a class="label hide-s" href="#installer">Installer</a>
+      <a class="label hide-s" href="https://github.com/kream0/hfd" target="_blank" rel="noopener">GitHub ↗</a>
+      <div class="mode" role="group" aria-label="Thème">
+        <button type="button" data-mode="dark" aria-pressed="false">SOMBRE</button>
+        <button type="button" data-mode="light" aria-pressed="false">PAPIER</button>
+      </div>
+    </nav>
+  </header>
+
+  <main id="top">
+    <div class="hero">
+      <div class="hero-copy">
+        <p class="label"><span class="dotmark"></span>Apprendre le Coran par cœur, sur Android</p>
+        <h1>HFD<span class="pip" aria-hidden="true"></span></h1>
+        <p class="claim">Les sourates et les versets aux vertus établies, appris à l'oreille. <em>Écouter, répéter, réciter de mémoire, āya par āya.</em></p>
+        <div class="cta">
+          <a class="btn btn-dl" href="https://github.com/kream0/hfd/releases/latest/download/hfd.apk" target="_blank" rel="noopener">
+            <span class="play"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 0 10 6 0 12z" fill="var(--red)"/></svg></span>
+            Télécharger l'APK
+            <small>ANDROID 8+</small>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/kream0/hfd/releases/latest" target="_blank" rel="noopener">Notes de version ↗</a>
+        </div>
+        <ul class="specs label">
+          <li>Android 8+</li>
+          <li>Sans compte</li>
+          <li>Hors ligne</li>
+          <li>Mises à jour intégrées</li>
+        </ul>
+      </div>
+
+      <div class="stage">
+        <div class="duo">
+          <div class="phone back">
+            <img src="screenshots/kursi-text.webp" width="840" height="1848" alt="Āyat al-Kursī en lecture : sourate al-Baqara, 2:255 en texte uthmani, lecteur en bas avec les réglages Āya ×1, Plage ×1, Pause et le récitateur."><img class="paper" src="screenshots/kursi-text-paper.webp" width="840" height="1848" alt="" aria-hidden="true">
+          </div>
+          <div class="phone front">
+            <img src="screenshots/home.webp" width="840" height="1848" alt="Accueil de HFD : objectif du jour de 15 minutes, 4 āyāt à réviser, Al-Ikhlāṣ et Āyat al-Kursī à continuer, Al-Kawthar et Al-ʿAṣr à apprendre ensuite."><img class="paper" src="screenshots/home-paper.webp" width="840" height="1848" alt="" aria-hidden="true">
+          </div>
+        </div>
+        <p class="label">Accueil et lecture d'Āyat al-Kursī. Sombre ou papier&nbsp;: essayez le bouton en haut de la page.</p>
+      </div>
+    </div>
+
+    <section id="ecrans">
+      <div class="head split">
+        <div style="display:grid;gap:16px">
+          <p class="label red">À l'écran</p>
+          <h2>Façon <span class="dots">NOTHING</span>, place au texte.</h2>
+        </div>
+        <p class="lede">Noir ou papier, un seul rouge, des points. Le texte uthmani de Tanzil en Amiri Quran, avec ses ḥarakāt et ses signes de pause, et la traduction de Hamidullah en dessous.</p>
+      </div>
+
+      <div class="shots">
+        <figure class="shot">
+          <div class="phone"><img src="screenshots/home.webp" width="840" height="1848" loading="lazy" alt="Accueil de HFD : objectif du jour de 15 minutes, 4 āyāt à réviser, Al-Ikhlāṣ et Āyat al-Kursī à continuer, Al-Kawthar et Al-ʿAṣr à apprendre ensuite."><img class="paper" src="screenshots/home-paper.webp" width="840" height="1848" loading="lazy" alt="" aria-hidden="true"></div>
+          <figcaption><span class="label">Accueil</span><p>L'objectif du jour, les āyāt à réviser, puis la suite de ce que vous apprenez.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="phone"><img src="screenshots/fadail.webp" width="840" height="1848" loading="lazy" alt="Onglet Faḍāʾil : 40 passages, d&#x27;al-Fātiḥa à la fin d&#x27;at-Tawba, avec leur titre arabe et le bouton Tout écouter."><img class="paper" src="screenshots/fadail-paper.webp" width="840" height="1848" loading="lazy" alt="" aria-hidden="true"></div>
+          <figcaption><span class="label">Les 40 passages</span><p>Ceux de l'app de référence, dans son ordre, chacun avec son anneau de progression. «&nbsp;Tout écouter&nbsp;» les enchaîne.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="phone"><img src="screenshots/kursi-text.webp" width="840" height="1848" loading="lazy" alt="Āyat al-Kursī en lecture : sourate al-Baqara, 2:255 en texte uthmani, lecteur en bas avec les réglages Āya ×1, Plage ×1, Pause et le récitateur."><img class="paper" src="screenshots/kursi-text-paper.webp" width="840" height="1848" loading="lazy" alt="" aria-hidden="true"></div>
+          <figcaption><span class="label">Lecture</span><p>Le texte de Tanzil en grand, la traduction dessous, l'āya jouée mise en avant. Répétitions, pause et récitateur à portée de pouce.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="phone"><img src="screenshots/learn.webp" width="840" height="1848" loading="lazy" alt="Apprendre Al-Ikhlāṣ, āya 4 sur 4 : étape Écouter, le texte de 112:4 et sa traduction, boutons Réécouter, Passer et Suivant."><img class="paper" src="screenshots/learn-paper.webp" width="840" height="1848" loading="lazy" alt="" aria-hidden="true"></div>
+          <figcaption><span class="label">Apprendre</span><p>Écouter avec le texte, répéter dans les pauses, le premier mot seul, puis de mémoire.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="phone"><img src="screenshots/recite.webp" width="840" height="1848" loading="lazy" alt="Réciter Al-Ikhlāṣ : les trois premières āyāt reconnues, « wa-lam » barré en rouge, la quatrième encore en attente, bouton micro."><img class="paper" src="screenshots/recite-paper.webp" width="840" height="1848" loading="lazy" alt="" aria-hidden="true"></div>
+          <figcaption><span class="label">Réciter</span><p>Récitez au micro&nbsp;: les mots s'allument un à un, le mot sauté est barré en rouge.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="phone"><img src="screenshots/review.webp" width="840" height="1848" loading="lazy" alt="Révision : Al-Baqara 2:255, texte caché, boutons Indice et Dévoiler."><img class="paper" src="screenshots/review-paper.webp" width="840" height="1848" loading="lazy" alt="" aria-hidden="true"></div>
+          <figcaption><span class="label">Réviser</span><p>Ce qui est dû aujourd'hui, texte caché&nbsp;: réciter de mémoire, dévoiler, noter.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="phone"><img src="screenshots/stats.webp" width="840" height="1848" loading="lazy" alt="Stats : série, record, āyāt mémorisées, temps d&#x27;écoute, calendrier de points sur vingt semaines, progrès par faḍīla."><img class="paper" src="screenshots/stats-paper.webp" width="840" height="1848" loading="lazy" alt="" aria-hidden="true"></div>
+          <figcaption><span class="label">Progrès</span><p>Série, āyāt mémorisées, récitations, temps d'écoute, et vingt semaines en points.</p></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="phone"><img src="screenshots/reminders.webp" width="840" height="1848" loading="lazy" alt="Réglages : rappel Āyāt à réviser à 19 h, thème Système, Sombre ou Papier, taille du texte coranique, traduction des sens."><img class="paper" src="screenshots/reminders-paper.webp" width="840" height="1848" loading="lazy" alt="" aria-hidden="true"></div>
+          <figcaption><span class="label">Réglages</span><p>Le rappel de révision, le thème sombre ou papier, la taille du texte, la traduction.</p></figcaption>
+        </figure>
+      </div>
+      <div class="swipe label" aria-hidden="true"><i></i><i></i><i></i> Faites glisser</div>
+    </section>
+
+    <section id="memoriser">
+      <div class="memo">
+        <div class="copy">
+          <p class="label red">Mémoriser</p>
+          <h2>Chaque āya, du rouge au vert.</h2>
+          <p class="lede">Le lecteur suit un plan&nbsp;: l'āya, une pause pour la redire à voix haute, l'āya encore, puis la suivante. Chaque āya a sa force de mémorisation, recalculée par FSRS à chaque révision et affichée en anneau, du rouge au vert.</p>
+          <div class="chips" aria-label="Réglages du lecteur">
+            <span>ĀYA ×1 À ×∞</span><span>PASSAGE ×1 À ×∞</span><span>PAUSE ½× 1× 1½×</span><span>VITESSE 0,75–1,25×</span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="row">
+            <div class="passage"><strong>Al-Ikhlāṣ</strong><small>112:1–4 · CHAQUE ĀYA ×3</small></div>
+            <span class="big-chip" id="plan-chip" aria-live="off">ÉCOUTE 1/3</span>
+          </div>
+          <canvas class="plan" id="plan" width="1200" height="68" aria-hidden="true"></canvas>
+          <ol class="ayat" id="ayat">
+            <li><canvas width="60" height="60" aria-hidden="true"></canvas><span class="ar" lang="ar">قُلْ هُوَ ٱللَّهُ أَحَدٌ ﴿١﴾</span><span class="ref">112:1</span></li>
+            <li><canvas width="60" height="60" aria-hidden="true"></canvas><span class="ar" lang="ar">ٱللَّهُ ٱلصَّمَدُ ﴿٢﴾</span><span class="ref">112:2</span></li>
+            <li><canvas width="60" height="60" aria-hidden="true"></canvas><span class="ar" lang="ar">لَمْ يَلِدْ وَلَمْ يُولَدْ ﴿٣﴾</span><span class="ref">112:3</span></li>
+            <li><canvas width="60" height="60" aria-hidden="true"></canvas><span class="ar" lang="ar">وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌۢ ﴿٤﴾</span><span class="ref">112:4</span></li>
+          </ol>
+          <ul class="scale">
+            <li><i style="background:var(--red)"></i><span>À apprendre</span></li>
+            <li><i style="background:var(--s-orange)"></i><span>Fragile</span></li>
+            <li><i style="background:var(--s-yellow)"></i><span>En progrès</span></li>
+            <li><i style="background:var(--s-green)"></i><span>Retenue</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="vertus">
+      <div class="head split">
+        <div style="display:grid;gap:16px">
+          <p class="label red">Des vertus établies</p>
+          <h2>Pourquoi ces passages.</h2>
+        </div>
+        <p class="lede">HFD reprend les 40&nbsp;passages de l'app <span class="ar">سور وآيات فاضلة</span>, dans son ordre. Leurs vertus sont rapportées dans les recueils de hadiths&nbsp;; en voici trois, vérifiées sur le texte source.</p>
+      </div>
+      <div class="virtues">
+        <article class="virtue">
+          <p class="ar" lang="ar">آية الكرسي</p>
+          <h3>Āyat al-Kursī<small>2:255–257</small></h3>
+          <blockquote>Interrogé sur le plus grand verset du Livre d'Allah, Ubayy répondit par Āyat al-Kursī, et le Prophète ﷺ l'approuva&nbsp;: «&nbsp;Que la science te réjouisse, Abū l-Mundhir&nbsp;!&nbsp;»</blockquote>
+          <p class="src"><a href="https://sunnah.com/muslim:810" target="_blank" rel="noopener">Ṣaḥīḥ Muslim 810</a></p>
+        </article>
+        <article class="virtue">
+          <p class="ar" lang="ar">خواتيم البقرة</p>
+          <h3>Fin d&#x27;al-Baqara<small>2:285–286</small></h3>
+          <blockquote>Celui qui récite les deux derniers versets de la sourate al-Baqara la nuit, ils lui suffisent.</blockquote>
+          <p class="src"><a href="https://sunnah.com/bukhari:5009" target="_blank" rel="noopener">Ṣaḥīḥ al-Bukhārī 5009</a> · <a href="https://sunnah.com/muslim:807a" target="_blank" rel="noopener">Ṣaḥīḥ Muslim 807a</a></p>
+        </article>
+        <article class="virtue">
+          <p class="ar" lang="ar">سورة الإخلاص</p>
+          <h3>Al-Ikhlāṣ<small>112:1–4</small></h3>
+          <blockquote>«&nbsp;Qul huwa Allāhu aḥad&nbsp;» équivaut au tiers du Coran.</blockquote>
+          <p class="src"><a href="https://sunnah.com/bukhari:5013" target="_blank" rel="noopener">Ṣaḥīḥ al-Bukhārī 5013</a> · <a href="https://sunnah.com/muslim:811a" target="_blank" rel="noopener">Ṣaḥīḥ Muslim 811a</a></p>
+        </article>
+      </div>
+    </section>
+
+    <section id="fonctions">
+      <div class="head">
+        <p class="label red">Ce que fait HFD</p>
+        <h2>Écouter, répéter, retenir.</h2>
+      </div>
+      <div class="feats">
+        <article class="feat"><canvas data-icon="list" width="112" height="112" aria-hidden="true"></canvas><div>
+          <h3>Les passages de l'app de référence</h3>
+          <p>Les 40&nbsp;passages de <span class="ar">سور وآيات فاضلة</span>, dans le même ordre&nbsp;: al-Fātiḥa, Āyat al-Kursī, la fin d'al-Baqara, al-Mulk, al-Kahf, les dernières sourates…</p></div></article>
+        <article class="feat"><canvas data-icon="book" width="112" height="112" aria-hidden="true"></canvas><div>
+          <h3>Le texte de Tanzil, tel quel</h3>
+          <p>Texte uthmani de Tanzil, jamais modifié, avec ḥarakāt et signes de pause. Traduction de Hamidullah en français, Saheeh International en anglais. Taille du texte de S à XL.</p></div></article>
+        <article class="feat"><canvas data-icon="loop" width="112" height="112" aria-hidden="true"></canvas><div>
+          <h3>Un lecteur fait pour répéter</h3>
+          <p>Chaque āya de ×1 à ×∞, le passage aussi, une pause après chaque récitation pour la redire, la vitesse de 0,75 à 1,25×. Une plage au choix, ou tout d'un coup avec «&nbsp;Tout écouter&nbsp;».</p></div></article>
+        <article class="feat"><canvas data-icon="ear" width="112" height="112" aria-hidden="true"></canvas><div>
+          <h3>17&nbsp;récitateurs</h3>
+          <p>Māhir al-Muʿayqilī par défaut, Mishary Alafasy, al-Ḥuṣarī et son muʿallim, al-Minshāwī, ʿAbd al-Bāsiṭ, Badr at-Turkī et d'autres.</p></div></article>
+        <article class="feat"><canvas data-icon="learn" width="112" height="112" aria-hidden="true"></canvas><div>
+          <h3>Apprendre, āya par āya</h3>
+          <p>Écouter avec le texte, répéter dans les pauses, le premier mot seul, réciter de mémoire, révéler et noter. Après chaque nouvelle āya, on reprend depuis le début.</p></div></article>
+        <article class="feat"><canvas data-icon="calendar" width="112" height="112" aria-hidden="true"></canvas><div>
+          <h3>Des révisions au bon moment</h3>
+          <p>FSRS calcule pour chaque āya la date de la prochaine révision. Tout ce qui est dû passe en une séance, texte caché.</p></div></article>
+        <article class="feat"><canvas data-icon="mic" width="112" height="112" aria-hidden="true"></canvas><div>
+          <h3>Réciter au micro</h3>
+          <p>Récitez de mémoire&nbsp;: les mots s'allument un à un, les mots sautés sont barrés. La reconnaissance tourne sur le téléphone, avec le modèle coranique de Tarteel.</p></div></article>
+        <article class="feat"><canvas data-icon="save" width="112" height="112" aria-hidden="true"></canvas><div>
+          <h3>Hors ligne</h3>
+          <p>Ouvrir un passage télécharge ses āyāt, et la pastille passe du rouge au vert. Ensuite, tout marche sans réseau.</p></div></article>
+        <article class="feat"><canvas data-icon="journal" width="112" height="112" aria-hidden="true"></canvas><div>
+          <h3>Les progrès ne se perdent pas</h3>
+          <p>Chaque écoute et chaque note sont écrites dans un journal, d'où tout se reconstruit. Sauvegarde Android, et export en JSON.</p></div></article>
+        <article class="feat"><canvas data-icon="bell" width="112" height="112" aria-hidden="true"></canvas><div>
+          <h3>Écouteurs et écran verrouillé</h3>
+          <p>Notification, écran verrouillé, commandes Bluetooth&nbsp;: suivant et précédent passent à l'āya voisine. Un rappel, si vous voulez, quand des āyāt sont à réviser.</p></div></article>
+        <article class="feat"><canvas data-icon="theme" width="112" height="112" aria-hidden="true"></canvas><div>
+          <h3>Sombre ou papier</h3>
+          <p>Noir comme Nothing OS, ou papier chaud à l'encre noire, comme un muṣḥaf imprimé. Au choix dans les réglages, ou selon le mode sombre du téléphone.</p></div></article>
+        <article class="feat"><canvas data-icon="update" width="112" height="112" aria-hidden="true"></canvas><div>
+          <h3>Se met à jour tout seul</h3>
+          <p>À chaque ouverture, HFD regarde la dernière version, la télécharge, vérifie son empreinte SHA-256 et propose de l'installer.</p></div></article>
+      </div>
+    </section>
+
+    <section id="installer">
+      <div class="install">
+        <div>
+          <div class="head">
+            <p class="label red">Installer</p>
+            <h2>Trois gestes, une fois.</h2>
+          </div>
+          <ol class="steps">
+            <li><span class="num">1</span><div><h3>Téléchargez l'APK sur le téléphone</h3><p>Le bouton pointe toujours vers la dernière version publiée.</p></div></li>
+            <li><span class="num">2</span><div><h3>Autorisez le navigateur à installer des applis</h3><p>Android le demande une seule fois, pour les applis qui ne viennent pas du Play Store.</p></div></li>
+            <li><span class="num">3</span><div><h3>Installez, c'est tout</h3><p>Les versions suivantes arrivent depuis l'app elle-même. Android 8.0 ou plus récent.</p></div></li>
+          </ol>
+          <div class="cta">
+            <a class="btn btn-dl" href="https://github.com/kream0/hfd/releases/latest/download/hfd.apk" target="_blank" rel="noopener">
+              <span class="play"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 0 10 6 0 12z" fill="var(--red)"/></svg></span>
+              Télécharger l'APK
+              <small>DERNIÈRE VERSION</small>
+            </a>
+          </div>
+        </div>
+        <div class="qr-card">
+          <p class="label">Sur un ordinateur&nbsp;? Scannez avec le téléphone</p>
+          <div class="qr-tile"><canvas id="qr" width="600" height="600" role="img" aria-label="QR code du lien de téléchargement de l'APK"></canvas></div>
+          <div class="link-row">
+            <code id="apk-url">https://github.com/kream0/hfd/releases/latest/download/hfd.apk</code>
+            <button type="button" id="copy">COPIER</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="row">
+      <a class="brand" href="#top"><b>HFD</b></a>
+      <a class="label" href="https://github.com/kream0/hfd" target="_blank" rel="noopener">Code source et versions sur GitHub ↗</a>
+    </div>
+    <p>Texte coranique&nbsp;: <a href="https://tanzil.net" target="_blank" rel="noopener">Tanzil</a>, texte uthmani, CC BY 3.0, reproduit sans modification. Traductions&nbsp;: Muhammad Hamidullah et Saheeh International, depuis Tanzil. Récitations&nbsp;: <a href="https://everyayah.com" target="_blank" rel="noopener">EveryAyah</a> et ses récitateurs, Badr at-Turkī depuis mp3quran.net. Reconnaissance vocale&nbsp;: modèle whisper-tiny-ar-quran de Tarteel (Apache 2.0), avec whisper.cpp (MIT). Hadiths vérifiés sur sunnah.com et dorar.net. Polices&nbsp;: Amiri Quran, Doto, Space Grotesk et Space Mono (SIL OFL). HFD n'est affilié ni à Nothing, ni à Tanzil, ni à EveryAyah, ni à Tarteel.</p>
+  </footer>
+</div>
+<script>
+(() => {
+  // The APK link's QR code, and al-Ikhlāṣ's āyāt (words per āya), filled in by tools/site/build.py.
+  const QR = ["111111100100000000111101001111111", "100000100100100100100110001000001", "101110101001100110010100001011101", "101110101110011111000000001011101", "101110101100010010111101001011101", "100000101011011110001000001000001", "111111101010101010101010101111111", "000000001000101100011101100000000", "101111100001011101011000001111100", "010100001100111010111001001101101", "011101101010110100001010111010110", "010101001110101010110110111011100", "010011111001000101110011010111011", "010001010101000010111001001101111", "010100110010000100100010011011110", "001101010001101010001100011101100", "001100110101010001010010110110001", "111001000111110011111101001101101", "000110110110010101001110111110110", "100010001101100100011100000111110", "010010101001001001010010110011010", "110111000010010001111101001000101", "101111100101001100000000110001110", "101110001100000110011110011001101", "101101100000010101110010111111011", "000000001000011011010001100010101", "111111100001100110101011101010110", "100000101011111010101111100011101", "101110101101010001010010111111000", "101110101000110010111011110010111", "101110101111110100101010001101000", "100000100010001010111111000011100", "111111101011001101100011110100010"];
+  const AYAT = [4, 2, 4, 5];
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const root = document.documentElement;
+  const css = name => getComputedStyle(root).getPropertyValue(name).trim();
+  let T = {};
+  const readTheme = () => {
+    T = {
+      bg: css("--bg"), surface: css("--surface"), fg: css("--fg"), dim: css("--dim"), faint: css("--faint"),
+      off: css("--dot-off"), red: css("--red"), orange: css("--s-orange"), yellow: css("--s-yellow"),
+      green: css("--s-green"), qrFg: css("--qr-fg"), qrBg: css("--qr-bg"),
+    };
+  };
+  readTheme();
+
+  // ---------------------------------------------------------------- colour helpers
+  const hex = h => { h = h.replace("#", ""); if (h.length === 3) h = [...h].map(c => c + c).join(""); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const mix = (a, b, t) => { const A = hex(a), B = hex(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(",")})`; };
+  // The app's scale, for downloads and for an āya's strength: red → orange → yellow → green.
+  const scaleColor = p => p < 1 / 3 ? mix(T.red, T.orange, p * 3) : p < 2 / 3 ? mix(T.orange, T.yellow, (p - 1 / 3) * 3) : mix(T.yellow, T.green, (p - 2 / 3) * 3);
+
+  // ---------------------------------------------------------------- the plan: each āya ×3, a pause after each
+  // As the player builds it: āya, pause as long as the āya (to say it again), ×3, next āya. Each
+  // āya's strength ring moves a step towards green every time its three repetitions are done.
+  const memo = (() => {
+    const bar = document.getElementById("plan"), chip = document.getElementById("plan-chip");
+    const rows = [...document.querySelectorAll("#ayat li")];
+    const rings = rows.map(li => li.querySelector("canvas"));
+    const REPS = 3, CYCLE = 15000;
+    const segs = [];
+    AYAT.forEach((words, a) => {
+      const len = 0.8 + 0.35 * words;
+      for (let r = 1; r <= REPS; r++) { segs.push({ a, r, rec: true, len }); segs.push({ a, r, rec: false, len }); }
+    });
+    const total = segs.reduce((s, x) => s + x.len, 0);
+    let acc = 0;
+    segs.forEach(s => { s.from = acc / total; acc += s.len; s.to = acc / total; });
+    const at = f => segs.find(s => f < s.to) || segs[segs.length - 1];
+    const START = [0.5, 0.25, 0, 0];
+    let strength = START.slice(), pass = -1, lastSeg = null, start = null;
+
+    const ring = (canvas, s) => {
+      const ctx = canvas.getContext("2d"), W = canvas.width, c = W / 2, lw = W * 0.13, rad = c - lw;
+      ctx.clearRect(0, 0, W, W);
+      ctx.lineWidth = lw; ctx.lineCap = "round";
+      ctx.strokeStyle = T.off; ctx.beginPath(); ctx.arc(c, c, rad, 0, 7); ctx.stroke();
+      ctx.strokeStyle = scaleColor(s); ctx.beginPath(); ctx.arc(c, c, rad, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * Math.max(s, 0.04)); ctx.stroke();
+    };
+
+    const drawBar = f => {
+      const ctx = bar.getContext("2d"), W = bar.width, H = bar.height;
+      const n = Math.max(24, Math.round(W / (H * 0.36))), cell = W / n, rad = Math.min(cell, H) * 0.24;
+      const headAt = Math.min(n - 1, Math.floor(f * n));
+      ctx.clearRect(0, 0, W, H);
+      for (let i = 0; i < n; i++) {
+        if (i === headAt) continue;
+        const s = at((i + .5) / n), played = i < headAt;
+        ctx.fillStyle = s.rec ? (played ? T.fg : T.off) : (played ? T.faint : T.off);
+        ctx.beginPath(); ctx.arc((i + .5) * cell, H / 2, s.rec ? rad : rad * 0.5, 0, 7); ctx.fill();
+      }
+      ctx.fillStyle = T.red;
+      ctx.beginPath(); ctx.arc((headAt + .5) * cell, H / 2, rad * 2.1, 0, 7); ctx.fill();
+    };
+
+    const renderAt = f => {
+      const s = at(f);
+      // An āya's repetitions all heard: a step stronger.
+      if (lastSeg && lastSeg !== s && lastSeg.r === REPS && !lastSeg.rec && s.a !== lastSeg.a) {
+        strength[lastSeg.a] = Math.min(1, strength[lastSeg.a] + 0.25);
+      }
+      lastSeg = s;
+      drawBar(f);
+      rows.forEach((li, i) => li.classList.toggle("on", i === s.a));
+      rings.forEach((c, i) => ring(c, strength[i]));
+      const label = s.rec ? `ÉCOUTE ${s.r}/${REPS}` : `À VOUS ${s.r}/${REPS}`;
+      if (chip.textContent !== label) chip.textContent = label;
+      chip.style.color = s.rec ? T.fg : T.red;
+    };
+
+    const render = now => {
+      if (start === null) start = now - 0.07 * CYCLE;
+      const k = Math.floor((now - start) / CYCLE);
+      if (k !== pass) {
+        // Each pass round the plan; once every āya is green, the next pass starts over.
+        if (pass >= 0 && strength[strength.length - 1] >= 1 && strength.every(v => v >= 1)) strength = START.slice();
+        if (pass >= 0 && lastSeg) strength[lastSeg.a] = Math.min(1, strength[lastSeg.a] + 0.25);
+        pass = k; lastSeg = null;
+      }
+      renderAt(((now - start) % CYCLE) / CYCLE);
+    };
+    const still = () => { strength = [1, 0.75, 0.5, 0]; lastSeg = null; renderAt(0.62); };
+    return { render, still, el: bar };
+  })();
+
+  // ---------------------------------------------------------------- feature icons (dot pictograms)
+  const ICONS = {
+    list: ["1011111", "0000000", "1011111", "0000000", "1011100", "0000000", "1010000", "0000100", "0001110"],
+    book: ["1100011", "1110111", "1011101", "1001001", "1001001", "1001001", "1001001", "1111111", "0001000"],
+    loop: ["0011100", "0100010", "1000001", "1000101", "1001101", "1000101", "1000001", "0100010", "0011100"],
+    ear: ["0111000", "1000100", "1010100", "1000100", "0111100", "0000100", "0000100", "0000100", "0000100"],
+    learn: ["0000001", "0000001", "0000101", "0000101", "0010101", "0010101", "1010101", "1010101", "1010101"],
+    calendar: ["1010101", "1111111", "1000001", "1010101", "1000001", "1010101", "1000001", "1010101", "1111111"],
+    mic: ["1011100", "0011100", "0011100", "0011100", "1011101", "1011101", "0100010", "0011100", "0111110"],
+    save: ["0001000", "0001000", "0001000", "1001001", "0101010", "0011100", "0001000", "0000000", "1111111"],
+    journal: ["1011111", "0000000", "0011111", "0000000", "0011110", "0000000", "0011111", "0000000", "0011100"],
+    bell: ["0001000", "0011100", "0111110", "0111110", "0111110", "0111110", "1111111", "0000000", "0011100"],
+    theme: ["0011100", "0111010", "1111001", "1111001", "1111001", "1111001", "1111001", "0111010", "0011100"],
+    update: ["0001000", "0011100", "0101010", "1001001", "0001000", "0001000", "0001000", "0000000", "1111111"],
+  };
+  const drawIcon = canvas => {
+    const rows = ICONS[canvas.dataset.icon], ctx = canvas.getContext("2d"), W = canvas.width;
+    const n = 9, cell = W / n, ox = (W - rows[0].length * cell) / 2;
+    ctx.clearRect(0, 0, W, W);
+    rows.forEach((r, y) => [...r].forEach((b, x) => {
+      ctx.fillStyle = b === "1" ? (y === 0 && x === rows[0].indexOf("1") ? T.red : T.fg) : T.off;
+      ctx.beginPath(); ctx.arc(ox + (x + .5) * cell, (y + .5) * cell, cell * (b === "1" ? .36 : .18), 0, 7); ctx.fill();
+    }));
+  };
+
+  // ---------------------------------------------------------------- QR code (drawn in dots)
+  const drawQR = () => {
+    const canvas = document.getElementById("qr"), ctx = canvas.getContext("2d"), n = QR.length, q = 2, W = canvas.width, cell = W / (n + 2 * q);
+    ctx.fillStyle = T.qrBg; ctx.fillRect(0, 0, W, W);
+    ctx.fillStyle = T.qrFg;
+    const finder = (r, c) => (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7);
+    const rr = (x, y, w, h, rad) => { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, rad) : ctx.rect(x, y, w, h); };
+    for (const [r0, c0] of [[0, 0], [0, n - 7], [n - 7, 0]]) {
+      const X = (c0 + q) * cell, Y = (r0 + q) * cell;
+      ctx.fillStyle = T.qrFg; rr(X, Y, 7 * cell, 7 * cell, cell * 1.8); ctx.fill();
+      ctx.fillStyle = T.qrBg; rr(X + cell, Y + cell, 5 * cell, 5 * cell, cell * 1.2); ctx.fill();
+      ctx.fillStyle = T.qrFg; rr(X + 2 * cell, Y + 2 * cell, 3 * cell, 3 * cell, cell * .9); ctx.fill();
+    }
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      if (QR[r][c] !== "1" || finder(r, c)) continue;
+      ctx.beginPath(); ctx.arc((c + q + .5) * cell, (r + q + .5) * cell, cell * .46, 0, 7); ctx.fill();
+    }
+  };
+
+  // ---------------------------------------------------------------- paint + loop
+  const paintStatic = () => {
+    document.querySelectorAll("canvas[data-icon]").forEach(drawIcon);
+    drawQR();
+  };
+  paintStatic();
+  memo.still();
+
+  const onTheme = () => { readTheme(); paintStatic(); if (reduce) memo.still(); };
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", onTheme);
+  new MutationObserver(onTheme).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+
+  if (!reduce) {
+    const seen = new Map();
+    const io = new IntersectionObserver(es => es.forEach(e => seen.set(e.target, e.isIntersecting)), { rootMargin: "80px" });
+    [memo.el].forEach(el => { seen.set(el, true); io.observe(el); });
+    const loop = now => {
+      if (seen.get(memo.el)) memo.render(now);
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
+
+  // ---------------------------------------------------------------- theme switch (remembered on this device)
+  const dark = matchMedia("(prefers-color-scheme: dark)");
+  const modeButtons = document.querySelectorAll(".mode button");
+  const showMode = () => {
+    const current = root.dataset.theme || (dark.matches ? "dark" : "light");
+    modeButtons.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === current)));
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = current === "dark" ? "#000000" : "#EEE8DA";
+  };
+  try { const saved = localStorage.getItem("hfd-theme"); if (saved === "dark" || saved === "light") root.dataset.theme = saved; } catch (e) {}
+  modeButtons.forEach(b => b.addEventListener("click", () => {
+    root.dataset.theme = b.dataset.mode;
+    try { localStorage.setItem("hfd-theme", b.dataset.mode); } catch (e) {}
+    showMode();
+  }));
+  dark.addEventListener("change", showMode);
+  new MutationObserver(showMode).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+  showMode();
+
+  // ---------------------------------------------------------------- copy link
+  const copy = document.getElementById("copy");
+  copy.addEventListener("click", () => {
+    const url = document.getElementById("apk-url").textContent;
+    const done = ok => { copy.textContent = ok ? "COPIÉ" : "SÉLECTIONNÉ"; setTimeout(() => (copy.textContent = "COPIER"), 1800); };
+    const select = () => { const s = getSelection(), r = document.createRange(); r.selectNodeContents(document.getElementById("apk-url")); s.removeAllRanges(); s.addRange(r); done(false); };
+    try { navigator.clipboard.writeText(url).then(() => done(true), select); } catch (e) { select(); }
+  });
+})();
+
+</script>
+</body>
+</html>

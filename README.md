@@ -1,22 +1,30 @@
-# HFD
+<p align="center"><img src="docs/icon.png" width="96" alt=""></p>
+<h1 align="center">HFD</h1>
+<p align="center">Learn by heart, by ear and āya by āya, the Qur'an passages with established virtues (faḍāʾil).</p>
+<p align="center"><a href="https://github.com/kream0/hfd/releases/latest/download/hfd.apk"><b>Download the latest APK</b></a> · Android 8.0+ · <a href="https://kream0.github.io/hfd/">Website</a></p>
 
-A personal, sideloaded Android app for learning by ear the Qur'an verses and sūras that have
-established virtues (faḍāʾil): listen, repeat, test yourself and track progress per āya.
+A personal, sideloaded Android app: listen, repeat, test yourself and track progress per āya.
 Offline-first, no accounts, no ads. English and French UI. Diagnostics for the developer (see
-below) can be turned off in *Settings → About*.
+below) can be turned off in *Settings → About*. Styled like Nothing OS (black or warm paper, one
+red accent, dot-matrix type), with the Qur'an text given room and calm.
 
-Styled like Nothing OS (black and white, one red accent, dot-matrix type), with the Qur'an text
-given room and calm.
+<table>
+<tr>
+<td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/home-paper.webp"><img src="docs/screenshots/home.webp" width="200" alt="Home: today's goal, reviews due, passages to continue"></picture></td>
+<td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/fadail-paper.webp"><img src="docs/screenshots/fadail.webp" width="200" alt="Faḍāʾil: the 40 passages"></picture></td>
+<td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/kursi-text-paper.webp"><img src="docs/screenshots/kursi-text.webp" width="200" alt="Āyat al-Kursī, reading view and player"></picture></td>
+<td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/learn-paper.webp"><img src="docs/screenshots/learn.webp" width="200" alt="Learn: listen with the text"></picture></td>
+</tr>
+<tr>
+<td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/recite-paper.webp"><img src="docs/screenshots/recite.webp" width="200" alt="Recite: words light up as they are said"></picture></td>
+<td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/review-paper.webp"><img src="docs/screenshots/review.webp" width="200" alt="Review: text hidden"></picture></td>
+<td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/stats-paper.webp"><img src="docs/screenshots/stats.webp" width="200" alt="Stats"></picture></td>
+<td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/reminders-paper.webp"><img src="docs/screenshots/reminders.webp" width="200" alt="Settings: reminder, theme, text size"></picture></td>
+</tr>
+</table>
 
-<p>
-<img src="docs/screenshots/dark-01-home.png" width="24%" alt="Home">
-<img src="docs/screenshots/dark-09-kursi-text.png" width="24%" alt="Āyat al-Kursī, reading view and player">
-<img src="docs/screenshots/light-07-learn.png" width="24%" alt="Learn">
-<img src="docs/screenshots/light-05-stats.png" width="24%" alt="Stats">
-</p>
-
-(All screens, light and dark, in [docs/screenshots](docs/screenshots); rendered by CI with
-Robolectric.)
+(Each screen in black and in paper, in [docs/screenshots](docs/screenshots): rendered by CI with
+Robolectric, in French; GitHub shows the paper ones in its light mode.)
 
 ## Install
 
@@ -110,12 +118,14 @@ that the app updates itself from new releases. Android 8.0 or newer.
   progress keeps each āya's weak words. No audio is stored or sent. 64-bit ARM phones only.
   The reciter may go back (start an āya over, say a phrase again): the text goes back there with
   no mistake, and the results are written to the log at the end, as they stand. Before
-  recognition the rumble below 120 Hz is filtered out; a muffled voice (hardly anything above
-  1 kHz, as on the owner's phone: `Clarity`) is pointed out and the phone's other microphones
-  are tried, the clearest kept. `.github/workflows/recite.yml`
+  recognition the rumble below 120 Hz is filtered out; connected earbuds' microphone is used
+  (`HeadsetMic`), and a muffled voice (hardly anything above 1 kHz: `Clarity`) is pointed out. `.github/workflows/recite.yml`
   benches the whole pipeline on EveryAyah recitations brought down to the owner's phone
   microphone level — noise, a muffled microphone, rumble, restarts, repetitions — and on the
   owner's own sessions when they send them (`tools/recite/`): words right and how soon they show.
+- **Dark or paper** (*Settings → Appearance → Theme*): black like Nothing OS, or warm paper
+  with black ink, like a printed muṣḥaf; *System* follows the phone's dark mode. The status and
+  navigation bars follow the theme chosen.
 - **Home and Stats:** today's goal (minutes of practice), streak, due reviews, continue where
   you left off, per-faḍīla progress (memorised / total, next review), a dot-matrix calendar,
   total āyāt memorised and listening time.
@@ -141,8 +151,13 @@ that the app updates itself from new releases. Android 8.0 or newer.
   every ten seconds to a ntfy.sh topic (`diag/Diag.kt`); `.github/workflows/diag.yml` prints them.
   Never audio, location or progress.
 
-Later: word-by-word highlighting (Quran.com / QUL timings), the Glyph Matrix on the back of
-the phone (āya number and repetition).
+Later: word-by-word highlighting while listening (Quran.com / QUL timings).
+
+## Website
+
+| | |
+|---|---|
+| **Website** | `docs/`, published by the *Site* workflow (`.github/workflows/pages.yml`) to <https://kream0.github.io/hfd/>. `tools/site/build.py` writes it (`index.html`, `icon.png`, `og.png`) from `tools/site/`, the app's own Tanzil text, verified virtues and screenshots. |
 
 ## Releasing
 

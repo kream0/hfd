@@ -19,6 +19,7 @@ import app.hfd.core.srs.Rating
 import app.hfd.ui.AppRoot
 import app.hfd.ui.AppViewModel
 import app.hfd.ui.Tab
+import app.hfd.ui.components.neededAudio
 import app.hfd.ui.theme.HfdTheme
 import org.junit.Rule
 import org.junit.Test
@@ -42,6 +43,18 @@ class ScreenshotTest {
     val rule = createAndroidComposeRule<ComponentActivity>()
 
     private val out = File(System.getProperty("hfd.screenshots") ?: "build/screenshots").apply { mkdirs() }
+
+    /** The theme drawn: black, or paper. */
+    private var dark by mutableStateOf(true)
+
+    /** [name] in black, then `[name]-paper` in paper: the same state, lined up pixel for pixel. */
+    private fun both(name: String) {
+        ui { dark = true }
+        shot(name)
+        ui { dark = false }
+        shot("$name-paper")
+        ui { dark = true }
+    }
 
     /**
      * Lets the UI settle (the test clock is advanced by hand: infinite dot animations would
@@ -94,7 +107,6 @@ class ScreenshotTest {
             writeBytes(ByteArray(1))
         }
         val vm = AppViewModel()
-        var dark by mutableStateOf(true)
         rule.mainClock.autoAdvance = false
         rule.setContent { HfdTheme(dark = dark) { AppRoot(vm) } }
         val deadline = System.currentTimeMillis() + 60_000
@@ -104,6 +116,7 @@ class ScreenshotTest {
             Thread.sleep(50)
             rule.waitForIdle()
         }
+        val content = Graph.content.content.value!!
 
         // A little history so progress rings, strength marks and stats have something to show.
         ui {
@@ -118,56 +131,60 @@ class ScreenshotTest {
         }
         // The review reminder on, so its setting shows.
         ui { Graph.settings.update { it.copy(remindReviews = true) } }
-
-        for (theme in listOf("", "-paper")) {
-            ui {
-                dark = theme == ""
-                vm.flow = null
-                vm.fadila = null
-                vm.selectTab(Tab.HOME)
-            }
-            shot("home$theme")
-            ui { vm.selectTab(Tab.FADAIL) }
-            shot("fadail$theme")
-            ui { vm.openFadila("kursi") }
-            shot("kursi$theme")
-            // The reading view: āya text, āya-end markers, translation.
-            rule.onNodeWithTag("reading").performScrollToIndex(1)
-            shot("kursi-text$theme")
-            rule.onNodeWithTag("reading").performScrollToIndex(0)
-            ui { vm.openFadila("tawba-end") }
-            shot("tawba-end$theme")
-            ui {
-                vm.fadila = null
-                vm.selectTab(Tab.STATS)
-            }
-            shot("stats$theme")
-            ui { vm.selectTab(Tab.SETTINGS) }
-            shot("settings$theme")
-            // performScrollTo() waits for an animated scroll that the hand-driven clock never
-            // advances; ScrollBy only starts it, and shot() runs the clock.
-            // (positionInRoot: boundsInRoot is clipped to the viewport, empty for an off-screen node.)
-            val top = rule.onNodeWithText(rule.activity.getString(R.string.remind_reviews)).fetchSemanticsNode().positionInRoot.y
-            rule.onNodeWithTag("settings").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, top - 300f) }
-            shot("reminders$theme")
-            ui { vm.learn(Graph.content.content.value!!.fadila("ikhlas")!!) }
-            shot("learn$theme")
-            ui { vm.review() }
-            shot("review$theme")
-            // Recite mode after three recognised chunks, the last one skipping "wa-lam".
-            ui {
-                vm.recite(Graph.content.content.value!!.fadila("ikhlas")!!)
-                Graph.recite.value!!.run {
-                    onHeard("قل هو الله أحد")
-                    onHeard("الله الصمد")
-                    onHeard("لم يلد يولد")
+        // The passages shown already on the phone (there is no network here: "waiting for network").
+        ui {
+            val s = Graph.settings.current
+            for (id in listOf("kursi", "tawba-end", "ikhlas")) {
+                for (ref in neededAudio(content.fadila(id)!!, s)) {
+                    val file = Graph.audio.file(s.reciterInfo, ref).apply { parentFile?.mkdirs(); writeBytes(ByteArray(1)) }
+                    Graph.audio.added(s.reciterInfo, ref, file)
                 }
             }
-            shot("recite$theme")
-            ui {
-                Graph.closeRecite()
-                vm.flow = null
+        }
+
+        // Each screen in both themes, one after the other, so the pair shows the same state.
+        ui { vm.selectTab(Tab.HOME) }
+        both("home")
+        ui { vm.selectTab(Tab.FADAIL) }
+        both("fadail")
+        ui { vm.openFadila("kursi") }
+        both("kursi")
+        // The reading view: āya text, āya-end markers, translation.
+        rule.onNodeWithTag("reading").performScrollToIndex(1)
+        both("kursi-text")
+        rule.onNodeWithTag("reading").performScrollToIndex(0)
+        ui { vm.openFadila("tawba-end") }
+        both("tawba-end")
+        ui {
+            vm.fadila = null
+            vm.selectTab(Tab.STATS)
+        }
+        both("stats")
+        ui { vm.selectTab(Tab.SETTINGS) }
+        both("settings")
+        // performScrollTo() waits for an animated scroll that the hand-driven clock never
+        // advances; ScrollBy only starts it, and shot() runs the clock.
+        // (positionInRoot: boundsInRoot is clipped to the viewport, empty for an off-screen node.)
+        val top = rule.onNodeWithText(rule.activity.getString(R.string.remind_reviews)).fetchSemanticsNode().positionInRoot.y
+        rule.onNodeWithTag("settings").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, top - 300f) }
+        both("reminders")
+        ui { vm.learn(content.fadila("ikhlas")!!) }
+        both("learn")
+        ui { vm.review() }
+        both("review")
+        // Recite mode after three recognised chunks, the last one skipping "wa-lam".
+        ui {
+            vm.recite(content.fadila("ikhlas")!!)
+            Graph.recite.value!!.run {
+                onHeard("قل هو الله أحد")
+                onHeard("الله الصمد")
+                onHeard("لم يلد يولد")
             }
+        }
+        both("recite")
+        ui {
+            Graph.closeRecite()
+            vm.flow = null
         }
         watchdog.interrupt()
     }
