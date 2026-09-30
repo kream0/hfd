@@ -19,7 +19,7 @@ red accent, dot-matrix type), with the Qur'an text given room and calm.
 <td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/recite-paper.webp"><img src="docs/screenshots/recite.webp" width="200" alt="Recite: words light up as they are said"></picture></td>
 <td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/review-paper.webp"><img src="docs/screenshots/review.webp" width="200" alt="Review: text hidden"></picture></td>
 <td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/stats-paper.webp"><img src="docs/screenshots/stats.webp" width="200" alt="Stats"></picture></td>
-<td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/reminders-paper.webp"><img src="docs/screenshots/reminders.webp" width="200" alt="Settings: reminder, theme, text size"></picture></td>
+<td><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/reminders-paper.webp"><img src="docs/screenshots/reminders.webp" width="200" alt="Settings: reminder, language, theme, text size"></picture></td>
 </tr>
 </table>
 

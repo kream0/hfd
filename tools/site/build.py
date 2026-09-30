@@ -126,8 +126,8 @@ SHOTS = [
      "Série, āyāt mémorisées, récitations, temps d'écoute, et vingt semaines en points.",
      "Stats : série, record, āyāt mémorisées, temps d'écoute, calendrier de points sur vingt semaines, progrès par faḍīla."),
     ("reminders", "Réglages",
-     "Le rappel de révision, le thème sombre ou papier, la taille du texte, la traduction.",
-     "Réglages : rappel Āyāt à réviser à 19 h, thème Système, Sombre ou Papier, taille du texte coranique, traduction des sens."),
+     "Le rappel de révision, la langue, le thème sombre ou papier, la taille du texte.",
+     "Réglages : rappel Āyāt à réviser à 19 h, langue Français, English ou Système, thème Système, Sombre ou Papier, taille du texte coranique."),
 ]
 
 
