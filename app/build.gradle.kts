@@ -112,10 +112,11 @@ android {
     testOptions {
         unitTests {
             // Robolectric screenshot tests (src/testDebug, run by .github/workflows/screenshots.yml)
-            // need the app's resources and assets, and write their PNGs to docs/screenshots.
+            // need the app's resources and assets, and write their PNGs to build/screenshots (the
+            // workflow makes the website's WebPs from them: tools/screenshots/normalise.py).
             isIncludeAndroidResources = true
             all {
-                it.systemProperty("hfd.screenshots", rootProject.file("docs/screenshots").absolutePath)
+                it.systemProperty("hfd.screenshots", rootProject.file("build/screenshots").absolutePath)
                 // A stalled test fails instead of holding the runner (the shots so far are kept).
                 it.timeout.set(Duration.ofMinutes(8))
             }

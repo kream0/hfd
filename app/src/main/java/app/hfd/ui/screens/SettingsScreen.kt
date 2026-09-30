@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.AppSettings
+import app.hfd.data.ThemeMode
 import app.hfd.data.TranslationChoice
 import app.hfd.ui.components.Segmented
 import app.hfd.ui.components.SettingBlock
@@ -85,6 +86,25 @@ fun SettingsScreen() {
 
         SettingsSection(stringResource(R.string.settings_reminders)) {
             RemindersSection(settings)
+        }
+
+        SettingsSection(stringResource(R.string.settings_appearance)) {
+            SettingBlock(
+                stringResource(R.string.settings_theme),
+                stringResource(
+                    when (settings.theme) {
+                        ThemeMode.SYSTEM -> R.string.theme_system_body
+                        ThemeMode.DARK -> R.string.theme_dark_body
+                        ThemeMode.PAPER -> R.string.theme_paper_body
+                    },
+                ),
+            ) {
+                Segmented(
+                    options = listOf(stringResource(R.string.theme_system), stringResource(R.string.theme_dark), stringResource(R.string.theme_paper)),
+                    selected = settings.theme.ordinal,
+                    onSelect = { i -> Graph.settings.update { it.copy(theme = ThemeMode.entries[i]) } },
+                )
+            }
         }
 
         SettingsSection(stringResource(R.string.settings_reading)) {

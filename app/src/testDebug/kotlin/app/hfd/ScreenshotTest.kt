@@ -29,13 +29,14 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Renders the main screens with Robolectric's native graphics and saves them as PNGs in
- * docs/screenshots (light and dark), so layouts and the Qur'an text rendering can be checked
- * without a phone. Run by .github/workflows/screenshots.yml.
+ * Renders the main screens with Robolectric's native graphics, in French (the website's language)
+ * and in both themes (`<screen>.png` black, `<screen>-paper.png` paper, in the same state), so
+ * layouts and the Qur'an text rendering can be checked without a phone. Run by
+ * .github/workflows/screenshots.yml, which turns them into the website's docs/screenshots/*.webp.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w400dp-h880dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "fr-w400dp-h880dp-xxhdpi")
 class ScreenshotTest {
     @get:Rule
     val rule = createAndroidComposeRule<ComponentActivity>()
@@ -87,6 +88,11 @@ class ScreenshotTest {
         File(out, "hang.txt").delete()
         val watchdog = watchdog(180_000)
         Graph.player.connectable = false
+        // The speech model "downloaded", so Recite shows its screen rather than the download card.
+        File(rule.activity.noBackupFilesDir, "models/${app.hfd.recite.SpeechModel.DEFAULT.file}").apply {
+            parentFile?.mkdirs()
+            writeBytes(ByteArray(1))
+        }
         val vm = AppViewModel()
         var dark by mutableStateOf(true)
         rule.mainClock.autoAdvance = false
@@ -113,41 +119,41 @@ class ScreenshotTest {
         // The review reminder on, so its setting shows.
         ui { Graph.settings.update { it.copy(remindReviews = true) } }
 
-        for (theme in listOf("dark", "light")) {
+        for (theme in listOf("", "-paper")) {
             ui {
-                dark = theme == "dark"
+                dark = theme == ""
                 vm.flow = null
                 vm.fadila = null
                 vm.selectTab(Tab.HOME)
             }
-            shot("$theme-01-home")
+            shot("home$theme")
             ui { vm.selectTab(Tab.FADAIL) }
-            shot("$theme-02-fadail")
+            shot("fadail$theme")
             ui { vm.openFadila("kursi") }
-            shot("$theme-03-kursi")
+            shot("kursi$theme")
             // The reading view: āya text, āya-end markers, translation.
             rule.onNodeWithTag("reading").performScrollToIndex(1)
-            shot("$theme-09-kursi-text")
+            shot("kursi-text$theme")
             rule.onNodeWithTag("reading").performScrollToIndex(0)
             ui { vm.openFadila("tawba-end") }
-            shot("$theme-04-tawba-end")
+            shot("tawba-end$theme")
             ui {
                 vm.fadila = null
                 vm.selectTab(Tab.STATS)
             }
-            shot("$theme-05-stats")
+            shot("stats$theme")
             ui { vm.selectTab(Tab.SETTINGS) }
-            shot("$theme-06-settings")
+            shot("settings$theme")
             // performScrollTo() waits for an animated scroll that the hand-driven clock never
             // advances; ScrollBy only starts it, and shot() runs the clock.
             // (positionInRoot: boundsInRoot is clipped to the viewport, empty for an off-screen node.)
-            val top = rule.onNodeWithText("Āyāt due for review").fetchSemanticsNode().positionInRoot.y
+            val top = rule.onNodeWithText(rule.activity.getString(R.string.remind_reviews)).fetchSemanticsNode().positionInRoot.y
             rule.onNodeWithTag("settings").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, top - 300f) }
-            shot("$theme-10-reminders")
+            shot("reminders$theme")
             ui { vm.learn(Graph.content.content.value!!.fadila("ikhlas")!!) }
-            shot("$theme-07-learn")
+            shot("learn$theme")
             ui { vm.review() }
-            shot("$theme-08-review")
+            shot("review$theme")
             // Recite mode after three recognised chunks, the last one skipping "wa-lam".
             ui {
                 vm.recite(Graph.content.content.value!!.fadila("ikhlas")!!)
@@ -157,7 +163,7 @@ class ScreenshotTest {
                     onHeard("لم يلد يولد")
                 }
             }
-            shot("$theme-11-recite")
+            shot("recite$theme")
             ui {
                 Graph.closeRecite()
                 vm.flow = null

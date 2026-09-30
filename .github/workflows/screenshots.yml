@@ -1,13 +1,15 @@
 name: Screenshots
 
-# Renders the main screens with Robolectric (no emulator) and commits them to docs/screenshots,
-# so the UI can be checked from the dev sandbox. Runs on changes to the screenshot test, or by hand.
+# Renders the main screens with Robolectric (no emulator), in French and in both themes, and
+# commits them to docs/screenshots as the website's WebPs (tools/screenshots/normalise.py), so the
+# UI can be checked from the dev sandbox. Runs on changes to the screenshot test, or by hand.
 on:
   push:
     branches: ['**']
     paths:
       - 'app/src/testDebug/**'
       - 'tools/screenshots.trigger'
+      - 'tools/screenshots/**'
   workflow_dispatch:
 
 permissions:
@@ -45,6 +47,11 @@ jobs:
         run: |
           grep -E "^e: |error:|What went wrong|FAILED|Exception|Caused by" -A 6 build.log | head -150 || true
           find app/build/test-results -name '*.xml' -exec grep -h -A 30 '<failure' {} + | head -120 || true
+      - name: WebP for the website
+        if: always()
+        run: |
+          pip install --quiet pillow
+          python3 tools/screenshots/normalise.py build/screenshots docs/screenshots
       - name: Commit screenshots
         if: always()
         run: |

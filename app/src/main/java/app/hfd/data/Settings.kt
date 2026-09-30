@@ -13,6 +13,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/** Black or paper. SYSTEM follows the phone's dark mode. */
+@Serializable
+enum class ThemeMode { SYSTEM, DARK, PAPER }
+
 /** Which translation of meanings shows under each āya. AUTO follows the app language. */
 @Serializable
 enum class TranslationChoice { AUTO, FR, EN }
@@ -20,6 +24,7 @@ enum class TranslationChoice { AUTO, FR, EN }
 @Serializable
 data class AppSettings(
     val autoUpdate: Boolean = true,
+    val theme: ThemeMode = ThemeMode.SYSTEM,
     /** Translation of meanings under each āya. */
     val showTranslation: Boolean = true,
     val translation: TranslationChoice = TranslationChoice.AUTO,
@@ -100,6 +105,7 @@ class Settings(context: Context) {
             autoUpdate = prefs.getBoolean("autoUpdate", d.autoUpdate),
             showTranslation = prefs.getBoolean("showTranslation", d.showTranslation),
             translation = enumOr(prefs.getString("translation", null), d.translation),
+            theme = enumOr(prefs.getString("theme", null), d.theme),
             arabicSize = prefs.getInt("arabicSize", d.arabicSize).coerceIn(AppSettings.ARABIC_SIZES),
             reciter = Reciters.byId(prefs.getString("reciter", null)).id
                 // Until 1.3.1 Alafasy was the default (saved with every other setting): move to the new one.
@@ -128,6 +134,7 @@ class Settings(context: Context) {
             .putBoolean("autoUpdate", s.autoUpdate)
             .putBoolean("showTranslation", s.showTranslation)
             .putString("translation", s.translation.name)
+            .putString("theme", s.theme.name)
             .putInt("arabicSize", s.arabicSize)
             .putString("reciter", s.reciter)
             .putInt("repeatEach", s.repeatEach)

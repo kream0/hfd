@@ -64,6 +64,14 @@
     <string name="order_end_short">De la fin</string>
     <string name="home_all">Tous les faḍāʾil</string>
 
+    <string name="settings_appearance">Apparence</string>
+    <string name="settings_theme">Thème</string>
+    <string name="theme_system">SYSTÈME</string>
+    <string name="theme_dark">SOMBRE</string>
+    <string name="theme_paper">PAPIER</string>
+    <string name="theme_system_body">Suit le mode sombre du téléphone : noir quand il est activé, papier sinon.</string>
+    <string name="theme_dark_body">Noir, comme Nothing OS.</string>
+    <string name="theme_paper_body">Papier chaud au lieu du blanc, encre noire, comme un muṣḥaf imprimé.</string>
     <string name="settings_reading">Lecture</string>
     <string name="settings_arabic_size">Taille du texte coranique</string>
     <string name="settings_arabic_size_body">Taille du texte arabe dans la lecture</string>

@@ -255,13 +255,13 @@ private fun ToastHost(modifier: Modifier = Modifier) {
             Modifier
                 .padding(horizontal = 24.dp)
                 .clip(CircleShape)
-                .background(if (P.isDark) Color(0xFF1E1E1E) else Color(0xFF111111))
+                .background(if (P.isDark) Color(0xFF1E1E1E) else P.inverse)
                 .padding(horizontal = 16.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.size(7.dp).clip(CircleShape).background(P.accent))
             Spacer(Modifier.width(10.dp))
-            Text(last, style = Type.label, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(last, style = Type.label, color = if (P.isDark) Color.White else P.onInverse, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
