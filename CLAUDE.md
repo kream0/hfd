@@ -83,6 +83,13 @@
   (`recite/HeadsetMic.kt`: communication mode + `setCommunicationDevice`, LE Audio first); the
   bench's "sco" cases (8 kHz call audio, mic near the mouth) end ~99 % right. `mic.device` /
   `mic.headset` in the diagnostics say which mic was used.
+- What the owner's audio showed (29–30 Sept): the phone held in front (17:17, 1.8.2) followed
+  3:1–3:3; the phone away from the mouth and the earbuds' microphone both gave a voice 20–25 dB
+  darker from 300 Hz up, with no cut-off (third-octave table in diag.yml), which the app's model
+  can't read (1 word of 3:1–2). Measured on the bench and not kept: a shelf above 1 kHz
+  (`Clarity.highShelf`), priming whisper with the text before (80 % → 38 %), equalising each
+  utterance to a speaking voice (`Clarity.match`, "+match" lines: owner 1 → 4 words, others
+  80.4 % → 79.3 %).
 - `LogReplayTest` replays the owner's logged readings (`core/src/test/resources/recite/*.log`,
   from `recite.partial` / `recite.heard`) through `Follower`: add a log there when a session goes
   wrong, to reproduce it without audio.
