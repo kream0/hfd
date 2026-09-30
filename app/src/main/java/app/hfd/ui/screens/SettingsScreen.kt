@@ -1,6 +1,7 @@
 package app.hfd.ui.screens
 
 import android.app.Activity
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +29,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.AppSettings
+import app.hfd.data.AppLanguage
+import app.hfd.data.AppLocale
 import app.hfd.data.ThemeMode
 import app.hfd.data.TranslationChoice
 import app.hfd.ui.components.Segmented
@@ -89,6 +92,21 @@ fun SettingsScreen() {
         }
 
         SettingsSection(stringResource(R.string.settings_appearance)) {
+            val context = LocalContext.current
+            SettingBlock(stringResource(R.string.settings_language), stringResource(R.string.settings_language_body)) {
+                Segmented(
+                    // Each language in its own name.
+                    options = listOf("FRANÇAIS", "ENGLISH", stringResource(R.string.language_system)),
+                    selected = settings.language.ordinal,
+                    onSelect = { i ->
+                        val language = AppLanguage.entries[i]
+                        Graph.settings.update { it.copy(language = language) }
+                        AppLocale.apply(context.applicationContext, language)
+                        // Below Android 13 the activity takes it on being recreated.
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) (context as? Activity)?.recreate()
+                    },
+                )
+            }
             SettingBlock(
                 stringResource(R.string.settings_theme),
                 stringResource(

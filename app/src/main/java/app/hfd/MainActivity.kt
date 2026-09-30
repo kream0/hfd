@@ -1,6 +1,7 @@
 package app.hfd
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -19,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.hfd.data.AppLocale
 import app.hfd.data.ThemeMode
 import app.hfd.ui.AppRoot
 import app.hfd.ui.AppViewModel
@@ -36,6 +38,11 @@ class MainActivity : ComponentActivity() {
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    /** Below Android 13, the app's language comes with the activity's context ([AppLocale]). */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase, Graph.settings.current.language))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applySystemBars(isDark(Graph.settings.current.theme, systemDark()))

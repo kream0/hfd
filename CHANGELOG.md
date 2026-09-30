@@ -1,9 +1,9 @@
 # Changelog
 
 ## 1.11.0
-A paper theme: warm paper instead of white, with black ink, like a printed muṣḥaf.
-- Settings → Appearance → Theme: System (follows the phone's dark mode), Dark, or Paper.
-- The status and navigation bars follow the theme you choose.
+A paper theme, and the app in French by default.
+- Paper theme: warm paper instead of white, with black ink, like a printed muṣḥaf. Settings → Appearance → Theme: System (follows the phone's dark mode), Dark, or Paper. The status and navigation bars follow the theme you choose.
+- Language: French by default, whatever the phone's language. Settings → Appearance → Language: Français, English, or System.
 - The app now has a website: https://kream0.github.io/hfd/
 
 ## 1.10.0

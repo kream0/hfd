@@ -66,6 +66,9 @@
 
     <string name="settings_appearance">Apparence</string>
     <string name="settings_theme">Thème</string>
+    <string name="settings_language">Langue</string>
+    <string name="settings_language_body">La langue de l\'app. SYSTÈME suit celle du téléphone.</string>
+    <string name="language_system">SYSTÈME</string>
     <string name="theme_system">SYSTÈME</string>
     <string name="theme_dark">SOMBRE</string>
     <string name="theme_paper">PAPIER</string>
