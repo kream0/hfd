@@ -221,4 +221,28 @@ class TrackerTest {
         val clear = FloatArray(32_000) { i -> (0.05 * kotlin.math.sin(2 * PI * 200 * i / 16_000.0) + 0.02 * kotlin.math.sin(2 * PI * 1800 * i / 16_000.0)).toFloat() }
         assertTrue(Clarity.highShare(clear) > Clarity.MUFFLED_SHARE)
     }
+
+    @Test
+    fun aDarkVoiceIsEqualisedToASpeakingVoice() {
+        // Noise falling 12 dB an octave above 250 Hz, as the owner's voice reached the app.
+        val rnd = kotlin.random.Random(7)
+        var a = 0.0
+        var b = 0.0
+        val k = 1 - kotlin.math.exp(-2 * PI * 250 / 16_000)
+        val pcm = FloatArray(48_000) {
+            a += k * (rnd.nextDouble(-1.0, 1.0) - a)
+            b += k * (a - b)
+            (b * 0.3).toFloat()
+        }
+        fun tilt(x: FloatArray): Double {
+            val l = Clarity.ltas(x)!!
+            return l[Clarity.CENTRES.indexOfFirst { it == 1600.0 }] - l[Clarity.CENTRES.indexOfFirst { it == 400.0 }]
+        }
+        assertTrue("before ${tilt(pcm)}", tilt(pcm) < -12)
+        val out = Clarity.match(pcm)
+        assertEquals(pcm.size, out.size)
+        assertTrue(out.all { it.isFinite() })
+        // A speaking voice: 9 dB between them.
+        assertTrue("after ${tilt(out)}", tilt(out) in -14.0..-4.0)
+    }
 }

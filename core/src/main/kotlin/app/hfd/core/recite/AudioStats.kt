@@ -93,8 +93,8 @@ data class AudioStats(
 
         private fun db(x: Float): Float = (20 * log10(maxOf(x, 1e-6f).toDouble())).toFloat()
 
-        /** In place, radix 2. */
-        private fun fft(re: DoubleArray, im: DoubleArray) {
+        /** In place, radix 2 (the size a power of two). */
+        internal fun fft(re: DoubleArray, im: DoubleArray) {
             val n = re.size
             var j = 0
             for (i in 1 until n) {

@@ -54,21 +54,6 @@ class Follower(val targets: List<ReciteTarget>) {
         return tracker.position - from
     }
 
-    /**
-     * What comes before utterance [id] in the passage (up to where it starts, its last
-     * [CONTEXT_WORDS] words), in ordinary spelling; the basmala before a sūra's first āya. Given
-     * to the recogniser as the text before, it expects what follows: Qur'an it knows by heart,
-     * which helps where the voice reaches it faint or muffled.
-     */
-    fun context(id: Int): String {
-        val start = if (id == current) before?.position ?: tracker.position else tracker.position
-        val words = targets.flatMap { it.words }
-        val first = targets.firstOrNull()?.ref
-        val lead = if (start < CONTEXT_WORDS && first != null && first.aya == 1 && first.sura != 1 && first.sura != 9) BASMALA else ""
-        val said = words.subList(maxOf(0, start - CONTEXT_WORDS), start.coerceAtMost(words.size)).joinToString(" ")
-        return Arabic.plain("$lead $said")
-    }
-
     /** Words stable over the readings before stay right; the words among them keep what they were. */
     private fun keepStable(from: Int) {
         val last = stable.indexOfLast { it }
@@ -116,8 +101,6 @@ class Follower(val targets: List<ReciteTarget>) {
     }
 
     companion object {
-        /** The words of the passage before an utterance given to the recogniser ([context]). */
-        const val CONTEXT_WORDS = 12
         private const val ISTIADHA = "أعوذ بالله من الشيطان الرجيم"
         private const val BASMALA = "بسم الله الرحمن الرحيم"
     }

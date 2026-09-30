@@ -49,23 +49,6 @@ class LogReplayTest {
     }
 
     @Test
-    fun theRecogniserIsPrimedWithWhatCameBefore() {
-        val f = Follower(imran)
-        // Before Alif Lām Mīm: the basmala.
-        assertEquals("بسم الله الرحمن الرحيم", f.context(0))
-        f.heard(0, "الم الله لا اله الا هو الحي القيوم", final = false)
-        // Later readings of the same utterance keep the text before it.
-        assertEquals("بسم الله الرحمن الرحيم", f.context(0))
-        f.heard(0, "الم الله لا اله الا هو الحي القيوم", final = true)
-        // The next one: the basmala, then 3:1-2 in ordinary spelling (ٱ and the small alif as ا).
-        val next = f.context(1).split(' ')
-        val said = imran.take(2).flatMap { it.words }
-        assertEquals(4 + said.size, next.size)
-        assertEquals(said.map(Arabic::skeleton), next.drop(4).map(Arabic::skeleton))
-        assertTrue(next.none { 'ٱ' in it || 'ٰ' in it })
-    }
-
-    @Test
     fun readingsAfterTheMicrophoneStartsAgainAreFollowed() {
         val f = replay("owner-1.8.2-imran.log")[1]
         // After the restart: الم, then والله لا اله الحي القيوم (3:2) and نزل عن … (3:3's start)

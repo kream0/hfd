@@ -28,11 +28,12 @@ class ReciteBench {
         val cases = File(dir, "cases.tsv").readLines().filter { it.isNotBlank() && !it.startsWith("#") }.map(Case::parse)
         val report = StringBuilder()
         val totals = Totals()
-        // The cases also run with the recogniser primed with the text before (Follower.context):
-        // degraded audio, the owner's sessions, and going back / skipping (where priming could make
-        // it hear what it expects instead of what was said), plus clean al-Fātiḥa.
-        val primedPlain = Totals()
-        val primed = Totals()
+        // These cases also run with each utterance equalised to a speaking voice (Clarity.match):
+        // degraded audio, the owner's sessions, going back / skipping, and clean al-Fātiḥa (it
+        // mustn't hurt a clear voice). (Priming the recogniser with the text before, measured on
+        // 30 Sept, made it worse: 80 % of these words right → 38 %.)
+        val plainTotals = Totals()
+        val matchedTotals = Totals()
         Decoder(System.getenv("HFD_DECODER"), System.getenv("HFD_MODEL")).use { decoder ->
             for (c in cases) {
                 val pcm = Wav.read(File(dir, c.wav))
@@ -42,9 +43,9 @@ class ReciteBench {
                 if (r.detail.isNotEmpty()) report.append(r.detail)
                 println(r.line())
                 if (c.owner || PRIMED.any { it in c.id } || c.id.startsWith("fatiha-") && c.id.endsWith("-flow")) {
-                    val p = Simulation(c, pcm, decoder, prompt = true).run()
-                    if (!c.owner) { primedPlain += r; primed += p }
-                    val line = "+ctx " + p.line()
+                    val p = Simulation(c, pcm, decoder, match = true).run()
+                    if (!c.owner) { plainTotals += r; matchedTotals += p }
+                    val line = "+match " + p.line()
                     report.append(line).append('\n')
                     if (p.detail.isNotEmpty()) report.append(p.detail)
                     println(line)
@@ -52,8 +53,8 @@ class ReciteBench {
             }
         }
         report.append('\n').append(totals.line()).append('\n')
-        report.append("PRIMED CASES without the text before: ").append(primedPlain.line()).append('\n')
-        report.append("PRIMED CASES with the text before:    ").append(primed.line()).append('\n')
+        report.append("SUBSET as heard:   ").append(plainTotals.line()).append('\n')
+        report.append("SUBSET equalised:  ").append(matchedTotals.line()).append('\n')
         File(dir, "report.txt").writeText(report.toString())
         println(totals.line())
     }
@@ -143,7 +144,7 @@ class Totals {
     }
 }
 
-private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val boost: Boolean = false, val prompt: Boolean = false) {
+private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val boost: Boolean = false, val match: Boolean = false) {
     private val targets = case.refs.map { ReciteTarget(it, Arabic.words(Assets.quran.text(it).orEmpty())) }
     private val follower = Follower(targets)
     private val tracker = follower.tracker
@@ -201,7 +202,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         if (inFlight == null) {
             val u = queue.removeFirstOrNull() ?: return
             if (u.final) finals++ else partials++
-            val text = decoder.transcribe(Clarity.prepare(u.pcm, boost), if (prompt) follower.context(u.id) else "")
+            val text = decoder.transcribe(Clarity.prepare(u.pcm, boost, match))
             inFlight = Triple(u, text, t + 1.25 + 0.04 * u.seconds)
         }
     }

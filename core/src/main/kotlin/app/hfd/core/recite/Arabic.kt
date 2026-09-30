@@ -29,20 +29,6 @@ object Arabic {
         }
     }
 
-    /**
-     * Uthmani text in ordinary spelling, as the recogniser writes it: ٱ and the small alif as ا, no
-     * Qur'anic annotation signs or tatweel (to prime the recogniser with what came before).
-     */
-    fun plain(s: String): String = buildString {
-        for (c in s) {
-            when {
-                c == 'ٱ' || c == 'ٰ' -> append('ا')
-                c in 'ۖ'..'ۭ' || c == 'ـ' -> Unit
-                else -> append(c)
-            }
-        }
-    }.split(' ').filter { it.isNotBlank() }.joinToString(" ")
-
     /** The words of an āya as written, without the pause and section signs between them. */
     fun words(text: String): List<String> = text.split(' ').filter { skeleton(it).isNotEmpty() }
 }
