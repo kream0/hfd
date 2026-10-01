@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
+import android.view.View
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.hfd.ui.theme.P
@@ -57,6 +60,31 @@ fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, actio
         if (action != null) {
             Spacer(Modifier.height(18.dp))
             action()
+        }
+    }
+}
+
+/** How many [KeepScreenOn] are shown in each window (a screen of verses can open over another). */
+private val screenOnHolders = java.util.WeakHashMap<View, Int>()
+
+/**
+ * Keeps the screen on while this is shown: wherever the verses are on screen (reading, Learn,
+ * Review, Recite), the phone doesn't go dark while you read or recite.
+ */
+@Composable
+fun KeepScreenOn() {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        screenOnHolders[view] = (screenOnHolders[view] ?: 0) + 1
+        view.keepScreenOn = true
+        onDispose {
+            val left = (screenOnHolders[view] ?: 1) - 1
+            if (left > 0) {
+                screenOnHolders[view] = left
+            } else {
+                screenOnHolders.remove(view)
+                view.keepScreenOn = false
+            }
         }
     }
 }

@@ -43,6 +43,7 @@ import app.hfd.data.AppMode
 import app.hfd.data.Content
 import app.hfd.data.TestState
 import app.hfd.playback.PlaySession
+import app.hfd.ui.components.KeepScreenOn
 import app.hfd.ui.components.DotLoader
 import app.hfd.ui.components.EmptyState
 import app.hfd.ui.components.Ic
@@ -71,6 +72,7 @@ fun startTest(f: Fadila) {
  */
 @Composable
 fun ReviewScreen(testOf: String?, only: List<AyahRef>?, onClose: () -> Unit) {
+    KeepScreenOn()
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
     val progress by Graph.progress.state.collectAsStateWithLifecycle()

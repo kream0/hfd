@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.0
+The screen stays on while the verses are shown.
+- Reading a passage, Learn, Review and Recite keep the screen on, so it doesn't go dark while you read or recite. It sleeps again as soon as you leave them.
+
 ## 1.11.0
 A paper theme, and the app in French by default.
 - Paper theme: warm paper instead of white, with black ink, like a printed muṣḥaf. Settings → Appearance → Theme: System (follows the phone's dark mode), Dark, or Paper. The status and navigation bars follow the theme you choose.

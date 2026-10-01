@@ -41,6 +41,7 @@ import app.hfd.core.progress.Mode
 import app.hfd.data.AppMode
 import app.hfd.data.Content
 import app.hfd.playback.PlaySession
+import app.hfd.ui.components.KeepScreenOn
 import app.hfd.ui.components.ChoiceButton
 import app.hfd.ui.components.DotLoader
 import app.hfd.ui.components.EmptyState
@@ -76,6 +77,7 @@ fun startLearning(fadila: Fadila, fromIndex: Int? = null) {
 
 @Composable
 fun LearnScreen(onClose: () -> Unit) {
+    KeepScreenOn()
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val session by Graph.sessions.session.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()

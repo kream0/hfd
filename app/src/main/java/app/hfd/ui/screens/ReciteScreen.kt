@@ -38,7 +38,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -51,7 +50,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -69,6 +67,7 @@ import app.hfd.recite.ReciteSession
 import app.hfd.recite.ReciteUi
 import app.hfd.recite.Wave
 import app.hfd.ui.ayahEnd
+import app.hfd.ui.components.KeepScreenOn
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.IconBtn
 import app.hfd.ui.components.PillButton
@@ -105,12 +104,8 @@ fun ReciteScreen(onClose: () -> Unit) {
     }
     BackHandler(onBack = onClose)
 
-    // The screen stays on while listening.
-    val view = LocalView.current
-    DisposableEffect(ui.listening) {
-        view.keepScreenOn = ui.listening
-        onDispose { view.keepScreenOn = false }
-    }
+    // The screen stays on while the verses are shown (listening or not).
+    KeepScreenOn()
 
     val f = content?.fadila(s.fadilaId)
     Column(Modifier.fillMaxSize().background(P.background).statusBarsPadding().navigationBarsPadding()) {

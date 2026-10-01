@@ -20,6 +20,7 @@ import app.hfd.core.progress.Mode
 import app.hfd.core.progress.Stats
 import app.hfd.core.srs.Rating
 import app.hfd.ui.AppViewModel
+import app.hfd.ui.components.KeepScreenOn
 import app.hfd.ui.components.DotRing
 import app.hfd.ui.components.PillButton
 import app.hfd.ui.components.PillStyle
@@ -71,6 +72,7 @@ import app.hfd.ui.uiLanguage
 
 @Composable
 fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
+    KeepScreenOn()
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
     val translations by Graph.content.translations.collectAsStateWithLifecycle()
