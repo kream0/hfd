@@ -227,13 +227,15 @@ class Tracker(val targets: List<ReciteTarget>) {
             }
         }
         // The best end among the words not recited yet; on a tie the fewest words, never running
-        // ahead of what was recited. A chunk that ends better among the words already recited
-        // only said them again: it doesn't move.
+        // ahead of what was recited. A chunk that ends clearly better among the words already
+        // recited (by a letter at least) only said them again: it doesn't move. Hardly better
+        // isn't enough: al-Fātiḥa's 1:3 (ٱلرَّحْمَٰنِ ٱلرَّحِيمِ) is also 1:1's end, and heard with a
+        // letter wrong after 1:2 it is 1:3 (Recite bench, 2 Oct).
         var best = -1
         for (i in p + 1..n) if (best < 0 || d[i][m] > d[best][m]) best = i
         var again = d[0][m]
         for (i in 1..p) again = maxOf(again, d[i][m])
-        if (best < 0 || d[best][m] < again) return 0
+        if (best < 0 || d[best][m] + MATCH <= again) return 0
         // Trace back: which expected letters were matched, substituted, or skipped.
         val matched = BooleanArray(n)
         val touched = BooleanArray(n)

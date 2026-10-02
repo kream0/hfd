@@ -14,8 +14,10 @@ import org.junit.Test
 class LogReplayTest {
     private val imran = (1..9).map { ReciteTarget(AyahRef(3, it), Arabic.words(Assets.quran.text(AyahRef(3, it)).orEmpty())) }
 
+    private val fatiha = (1..7).map { ReciteTarget(AyahRef(1, it), Arabic.words(Assets.quran.text(AyahRef(1, it)).orEmpty())) }
+
     /** Each session's follower after its readings, and the log lines of its readings. */
-    private fun replay(name: String): List<Follower> {
+    private fun replay(name: String, targets: List<ReciteTarget> = imran): List<Follower> {
         val sessions = ArrayList<Follower>()
         var base = 0
         var last = -1
@@ -23,7 +25,7 @@ class LogReplayTest {
             if (line.isBlank() || line.startsWith("#")) continue
             val parts = line.split(" ", limit = 4)
             when (parts[1]) {
-                "session" -> { sessions += Follower(imran); base = 0; last = -1 }
+                "session" -> { sessions += Follower(targets); base = 0; last = -1 }
                 "resume" -> base = last + 1
                 else -> {
                     val id = base + parts[2].toInt()
@@ -46,6 +48,20 @@ class LogReplayTest {
         // 3:3 was read right but for الكتاب (heard كتاب, without its article): at most that one.
         assertTrue("3:3 mistakes ${f.mistakes(3)}", f.mistakes(3).size <= 1)
         assertEquals(19, f.tracker.position)
+    }
+
+    @Test
+    fun alFatihasRahmanRahimIsFollowedNotTakenForTheBasmalaSaidAgain() {
+        // 1:3 (ٱلرَّحْمَٰنِ ٱلرَّحِيمِ) repeats the end of 1:1: heard after 1:2, it is 1:3.
+        val f = replay("bench-fatiha-noisy.log", fatiha)[0]
+        val t = f.tracker
+        val start5 = t.startOf(4)
+        assertTrue("position ${t.position}, want past 1:5 (${t.startOf(5)})", t.position >= t.startOf(5))
+        for (aya in 2..4) {
+            val r = t.resultOf(aya)
+            assertTrue("1:${aya + 1} mistakes ${r.mistakes}", r.mistakes.size <= 1)
+        }
+        assertTrue(start5 > 0)
     }
 
     @Test
