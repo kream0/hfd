@@ -2,7 +2,7 @@
 
 ## 1.14.0
 Recite follows your voice better, and what you recited stays white.
-- Recognition is now guided by the passage: among what it almost hears, the app prefers the words you should be saying. On your own recordings (earbuds and phone), it follows more than three times as many words as before; clear recitations are read exactly as before.
+- Recognition is now guided by the passage: among what it almost hears, the app prefers the words you should be saying. Replayed on your own recordings (7 sessions, earbuds and phone), it follows 88 % of the words you recited; clear recitations are read exactly as before.
 - Say part of an āya again: what you already recited stays white (and doesn't count as a mistake if it's misheard the second time).
 - Skip an āya: the text goes on from where you are, once a clear stretch is heard.
 - Al-Fātiḥa: الرحمن الرحيم after 1:2 is 1:3, not 1:1 said again.
