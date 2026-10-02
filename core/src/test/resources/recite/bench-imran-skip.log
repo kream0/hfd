@@ -1,0 +1,10 @@
+# Recite bench, 2 Oct (steered decoding): the owner's session c4bd33 at 08:52:25, as the app read
+# it. The app stood at 3:2; the owner recited 3:3's first eight words. A partial reading passed the
+# jump to 3:3, the final one (a little worse) didn't, and everything went back.
+00:00:01 session 3:2
+00:00:04 partial 0 نَسَّلَ
+00:00:05 partial 0 نَسَّلَ عَلِيكَ
+00:00:06 partial 0 نَسَّلَ عَلِيكَ الْكُتَابَ
+00:00:08 partial 0 نَسَّلَ مَلِيكَ لِلْكَابِ الْحَقِّ مُصَرِّقًا
+00:00:09 partial 0 نَسَّلَ مَلِيكَ لِلْكَابِ الْحَقِّ مُصَرِّقًا لِمَا بَيْنِ
+00:00:11 final 0 نَسَّلَ عَلِيكَ لِلْكَابِ أَتِّبْ صَرِّقًا لِمَا بَيْنَ يُدْعِينَ

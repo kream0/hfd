@@ -25,7 +25,17 @@ class LogReplayTest {
             if (line.isBlank() || line.startsWith("#")) continue
             val parts = line.split(" ", limit = 4)
             when (parts[1]) {
-                "session" -> { sessions += Follower(targets); base = 0; last = -1 }
+                "session" -> {
+                    sessions += Follower(targets).also { f ->
+                        // "session 3:2": the app stood there (the āyāt before recited already).
+                        parts.getOrNull(2)?.let { at ->
+                            val (s, a) = at.split(':').map(String::toInt)
+                            val position = f.tracker.startOf(targets.indexOfFirst { it.ref == AyahRef(s, a) })
+                            f.tracker.reset(Tracker.Mark(position, Array(f.tracker.size) { if (it < position) WordStatus.OK else WordStatus.PENDING }))
+                        }
+                    }
+                    base = 0; last = -1
+                }
                 "resume" -> base = last + 1
                 else -> {
                     val id = base + parts[2].toInt()
@@ -62,6 +72,16 @@ class LogReplayTest {
             assertTrue("1:${aya + 1} mistakes ${r.mistakes}", r.mistakes.size <= 1)
         }
         assertTrue(start5 > 0)
+    }
+
+    @Test
+    fun aSkippedAyaFollowedByAPartialReadingStaysFollowed() {
+        val t = replay("bench-imran-skip.log")[0].tracker
+        val start3 = t.startOf(2)
+        // 3:2 passed over, 3:3 followed (its first eight words were recited).
+        assertTrue("position ${t.position}, 3:3 starts at $start3", t.position >= start3 + 6)
+        val right = (start3 until start3 + 8).count { t.status[it] == WordStatus.OK }
+        assertTrue("3:3: $right of 8 right", right >= 5)
     }
 
     @Test

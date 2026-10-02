@@ -1,11 +1,13 @@
 # What the owner recited in each kept session (tools/recite/owner.py → the bench scores those words):
 # āyāt, or an āya's words first-last (1-based). From large-v3-turbo's and small's transcriptions on
 # a PC (diag.yml, experiment.yml) and the app's own log of the session. Then, if the recitation
-# didn't start at the passage's beginning, the āya where the app stood when the session began
-# (recite.start / recite.partial "from" in the diagnostics): the āyāt before it count as recited.
+# didn't start at the passage's beginning, where the app stood when the session began (an āya, or
+# its word: 18:5#8; recite.partial "from" in the diagnostics): what is before counts as recited.
 # session	recited	from
 6d6f3a-session-imran-opening-3_1-3_9	3:1,3:2
 782550-session-imran-opening-3_1-3_9-081402	3:1,3:2
 c4bd33-session-imran-opening-3_1-3_9-085209	3:1,3:2
 c4bd33-session-imran-opening-3_1-3_9-085225	3:3#1-8	3:2
 c4bd33-session-imran-opening-3_1-3_9-085243	3:1,3:2	3:2
+622ff7-session-kahf-18_1-18_110-103327	18:1,18:2,18:3,18:4,18:5#1-7
+622ff7-session-kahf-18_1-18_110-103342	18:5#8-16	18:5#8

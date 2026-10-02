@@ -5,7 +5,8 @@ package app.hfd.core.recite
  * partial reading moves the text on at once, and is replaced by the next reading of the same
  * utterance; the final one stays. A word heard right in two readings in a row stays right: on a
  * longer stretch the model sometimes drops words it had heard (ولم يولد, or the basmala before
- * an āya), and a later reading can't take them back.
+ * an āya), and a later reading can't take them back. And a reading that follows nothing, after
+ * one of the same utterance that did, leaves that one standing (the longer stretch misread).
  */
 class Follower(val targets: List<ReciteTarget>) {
     val tracker = Tracker(targets)
@@ -17,6 +18,8 @@ class Follower(val targets: List<ReciteTarget>) {
     /** The utterance's previous reading, and the words right in it and the one before. */
     private var previous: Array<WordStatus>? = null
     private var stable = BooleanArray(tracker.size)
+    /** Where the utterance's last reading that followed something left the recitation. */
+    private var followed: Tracker.Mark? = null
 
     /** A reading of utterance [id]; returns how far the recitation moved from before it. */
     fun heard(id: Int, text: String, final: Boolean): Int {
@@ -26,6 +29,7 @@ class Follower(val targets: List<ReciteTarget>) {
             before = tracker.mark()
             previous = null
             stable = BooleanArray(tracker.size)
+            followed = null
         } else {
             before?.let(tracker::reset)
         }
@@ -39,6 +43,15 @@ class Follower(val targets: List<ReciteTarget>) {
             if (final) closed = id
             return tracker.position - from
         }
+        // Nothing of this reading followed, where the one before did (a skipped āya accepted on a
+        // clear stretch, then the final reading a little worse, 2 Oct): the one before stands.
+        val last = followed
+        if (tracker.position == from && last != null && last.position > from) {
+            tracker.reset(last)
+            // What it heard may go on from there.
+            val kept = tracker.mark()
+            if (tracker.feed(clean) <= 0) tracker.reset(kept)
+        }
         val fellBack = tracker.position <= stable.indexOfLast { it }
         keepStable(from)
         // This reading lost stable words at its start: what it heard is after them.
@@ -50,6 +63,7 @@ class Follower(val targets: List<ReciteTarget>) {
         val prev = previous
         stable = BooleanArray(now.size) { it >= from && prev != null && prev[it] == WordStatus.OK && now[it] == WordStatus.OK }
         previous = now.copyOf()
+        if (tracker.position > from) followed = tracker.mark()
         if (final) closed = id
         return tracker.position - from
     }

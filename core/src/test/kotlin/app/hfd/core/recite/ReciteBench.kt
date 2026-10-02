@@ -79,8 +79,8 @@ class Case(
     val id: String, val refs: List<AyahRef>, val wav: String, val spans: Map<AyahRef, Pair<Double, Double>>,
     /** The owner's sessions: the words recited in them, per āya (from listening to them, tools/recite/owner.tsv), if known. */
     val recited: Map<AyahRef, IntRange>? = null,
-    /** The āya where the app stood when the session began (those before it were recited already). */
-    val from: AyahRef? = null,
+    /** Where the app stood when the session began, āya and word (what is before was recited already). */
+    val from: Pair<AyahRef, Int>? = null,
 ) {
     /** One of the owner's own sessions: when each word was said isn't known (tools/recite/owner.py). */
     val owner: Boolean get() = spans.isEmpty()
@@ -105,7 +105,11 @@ class Case(
                 val range = words?.split('-')?.map(String::toInt)?.let { (w0, w1) -> (w0 - 1)..(w1 - 1) } ?: 0..Int.MAX_VALUE
                 AyahRef(rs, ra) to range
             }
-            val from = p.getOrNull(5)?.takeIf { it.isNotBlank() }?.split(':')?.map(String::toInt)?.let { (s, a) -> AyahRef(s, a) }
+            val from = p.getOrNull(5)?.takeIf { it.isNotBlank() }?.let { item ->
+                val (ref, word) = if ('#' in item) item.split('#').let { it[0] to it[1].toInt() - 1 } else item to 0
+                val (s, a) = ref.split(':').map(String::toInt)
+                AyahRef(s, a) to word
+            }
             return Case(p[0], refs, p[2], spans, recited, from)
         }
     }
@@ -186,10 +190,10 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
 
     fun run(): Result {
         // Where the app stood when the owner's session began: the āyāt before it done.
-        case.from?.let { from ->
+        case.from?.let { (from, word) ->
             val at = targets.indexOfFirst { it.ref == from }
-            if (at > 0) {
-                val position = tracker.startOf(at)
+            if (at >= 0 && (at > 0 || word > 0)) {
+                val position = tracker.startOf(at) + word
                 tracker.reset(Tracker.Mark(position, Array(n) { if (it < position) WordStatus.OK else WordStatus.PENDING }))
                 last = tracker.status.copyOf()
             }
