@@ -53,7 +53,8 @@ jobs:
                       d = json.loads(line)
                   except ValueError:
                       print("?", line); continue
-                  t = datetime.datetime.fromtimestamp(d.pop("t") / 1000, datetime.timezone.utc).strftime("%H:%M:%S")
+                  ms = d.pop("t")
+                  t = datetime.datetime.fromtimestamp(ms / 1000, datetime.timezone.utc).strftime("%H:%M:%S") + f".{ms % 1000:03d}"
                   s, e = d.pop("s", "?"), d.pop("e", "?")
                   print(t, s, e, " ".join(f"{k}={v}" for k, v in d.items()))
           '
