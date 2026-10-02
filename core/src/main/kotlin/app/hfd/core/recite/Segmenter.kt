@@ -147,8 +147,12 @@ class Segmenter {
         private const val PAUSE_FRAMES = 20
         private const val SHORT_PAUSE_FRAMES = 10 // 200 ms, enough to end a long one
         private const val MIN_VOICED_FRAMES = 10 // at least 200 ms of voice
-        /** The audio so far, handed over again after this much more (1 s). */
-        const val PARTIAL_FRAMES = 50
+        /**
+         * The audio so far, handed over again after this much more (300 ms). The recogniser takes
+         * the newest one when it is free (a reading takes ~1.4 s on the phone), so a short step
+         * means each reading starts with the voice up to 0.3 s before, not up to 1 s.
+         */
+        const val PARTIAL_FRAMES = 15
         private const val SOFT_MAX_FRAMES = 500 // 10 s
         const val MAX_FRAMES = 1000 // 20 s
         private const val SPLIT_SEARCH_FRAMES = 100

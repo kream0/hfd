@@ -32,7 +32,9 @@ class SegmenterTest {
         val got = s.feedAll(frames(4.0, 0.01f)) + s.feedAll(frames(1.0, 0f))
         val partials = got.filter { !it.final }
         val finals = got.filter { it.final }
-        assertTrue("partials: ${partials.size}", partials.size in 3..4)
+        // About one every PARTIAL_FRAMES of the 4 s of voice.
+        val expected = (4.0 * 50 / Segmenter.PARTIAL_FRAMES).toInt()
+        assertTrue("partials: ${partials.size}, about $expected", partials.size in expected - 2..expected + 1)
         assertTrue(partials.zipWithNext().all { (a, b) -> b.pcm.size > a.pcm.size })
         assertEquals(1, finals.size)
         assertTrue(got.all { it.id == 0 })

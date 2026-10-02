@@ -276,7 +276,7 @@ class ReciteSession(
                 val behind = tracker.position - shown
                 shown++
                 _ui.value = snapshot(_ui.value)
-                delay((REVEAL_MS / behind).coerceIn(35L, 140L))
+                delay((REVEAL_MS / behind).coerceIn(25L, 90L))
             }
         }
     }
@@ -354,7 +354,7 @@ class ReciteSession(
         const val ERROR_MODEL = "model"
         const val ERROR_MIC = "mic"
         /** A reading's new words are shown over about this long. */
-        private const val REVEAL_MS = 700L
+        private const val REVEAL_MS = 300L
 
 
         fun targets(refs: List<AyahRef>, text: (AyahRef) -> String?): List<ReciteTarget> =
