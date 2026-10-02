@@ -51,6 +51,7 @@ import app.hfd.ui.components.PillButton
 import app.hfd.ui.components.PillStyle
 import app.hfd.ui.components.RatingButtons
 import app.hfd.ui.components.ReciteAyah
+import app.hfd.ui.components.rememberPlayingWord
 import app.hfd.ui.components.SectionLabel
 import app.hfd.ui.components.StepDots
 import app.hfd.ui.components.Visibility
@@ -134,6 +135,7 @@ private fun LearnBody(
     val title = f.title.text
     var hint by remember(s.index, s.step) { mutableStateOf(false) }
     var reciteStart by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val playing = rememberPlayingWord()
 
     fun dispatch(input: LearnInput) {
         val next = LearnFlow.next(s, input)
@@ -215,7 +217,7 @@ private fun LearnBody(
                     LearnStep.FIRST_WORDS -> Visibility.FIRST_WORD
                     else -> if (hint) Visibility.FIRST_WORD else Visibility.HIDDEN
                 }
-                ReciteAyah(r, c.text(r), visibility, arabicSize, translation?.text(r))
+                ReciteAyah(r, c.text(r), visibility, arabicSize, translation?.text(r), word = playing.at(r))
             }
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {

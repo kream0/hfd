@@ -106,7 +106,7 @@ class PlayerConnection(private val context: Context) {
         ticker = Graph.scope.launch {
             while (isActive) {
                 controller?.let { _progress.value = PlayerProgress(it.currentPosition, it.bufferedPosition) }
-                delay(200)
+                delay(100) // the word being recited is lit from this
             }
         }
     }

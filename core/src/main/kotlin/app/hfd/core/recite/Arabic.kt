@@ -31,4 +31,16 @@ object Arabic {
 
     /** The words of an āya as written, without the pause and section signs between them. */
     fun words(text: String): List<String> = text.split(' ').filter { skeleton(it).isNotEmpty() }
+
+    /** Where each of [words] lies in [text] (end exclusive), to colour one word of the āya. */
+    fun wordRanges(text: String): List<Pair<Int, Int>> {
+        val out = ArrayList<Pair<Int, Int>>()
+        var start = 0
+        while (start <= text.length) {
+            val end = text.indexOf(' ', start).let { if (it < 0) text.length else it }
+            if (end > start && skeleton(text.substring(start, end)).isNotEmpty()) out += start to end
+            start = end + 1
+        }
+        return out
+    }
 }

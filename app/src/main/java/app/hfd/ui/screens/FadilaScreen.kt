@@ -64,6 +64,7 @@ import app.hfd.ui.components.autoAudio
 import app.hfd.ui.components.rangesLabel
 import app.hfd.ui.components.readingIndex
 import app.hfd.ui.components.readingItems
+import app.hfd.ui.components.rememberPlayingWord
 import app.hfd.ui.components.sessionFor
 import app.hfd.ui.text
 import app.hfd.ui.theme.P
@@ -102,6 +103,7 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
     }
 
     val current: AyahRef? = np?.takeIf { it.fadilaId == id }?.item?.ref
+    val playing = rememberPlayingWord()
 
     // Keep the playing āya in view, unless the reader has just scrolled away by hand.
     LaunchedEffect(listState.isScrollInProgress) {
@@ -144,6 +146,7 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
                     arabicSize = settings.arabicSize,
                     translation = if (settings.showTranslation) translations[lang] else null,
                     current = current,
+                    playing = playing,
                     marks = { ref ->
                         val p = progress[ref.key]
                         if (!p.started) null else {

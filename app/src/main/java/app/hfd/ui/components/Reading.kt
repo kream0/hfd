@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -56,6 +57,7 @@ fun readingIndex(content: Content, fadila: Fadila, ref: AyahRef, leading: Int): 
  * The reading view of a faḍīla: per range a sūra header, the basmala when the range starts a
  * sūra (except al-Fātiḥa, where it is āya 1, and at-Tawba), then one block per āya. The text is
  * shown exactly as Tanzil writes it; [current] gets a calm highlight, nothing moves in the text.
+ * With [playing], the word being recited is lit too.
  */
 fun LazyListScope.readingItems(
     content: Content,
@@ -63,6 +65,7 @@ fun LazyListScope.readingItems(
     arabicSize: Int,
     translation: QuranText?,
     current: AyahRef? = null,
+    playing: PlayingWord? = null,
     marks: (AyahRef) -> (@Composable () -> Unit)? = { null },
     onTap: ((AyahRef) -> Unit)? = null,
     onLongPress: ((AyahRef) -> Unit)? = null,
@@ -74,7 +77,7 @@ fun LazyListScope.readingItems(
         }
         val basmala = if (range.from == 1) content.quran.basmalaOf(range.sura) else null
         if (basmala != null) {
-            item(key = "b-$i-${range.sura}") { Basmala(basmala, arabicSize) }
+            item(key = "b-$i-${range.sura}") { Basmala(basmala, arabicSize, playing?.atBasmala(range.sura)) }
         }
         for (ref in range.ayat()) {
             item(key = ayahKey(ref)) {
@@ -84,6 +87,7 @@ fun LazyListScope.readingItems(
                     translation = translation?.text(ref),
                     arabicSize = arabicSize,
                     highlighted = ref == current,
+                    word = playing?.at(ref),
                     mark = marks(ref),
                     onTap = onTap?.let { tap -> { tap(ref) } },
                     onLongPress = onLongPress?.let { press -> { press(ref) } },
@@ -109,9 +113,9 @@ private fun SuraHeader(index: Int, arabic: String, translit: String, range: Stri
 }
 
 @Composable
-private fun Basmala(text: String, arabicSize: Int) {
+private fun Basmala(text: String, arabicSize: Int, word: Int?) {
     Text(
-        text,
+        withWord(text, word, P.accent),
         style = Type.quran(arabicSize).copy(textAlign = TextAlign.Center),
         color = P.text,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
@@ -126,6 +130,7 @@ fun AyahBlock(
     translation: String?,
     arabicSize: Int,
     highlighted: Boolean,
+    word: Int? = null,
     mark: (@Composable () -> Unit)? = null,
     onTap: (() -> Unit)? = null,
     onLongPress: (() -> Unit)? = null,
@@ -149,7 +154,7 @@ fun AyahBlock(
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Row(verticalAlignment = Alignment.Top) {
                 Text(
-                    text + ayahEnd(ref.aya),
+                    withWord(text, word, P.accent) + AnnotatedString(ayahEnd(ref.aya)),
                     style = Type.quran(arabicSize),
                     color = P.text,
                     modifier = Modifier.weight(1f).padding(end = 10.dp),

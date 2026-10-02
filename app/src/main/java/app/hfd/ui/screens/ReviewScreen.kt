@@ -52,6 +52,7 @@ import app.hfd.ui.components.PillButton
 import app.hfd.ui.components.PillStyle
 import app.hfd.ui.components.RatingButtons
 import app.hfd.ui.components.ReciteAyah
+import app.hfd.ui.components.rememberPlayingWord
 import app.hfd.ui.components.StepDots
 import app.hfd.ui.components.Visibility
 import app.hfd.ui.text
@@ -175,6 +176,7 @@ private fun ReviewCard(
     var revealed by remember(ref, position) { mutableStateOf(false) }
     var hint by remember(ref, position) { mutableStateOf(false) }
     val startedAt = remember(ref, position) { mutableLongStateOf(System.currentTimeMillis()) }
+    val playing = rememberPlayingWord()
     val sura = c.sura(ref.sura)
     val fadila = test ?: c.fadail.firstOrNull { f -> f.ranges.any { ref in it } }
     val playTitle = fadila?.title?.text ?: sura.tname
@@ -198,7 +200,7 @@ private fun ReviewCard(
                 hint -> Visibility.FIRST_WORD
                 else -> Visibility.HIDDEN
             }
-            ReciteAyah(ref, c.text(ref), visibility, arabicSize, translation)
+            ReciteAyah(ref, c.text(ref), visibility, arabicSize, translation, word = playing.at(ref))
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
             if (!revealed) {

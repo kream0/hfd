@@ -49,6 +49,47 @@ class RecitersTest {
     }
 
     @Test
+    fun theWordBeingRecitedIsTheLastOneStarted() {
+        val t = WordTimings(1, "x", mapOf("112:1" to listOf(40, 95, 150, 230)))
+        val ref = AyahRef(112, 1)
+        assertEquals(null, t.wordAt(ref, 390))
+        assertEquals(0, t.wordAt(ref, 400))
+        assertEquals(1, t.wordAt(ref, 1_200))
+        assertEquals(3, t.wordAt(ref, 9_000))
+        assertEquals(null, t.wordAt(AyahRef(112, 2), 1_000))
+    }
+
+    @Test
+    fun theColouredWordIsTheTimedOne() {
+        val texts = Assets.fadail.fadail.flatMap { it.ayat }.map { Assets.quran.text(it).orEmpty() } +
+            Assets.quran.basmalaOf(2).orEmpty()
+        for (text in texts) {
+            val ranges = app.hfd.core.recite.Arabic.wordRanges(text)
+            assertEquals(text, app.hfd.core.recite.Arabic.words(text), ranges.map { (a, b) -> text.substring(a, b) })
+        }
+    }
+
+    @Test
+    fun wordTimingsHaveEveryWordOfThePassages() {
+        val dir = java.io.File(Assets.dir, "audio/words")
+        val needed = Assets.fadail.fadail.flatMap { it.ayat }.toSet() + EveryAyah.BASMALA
+        for (r in Reciters.ALL) {
+            val file = java.io.File(dir, "${r.id}.json")
+            if (!file.exists()) continue // not made yet: the reading view lights the āya only
+            val t = HfdJson.decodeFromString(WordTimings.serializer(), file.readText())
+            assertEquals(r.id, t.reciter)
+            for (ref in needed) {
+                val starts = t.words[ref.key] ?: continue // an āya the tool couldn't fetch
+                val n = app.hfd.core.recite.Arabic.words(Assets.quran.text(ref).orEmpty()).size
+                assertEquals("${r.id} $ref", n, starts.size)
+                assertTrue("${r.id} $ref $starts", starts.zipWithNext().all { (a, b) -> a <= b } && starts.first() >= 0)
+            }
+            val missing = needed.count { it.key !in t.words }
+            assertTrue("${r.id} lacks $missing āyāt", missing <= needed.size / 50)
+        }
+    }
+
+    @Test
     fun idsAreUnique() {
         assertEquals(Reciters.ALL.size, Reciters.ALL.map { it.id }.toSet().size)
     }
