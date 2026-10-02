@@ -84,6 +84,12 @@ class ReciteSession(
     /** Words shown as followed so far (flat index): they catch up with the tracker one at a time. */
     private var shown = 0
     private var reveal: Job? = null
+    /**
+     * Words shown right once (flat index): they stay so. Saying part of an āya again takes the
+     * recitation back there, but what was recited right doesn't go grey again (the owner), nor
+     * count as a mistake if a reading of it the second time goes wrong.
+     */
+    private val wasRight = BooleanArray(tracker.size)
 
     private val _ui = MutableStateFlow(snapshot(ReciteUi(targets, emptyList(), null)))
     val ui: StateFlow<ReciteUi> = _ui.asStateFlow()
@@ -249,7 +255,7 @@ class ReciteSession(
                 recorder.stop()
             }
         }
-        _ui.value = _ui.value.copy(heard = heard ?: _ui.value.heard, results = finished)
+        _ui.value = _ui.value.copy(heard = heard ?: _ui.value.heard, results = finished.map(::withoutRight))
         catchUp()
     }
 
@@ -278,7 +284,7 @@ class ReciteSession(
     /** The āyāt finished, as they stand now, into the progress log (each once). */
     private fun recordFinished() {
         var previous = startedAt
-        for (r in tracker.finished()) {
+        for (r in tracker.finished().map(::withoutRight)) {
             val at = finishedAt[r.ref] ?: System.currentTimeMillis()
             if (recorded.add(r.ref)) {
                 Diag.log("recite.ayah", "ref" to r.ref.key, "words" to r.words, "mistakes" to r.mistakes.joinToString(","), "rating" to r.rating.name)
@@ -288,11 +294,20 @@ class ReciteSession(
         }
     }
 
+    /** [r] without the mistakes on words that were right once ([wasRight]). */
+    private fun withoutRight(r: AyahResult): AyahResult {
+        val start = tracker.startOf(targets.indexOfFirst { it.ref == r.ref })
+        return r.copy(mistakes = r.mistakes.filter { !wasRight[start + it] })
+    }
+
     private fun snapshot(base: ReciteUi): ReciteUi {
         var flat = 0
         val status = targets.indices.map { a ->
-            targets[a].words.indices.map { w -> if (flat + w < shown) tracker.statusOf(a, w) else WordStatus.PENDING }
-                .also { flat += targets[a].words.size }
+            targets[a].words.indices.map { w ->
+                val st = if (flat + w < shown) tracker.statusOf(a, w) else WordStatus.PENDING
+                if (st == WordStatus.OK) wasRight[flat + w] = true
+                if (wasRight[flat + w]) WordStatus.OK else st
+            }.also { flat += targets[a].words.size }
         }
         return base.copy(status = status, next = if (shown >= tracker.size) null else tracker.locate(shown))
     }

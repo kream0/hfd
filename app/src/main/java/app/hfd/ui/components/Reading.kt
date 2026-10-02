@@ -24,7 +24,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -114,8 +113,9 @@ private fun SuraHeader(index: Int, arabic: String, translit: String, range: Stri
 
 @Composable
 private fun Basmala(text: String, arabicSize: Int, word: Int?) {
-    Text(
-        withWord(text, word, P.accent),
+    QuranText(
+        text,
+        word,
         style = Type.quran(arabicSize).copy(textAlign = TextAlign.Center),
         color = P.text,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
@@ -153,11 +153,13 @@ fun AyahBlock(
         // highlight dot and optional marks (e.g. memorisation strength).
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Row(verticalAlignment = Alignment.Top) {
-                Text(
-                    withWord(text, word, P.accent) + AnnotatedString(ayahEnd(ref.aya)),
+                QuranText(
+                    text,
+                    word,
                     style = Type.quran(arabicSize),
                     color = P.text,
                     modifier = Modifier.weight(1f).padding(end = 10.dp),
+                    end = ayahEnd(ref.aya),
                 )
                 Column(Modifier.padding(top = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.size(6.dp).clip(CircleShape).background(if (highlighted) P.accent else Color.Transparent))

@@ -42,6 +42,8 @@ data class Palette(
     val saveOrange: Color,
     val saveYellow: Color,
     val saveGreen: Color,
+    /** The word being recited while listening: an electric blue, not red (red means a mistake). */
+    val wordMark: Color,
 ) {
     /** Colour for a download that is [progress] (0..1) complete: red → orange → yellow → green. */
     fun saveColor(progress: Float): Color {
@@ -73,6 +75,7 @@ val DarkPalette = Palette(
     saveOrange = Color(0xFFF26B1D),
     saveYellow = Color(0xFFF5C518),
     saveGreen = Color(0xFF35D07F),
+    wordMark = Color(0xFF29B6FF),
 )
 
 /**
@@ -96,6 +99,7 @@ val LightPalette = Palette(
     saveOrange = Color(0xFFD9580B),
     saveYellow = Color(0xFFB98B00),
     saveGreen = Color(0xFF1E8A4C),
+    wordMark = Color(0xFF0A67C9),
 )
 
 val LocalPalette = staticCompositionLocalOf { DarkPalette }

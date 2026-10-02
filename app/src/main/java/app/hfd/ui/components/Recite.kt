@@ -21,7 +21,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -58,11 +57,13 @@ fun ReciteAyah(
     Column(modifier.fillMaxWidth()) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             when (visibility) {
-                Visibility.FULL -> Text(
-                    withWord(text, word, P.accent) + AnnotatedString(ayahEnd(ref.aya)),
+                Visibility.FULL -> QuranText(
+                    text,
+                    word,
                     style = Type.quran(arabicSize),
                     color = P.text,
                     modifier = Modifier.fillMaxWidth(),
+                    end = ayahEnd(ref.aya),
                 )
                 Visibility.FIRST_WORD -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(Hiding.firstWord(text), style = Type.quran(arabicSize), color = P.text)

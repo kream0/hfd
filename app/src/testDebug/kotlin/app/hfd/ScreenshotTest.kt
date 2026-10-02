@@ -152,6 +152,10 @@ class ScreenshotTest {
         // The reading view: āya text, āya-end markers, translation.
         rule.onNodeWithTag("reading").performScrollToIndex(1)
         both("kursi-text")
+        // Listening: the word being recited lit (as if 2:255 were playing at its seventh word).
+        ui { app.hfd.ui.components.PlayingWord.preview.value = app.hfd.core.quran.AyahRef(2, 255) to 6 }
+        both("listen")
+        ui { app.hfd.ui.components.PlayingWord.preview.value = null }
         rule.onNodeWithTag("reading").performScrollToIndex(0)
         ui { vm.openFadila("tawba-end") }
         both("tawba-end")

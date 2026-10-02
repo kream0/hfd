@@ -5,9 +5,21 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.core.playback.EveryAyah
@@ -17,6 +29,7 @@ import app.hfd.core.quran.AyahRef
 import app.hfd.core.recite.Arabic
 import app.hfd.playback.NowPlaying
 import app.hfd.playback.PlayerProgress
+import app.hfd.ui.theme.P
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -31,6 +44,7 @@ class PlayingWord(
     private val progress: State<PlayerProgress>,
 ) {
     private fun of(ref: AyahRef, basmala: Boolean): Int? {
+        preview.value?.let { (r, w) -> return if (!basmala && r == ref) w else null }
         val now = np.value ?: return null
         val item = now.item
         val playing = if (basmala) item is PlanItem.Basmala && item.ref.sura == ref.sura else item is PlanItem.Ayah && item.ref == ref
@@ -45,6 +59,11 @@ class PlayingWord(
     /** The word of [ref] being recited, or null when it isn't playing (or has no timings). */
     @Composable
     fun at(ref: AyahRef): Int? = remember(this, ref) { derivedStateOf { of(ref, basmala = false) } }.value
+
+    companion object {
+        /** A word shown as being recited, without playing (the screenshot test). */
+        val preview = mutableStateOf<Pair<AyahRef, Int>?>(null)
+    }
 
     /** The word of [sura]'s basmala being recited (it plays as al-Fātiḥa's first āya). */
     @Composable
@@ -62,8 +81,46 @@ fun rememberPlayingWord(): PlayingWord {
     return remember(np, timings, progress) { PlayingWord(np, timings, progress) }
 }
 
-/** Qur'an [text] with its [word] (counted as [Arabic.words] does) in [color]; the text itself is untouched. */
-fun withWord(text: String, word: Int?, color: Color): AnnotatedString {
-    val (start, end) = word?.let { Arabic.wordRanges(text).getOrNull(it) } ?: return AnnotatedString(text)
-    return AnnotatedString(text, listOf(AnnotatedString.Range(SpanStyle(color = color), start, end)))
+/**
+ * Qur'an [text] (and [end], the āya-end marker) with its [word] (counted as [Arabic.words] does) in
+ * electric blue on a pill of the same blue: the word being recited while listening (red stays for
+ * mistakes). The text itself is untouched.
+ */
+@Composable
+fun QuranText(
+    text: String,
+    word: Int?,
+    style: TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+    end: String = "",
+) {
+    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val range = remember(text, word) { word?.let { Arabic.wordRanges(text).getOrNull(it) } }
+    val mark = P.wordMark
+    val shown = remember(text, end, range, mark) {
+        if (range == null) AnnotatedString(text + end)
+        else AnnotatedString(text + end, listOf(AnnotatedString.Range(SpanStyle(color = mark), range.first, range.second)))
+    }
+    Text(
+        shown,
+        style = style,
+        color = color,
+        onTextLayout = { layout = it },
+        modifier = modifier.drawBehind {
+            val l = layout ?: return@drawBehind
+            val (from, to) = range ?: return@drawBehind
+            if (to > l.layoutInput.text.length) return@drawBehind
+            val box = l.getPathForRange(from, to).getBounds()
+            // The line box is tall (the text's generous line height): the pill hugs the letters.
+            val inset = box.height * 0.12f
+            val pad = 4.dp.toPx()
+            drawRoundRect(
+                mark.copy(alpha = 0.16f),
+                topLeft = Offset(box.left - pad, box.top + inset),
+                size = Size(box.width + 2 * pad, box.height - 2 * inset),
+                cornerRadius = CornerRadius(10.dp.toPx()),
+            )
+        },
+    )
 }
