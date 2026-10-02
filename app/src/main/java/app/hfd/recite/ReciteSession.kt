@@ -333,6 +333,13 @@ class ReciteSession(
         val started = System.currentTimeMillis()
         val text = w.transcribe(pcm)
         Diag.log("whisper.selftest", "expected" to "قُلْ هُوَ ٱللَّهُ أَحَدٌ", "text" to text, "ms" to System.currentTimeMillis() - started)
+        // How long a reading takes with more threads (the phone's 8 cores; the app uses
+        // Whisper.THREADS): the time each reading takes is how far the text lags behind the voice.
+        for (threads in listOf(6, 8, Whisper.THREADS)) {
+            val t0 = System.currentTimeMillis()
+            w.transcribe(pcm, threads = threads)
+            Diag.log("whisper.threads", "threads" to threads, "ms" to System.currentTimeMillis() - t0)
+        }
     }
 
     companion object {
