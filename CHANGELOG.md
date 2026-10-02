@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.13.0
+While you listen, the word being recited lights up.
+- Reading a passage, Learn and Review: in the āya playing, the word the reciter is saying is coloured, word after word, for every reciter (and in the basmala). Follow the text with the voice to learn it.
+- When each word starts was measured once on each reciter's recordings; nothing to download.
+
 ## 1.12.0
 The screen stays on while the verses are shown.
 - Reading a passage, Learn, Review and Recite keep the screen on, so it doesn't go dark while you read or recite. It sleeps again as soon as you leave them.
