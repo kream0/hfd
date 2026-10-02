@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.14.0
+Recite follows your voice better, and what you recited stays white.
+- Recognition is now guided by the passage: among what it almost hears, the app prefers the words you should be saying. On your own recordings (earbuds and phone), it follows more than three times as many words as before; clear recitations are read exactly as before.
+- Say part of an āya again: what you already recited stays white (and doesn't count as a mistake if it's misheard the second time).
+- Skip an āya: the text goes on from where you are, once a clear stretch is heard.
+- Al-Fātiḥa: الرحمن الرحيم after 1:2 is 1:3, not 1:1 said again.
+- While you listen, the word being recited is in electric blue (red stays for mistakes).
+- Choosing the phone's microphone uses it even with earbuds connected.
+
 ## 1.13.0
 While you listen, the word being recited lights up.
 - Reading a passage, Learn and Review: in the āya playing, the word the reciter is saying is coloured, word after word, for every reciter (and in the basmala). Follow the text with the voice to learn it.
