@@ -32,12 +32,11 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { name: 'app: tiny, greedy, bonus 6, readings every 0.3 s', model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', only: '' }
-          - { name: 'readings every 1 s', model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '50', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
-          # Tarteel's base model: 2.1 times the tiny one's time per reading (experiment.yml, 2 Oct).
-          - { name: 'base, greedy, bonus 6', model: base.bin, factor: '2.1', bonus: '6', beam: '0', partial: '15', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
+          - { name: 'app: tiny, greedy, bonus 6, readings every 0.3 s and when the voice stops', model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', settle: '5', only: '' }
+          # Without the reading when the voice stops (1.14.1): an utterance's end waited for the pause.
+          - { name: 'no reading when the voice stops', model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', settle: '0', only: '' }
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
@@ -61,7 +60,6 @@ jobs:
           cmake --build whisper.cpp/build -j"$(nproc)" --config Release --target whisper >/dev/null
           curl -sSfL -o model.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-tiny-ar-quran-q8_0.bin
           echo "ef01ab441b004f9e6f1ea98d397b43452b3a45efab7c3928ab37af655dde8b52  model.bin" | sha256sum -c
-          curl -sSfL -o base.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-base-ar-quran-q8_0.bin
           gcc -O2 -o decoder ../tools/recite/decoder.c -I../app/src/main/cpp -Iwhisper.cpp/include -Iwhisper.cpp/ggml/include \
             whisper.cpp/build/src/libwhisper.so -Wl,-rpath,$PWD/whisper.cpp/build/src:$PWD/whisper.cpp/build/ggml/src -lm
       - name: The owner's Recite sessions (kept by diag.yml)
@@ -81,6 +79,7 @@ jobs:
           HFD_MODEL: ${{ github.workspace }}/work/${{ matrix.config.model }}
           HFD_PHONE_FACTOR: ${{ matrix.config.factor }}
           HFD_PARTIAL_FRAMES: ${{ matrix.config.partial }}
+          HFD_SETTLE_FRAMES: ${{ matrix.config.settle }}
           HFD_BIAS_BONUS: ${{ matrix.config.bonus }}
           HFD_BEAM: ${{ matrix.config.beam }}
           HFD_BENCH_ONLY: ${{ matrix.config.only }}

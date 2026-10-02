@@ -43,6 +43,22 @@ class SegmenterTest {
     }
 
     @Test
+    fun whatWasSaidIsHandedOverAsSoonAsTheVoiceStops() {
+        // An āya's last word is read when the voice stops, not after the pause that ends the utterance.
+        val s = Segmenter()
+        s.feedAll(frames(1.0, 0f))
+        s.feedAll(frames(3.1, 0.01f))
+        val after = frames(1.0, 0f).map { s.feed(it) }
+        val settled = after.indexOfFirst { u -> u.any { !it.final } }
+        val final = after.indexOfFirst { u -> u.any { it.final } }
+        assertTrue("partial after ${settled * 20} ms of silence", settled in 0..Segmenter.SETTLE_FRAMES)
+        assertTrue("final after ${final * 20} ms", final > settled)
+        // It holds all the voice: the final only adds the pause.
+        val p = after[settled].first()
+        assertTrue(after[final].first().seconds - p.seconds < 0.45f)
+    }
+
+    @Test
     fun theNextUtteranceHasTheNextId() {
         val s = Segmenter()
         s.feedAll(frames(1.0, 0f))

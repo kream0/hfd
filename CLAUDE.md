@@ -67,7 +67,8 @@
   and in `convert.sh`: change both together. Native code is arm64-v8a only, built for
   `armv8.2-a+dotprod+fp16` (2.2× faster than plain ARMv8, `armspeed.yml`); `Whisper.available`
   checks `/proc/cpuinfo` for `asimddp`/`asimdhp` (logged as `whisper.cpu`): change both together.
-  Partial readings every 0.3 s (`Segmenter.PARTIAL_FRAMES`); the base model reads the owner no
+  Partial readings every 0.3 s (`Segmenter.PARTIAL_FRAMES`) and 100 ms after the voice stops
+  (`SETTLE_FRAMES`: an utterance's last word no longer waits for the 400 ms pause); the base model reads the owner no
   better than tiny (95 vs 94 of 105 words) and shows words ~1 s later, so tiny stays.
 - Reciters: everyayah.com folders (probe new ones with `tools/reference/reciters.py`, run by
   reference.yml). A reciter only published as whole-sūra files (mp3quran.net) gets āya byte

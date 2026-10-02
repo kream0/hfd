@@ -207,7 +207,10 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                 last = tracker.status.copyOf()
             }
         }
-        val seg = Segmenter(System.getenv("HFD_PARTIAL_FRAMES")?.toIntOrNull() ?: Segmenter.PARTIAL_FRAMES)
+        val seg = Segmenter(
+            System.getenv("HFD_PARTIAL_FRAMES")?.toIntOrNull() ?: Segmenter.PARTIAL_FRAMES,
+            System.getenv("HFD_SETTLE_FRAMES")?.toIntOrNull() ?: Segmenter.SETTLE_FRAMES,
+        )
         val frame = Segmenter.FRAME
         var t = 0.0
         var i = 0
