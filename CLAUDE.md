@@ -115,7 +115,8 @@
   bench's "sco" cases (8 kHz call audio, mic near the mouth) end ~99 % right. `mic.device` /
   `mic.headset` in the diagnostics say which mic was used. The owner's phone mic always sounds
   muffled (~1 % above 1 kHz) yet is read well since steering, so the muffled warning only shows when
-  two utterances in a row also followed nothing (`MuffledWarning`; bench: "MUFFLED WARNING").
+  the text also follows under a word per 4 s of the last ~30 s of speech (`MuffledWarning`; bench:
+  "MUFFLED WARNING", none on the owner's sessions, on the pocket cases).
 - What the owner's audio showed (29–30 Sept): the phone held in front (17:17, 1.8.2) followed
   3:1–3:3; the phone away from the mouth and the earbuds' microphone both gave a voice 20–25 dB
   darker from 300 Hz up, with no cut-off (third-octave table in diag.yml), which the app's model
