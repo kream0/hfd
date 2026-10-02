@@ -18,7 +18,8 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
         val started = System.currentTimeMillis()
         val bias = expected.takeIf { it.isNotEmpty() }?.toByteArray(Charsets.UTF_8)
         val text = nativeTranscribe(ctx, pcm, threads, audioContext(pcm.size), bias)?.toString(Charsets.UTF_8)?.trim()
-        Diag.log("whisper.text", "seconds" to pcm.size / SAMPLE_RATE.toFloat(), "ms" to System.currentTimeMillis() - started, "threads" to threads, "text" to text)
+        // The text is in recite.partial / recite.heard (and whisper.selftest).
+        Diag.log("whisper.text", "seconds" to pcm.size / SAMPLE_RATE.toFloat(), "ms" to System.currentTimeMillis() - started, "threads" to threads)
         return text
     }
 

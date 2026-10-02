@@ -9,7 +9,9 @@ import app.hfd.core.recite.AyahResult
 import app.hfd.core.recite.Clarity
 import app.hfd.core.recite.Follower
 import app.hfd.core.recite.Level
+import app.hfd.core.recite.MuffledWarning
 import app.hfd.core.recite.ReciteTarget
+import app.hfd.core.recite.Segmenter
 import app.hfd.core.recite.Utterance
 import app.hfd.core.recite.WordStatus
 import app.hfd.diag.Diag
@@ -43,7 +45,7 @@ data class ReciteUi(
     val heard: String? = null,
     val results: List<AyahResult> = emptyList(),
     val error: String? = null,
-    /** The microphone sounds muffled (a pocket, a hand over it): hardly any of the voice's sounds reach it. */
+    /** The microphone sounds muffled (a pocket, a hand over it) and the text doesn't follow ([MuffledWarning]). */
     val muffled: Boolean = false,
 ) {
     val done: Boolean get() = next == null
@@ -77,6 +79,7 @@ class ReciteSession(
     private var listenJob: Job? = null
     private val consumer: Job
     private var heardChunks = 0
+    private val muffledWarning = MuffledWarning()
     private val startedAt = System.currentTimeMillis()
     /** When each āya was first finished, and those already written to the log. */
     private val finishedAt = LinkedHashMap<AyahRef, Long>()
@@ -108,6 +111,7 @@ class ReciteSession(
                     // What the reciter may be saying from where this utterance began: the
                     // recogniser prefers it among what it nearly hears (a dark or faint voice).
                     val expected = follower.expected(u.id)
+                    var muffled = false
                     val text = withContext(recognizer) {
                         // The phone's speech microphone is faint: at a normal level first (the bench
                         // does the same, Clarity.prepare).
@@ -117,8 +121,7 @@ class ReciteSession(
                             val st = AudioStats.of(u.pcm)
                             val gain = Level.normalize(u.pcm).second
                             // Hardly anything above 1 kHz: a pocket, a hand over the microphone…
-                            val muffled = Clarity.isMuffled(u.pcm)
-                            if (muffled != _ui.value.muffled) scope.launch { _ui.value = _ui.value.copy(muffled = muffled) }
+                            muffled = Clarity.isMuffled(u.pcm)
                             Diag.log(
                                 "recite.chunk", "n" to heardChunks, "id" to u.id, "seconds" to st.seconds, "muffled" to muffled,
                                 "gainDb" to (20 * kotlin.math.log10(gain.toDouble())).toFloat(),
@@ -129,7 +132,11 @@ class ReciteSession(
                         loadedWhisper()?.transcribe(pcm, expected)
                     }
                     if (u.final) _ui.value = _ui.value.copy(pending = (_ui.value.pending - 1).coerceAtLeast(0))
-                    if (text != null) onHeard(u.id, text, u.final)
+                    val moved = if (text != null) onHeard(u.id, text, u.final) else 0
+                    if (u.final) {
+                        val warn = muffledWarning.heard(muffled, u.pcm.size / Segmenter.RATE.toFloat(), moved)
+                        if (warn != _ui.value.muffled) _ui.value = _ui.value.copy(muffled = warn)
+                    }
                 }
             }
         }
@@ -222,11 +229,12 @@ class ReciteSession(
     }
 
     /** A reading of utterance [id]: partial ones move the text on, the final one stays. */
-    private fun onHeard(id: Int, text: String, final: Boolean) {
+    private fun onHeard(id: Int, text: String, final: Boolean): Int {
         val before = tracker.position
         val moved = follower.heard(id, text, final)
         Diag.log(if (final) "recite.heard" else "recite.partial", "id" to id, "text" to text, "from" to before, "to" to tracker.position, "moved" to moved, "done" to tracker.done)
         afterProgress(text.ifBlank { null }, final)
+        return moved
     }
 
     fun close() {

@@ -26,9 +26,17 @@ import java.util.UUID
 object Diag {
     const val URL = "https://ntfy.sh/hfd-diag-6641caac476110c0b784"
     private const val TAG = "Diag"
-    /** ntfy.sh keeps messages up to 4 KB as text. */
+    /**
+     * ntfy.sh keeps messages up to 4 KB (UTF-8 bytes) as text; a longer one becomes an attachment,
+     * kept 3 h only.
+     */
     private const val MAX_BYTES = 3_500
     private const val MAX_RECORDINGS = 6
+    /**
+     * ntfy.sh takes attachments up to 2 MB from us (413 above, measured by ntfyprobe.yml): a
+     * recording goes in parts of a minute at most (1.92 MB), which diag.yml joins.
+     */
+    private const val PART_SAMPLES = 60 * 16_000
 
     /** This run of the app, to tell runs apart in the log. */
     val session: String = UUID.randomUUID().toString().take(6)
@@ -92,23 +100,34 @@ object Diag {
     private var attached = 0
 
     /**
-     * Sends a recording (16 kHz mono) as a WAV attachment, when the owner switched recordings on
-     * to debug Recite; at most [MAX_RECORDINGS] a run. Blocking; call off the main thread.
+     * Sends a recording (16 kHz mono) as WAV attachments, when the owner switched recordings on
+     * to debug Recite: `<session>-<name>.wav`, or past a minute `<name>.part<i>of<n>.wav`; at
+     * most [MAX_RECORDINGS] a run. Blocking; call off the main thread.
      */
     fun attach(name: String, pcm: FloatArray, allowed: Boolean) {
         val client = http ?: return
         if (!allowed || !enabled() || attached >= MAX_RECORDINGS) return
         attached++
-        val wav = wav(pcm)
-        val ok = runCatching {
-            client.newCall(
-                Request.Builder().url(URL).put(wav.toRequestBody())
-                    .header("Filename", "$session-$name.wav")
-                    .header("X-Message", "rec $session $name")
-                    .build(),
-            ).execute().use { it.isSuccessful }
-        }.getOrDefault(false)
-        log("diag.recording", "name" to name, "bytes" to wav.size, "sent" to ok)
+        val parts = (pcm.size + PART_SAMPLES - 1) / PART_SAMPLES
+        for (i in 0 until parts) {
+            val wav = wav(pcm.copyOfRange(i * PART_SAMPLES, minOf(pcm.size, (i + 1) * PART_SAMPLES)))
+            val file = if (parts == 1) "$session-$name.wav" else "$session-$name.part${i + 1}of$parts.wav"
+            var code = 0
+            for (attempt in 1..2) {
+                code = runCatching {
+                    client.newCall(
+                        Request.Builder().url(URL).put(wav.toRequestBody())
+                            .header("Filename", file)
+                            .header("X-Message", "rec $session $name")
+                            .build(),
+                    ).execute().use { it.code }
+                }.getOrDefault(-1)
+                // Too many requests: once more, a little later.
+                if (code != 429 || attempt == 2) break
+                Thread.sleep(10_000)
+            }
+            log("diag.recording", "name" to name, "part" to "${i + 1}/$parts", "bytes" to wav.size, "sent" to (code in 200..299), "code" to code)
+        }
     }
 
     private fun wav(pcm: FloatArray): ByteArray {
@@ -128,12 +147,18 @@ object Diag {
         if (batch.isEmpty()) return
         var chunk = StringBuilder()
         val chunks = mutableListOf<String>()
+        // In UTF-8 bytes: Arabic takes two a letter (a 3,500-character message of readings was
+        // over 4 KB, and became an attachment).
+        var bytes = 0
         for (line in batch) {
-            if (chunk.isNotEmpty() && chunk.length + line.length + 1 > MAX_BYTES) {
+            val size = line.toByteArray(Charsets.UTF_8).size + 1
+            if (chunk.isNotEmpty() && bytes + size > MAX_BYTES) {
                 chunks += chunk.toString()
                 chunk = StringBuilder()
+                bytes = 0
             }
             chunk.append(line).append('\n')
+            bytes += size
         }
         if (chunk.isNotEmpty()) chunks += chunk.toString()
         for ((i, body) in chunks.withIndex()) {

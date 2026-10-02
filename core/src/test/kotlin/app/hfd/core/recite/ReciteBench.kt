@@ -130,12 +130,16 @@ class Result(
     val detail: String,
     /** Time the decoder took per call here (the phone's is about 1.25 s + 0.04 s per second of audio, greedy). */
     val msPerCall: Long = 0,
+    /** Whole utterances after which the app pointed out a muffled microphone ([MuffledWarning]). */
+    val warned: Int = 0,
 ) {
+    private val warning get() = if (warned > 0) "  MUFFLED WARNING $warned/$finals" else ""
+
     fun line(): String {
         if (id.startsWith("owner-")) {
             return String.format(
-                Locale.US, "%-34s OWNER'S SESSION: ok %d/%d words recited (wrong %d, missed %d, pending %d)  before them %d missed/%d  after them marked %d/%d  flips %d  calls %d+%d  %d ms/call",
-                id, ok, said, wrong, missed, pending, skippedMissed, skipped, unreachedMarked, unreached, flips, partials, finals, msPerCall,
+                Locale.US, "%-34s OWNER'S SESSION: ok %d/%d words recited (wrong %d, missed %d, pending %d)  before them %d missed/%d  after them marked %d/%d  flips %d  calls %d+%d  %d ms/call%s",
+                id, ok, said, wrong, missed, pending, skippedMissed, skipped, unreachedMarked, unreached, flips, partials, finals, msPerCall, warning,
             )
         }
         val l = lags.sorted()
@@ -143,8 +147,8 @@ class Result(
         val skip = (if (skipped > 0) "  skipped $skippedMissed/$skipped missed" else "") +
             (if (unreachedMarked > 0) "  UNREACHED MARKED $unreachedMarked/$unreached" else "")
         return String.format(
-            Locale.US, "%-34s ok %3d/%-3d wrong %2d missed %2d pending %2d  lag p50 %4.1f p90 %4.1f s  flips %2d  calls %d+%d  %d ms/call%s",
-            id, ok, said, wrong, missed, pending, q(0.5), q(0.9), flips, partials, finals, msPerCall, skip,
+            Locale.US, "%-34s ok %3d/%-3d wrong %2d missed %2d pending %2d  lag p50 %4.1f p90 %4.1f s  flips %2d  calls %d+%d  %d ms/call%s%s",
+            id, ok, said, wrong, missed, pending, q(0.5), q(0.9), flips, partials, finals, msPerCall, skip, warning,
         )
     }
 }
@@ -186,6 +190,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private var flips = 0
     private var partials = 0
     private var finals = 0
+    private val muffledWarning = MuffledWarning()
+    private var warned = 0
     private val queue = ArrayDeque<Utterance>()
     private var inFlight: Triple<Utterance, String, Double>? = null
     private var decodeNanos = 0L
@@ -235,7 +241,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private fun step(t: Double) {
         inFlight?.let { (u, text, at) ->
             if (t >= at) {
-                follower.heard(u.id, text, u.final)
+                val moved = follower.heard(u.id, text, u.final)
+                if (u.final && muffledWarning.heard(Clarity.isMuffled(u.pcm), u.seconds, moved)) warned++
                 readings.append(String.format(Locale.US, "      %6.1f s  #%d %s %4.1f s: %s\n", at, u.id, if (u.final) "final  " else "partial", u.seconds, text))
                 observe(at)
                 inFlight = null
@@ -335,6 +342,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             case.id, said, ok, wrong, missed, pending, skipped, skippedMissed, unreached, unreachedMarked, lags, flips, partials, finals,
             if (bad > 0 || case.owner) detail.toString() + readings else "",
             decodeNanos / 1_000_000 / maxOf(1, partials + finals),
+            warned,
         )
     }
 

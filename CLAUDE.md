@@ -102,7 +102,8 @@
   on track. `tools/experiment` (experiment.yml) decodes whole recordings free / steered / steered
   toward a wrong passage (a control) / by bigger models: clear recitations come out unchanged.
 - The owner's own sessions: with *Send recordings* on, the app uploads each Recite session's raw
-  microphone (`session-<passage>-<S_A>-<S_B>.wav`, ≤ 4 min). `diag.yml` prints its spectrum and a
+  microphone (`session-<passage>-<S_A>-<S_B>.wav`, ≤ 4 min; past a minute in `.part<i>of<n>.wav` parts,
+  since ntfy.sh refuses attachments over 2 MB with a 413 (`ntfyprobe.yml`), joined by diag.yml). `diag.yml` prints its spectrum and a
   large model's transcription, and keeps it in the Actions cache (not published); touch
   `tools/recite/owner.trigger` to replay the kept sessions in `recite.yml` ("OWNER'S SESSION"
   lines, and "+boost" lines with `Clarity`'s highs boost, which the app doesn't use: it made muffled
@@ -112,7 +113,9 @@
   and the owner's 29 Sept session: 0–1 words). Recite listens through connected earbuds
   (`recite/HeadsetMic.kt`: communication mode + `setCommunicationDevice`, LE Audio first); the
   bench's "sco" cases (8 kHz call audio, mic near the mouth) end ~99 % right. `mic.device` /
-  `mic.headset` in the diagnostics say which mic was used.
+  `mic.headset` in the diagnostics say which mic was used. The owner's phone mic always sounds
+  muffled (~1 % above 1 kHz) yet is read well since steering, so the muffled warning only shows when
+  two utterances in a row also followed nothing (`MuffledWarning`; bench: "MUFFLED WARNING").
 - What the owner's audio showed (29–30 Sept): the phone held in front (17:17, 1.8.2) followed
   3:1–3:3; the phone away from the mouth and the earbuds' microphone both gave a voice 20–25 dB
   darker from 300 Hz up, with no cut-off (third-octave table in diag.yml), which the app's model
@@ -129,7 +132,8 @@
   a ntfy.sh topic, kept 12 h. The sandbox can't reach ntfy.sh: write the time into
   `.github/diag.trigger` and push; `.github/workflows/diag.yml` prints the last 12 h (read it with
   `get_job_logs`). Each app run has a session id (shown in Settings → About). Add events where you
-  need them; never log audio, location or anything personal beyond what's there.
+  need them; never log audio, location or anything personal beyond what's there. Batches stay under
+  4 KB in UTF-8 (Arabic is two bytes a letter): ntfy turns a longer message into an attachment.
 
 ## Content rules
 - Qur'an text: Tanzil Uthmani, rendered verbatim, never altered; keep Tanzil's notice.

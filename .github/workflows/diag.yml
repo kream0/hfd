@@ -32,7 +32,15 @@ jobs:
               if m.get("event") != "message":
                   continue
               att = m.get("attachment")
-              if att:
+              body = m.get("message", "")
+              if att and not att["name"].endswith(".wav"):
+                  # A batch of events over 4 KB (before 1.14.2) became an attachment.
+                  try:
+                      body = urllib.request.urlopen(att["url"]).read().decode("utf-8")
+                  except Exception as e:
+                      print("events", att["name"], "not available:", e)
+                      continue
+              elif att:
                   # ntfy keeps attachments ~3 h: older ones are gone (404).
                   try:
                       urllib.request.urlretrieve(att["url"], "rec/" + att["name"])
@@ -40,7 +48,7 @@ jobs:
                   except Exception as e:
                       print("recording", att["name"], "not available:", e)
                   continue
-              for line in m.get("message", "").splitlines():
+              for line in body.splitlines():
                   try:
                       d = json.loads(line)
                   except ValueError:
@@ -49,6 +57,24 @@ jobs:
                   s, e = d.pop("s", "?"), d.pop("e", "?")
                   print(t, s, e, " ".join(f"{k}={v}" for k, v in d.items()))
           '
+          # A recording over a minute comes in parts (<name>.part<i>of<n>.wav, Diag.attach): joined.
+          python3 - <<'PY'
+          import glob, re, os, struct
+          groups = {}
+          for path in glob.glob("rec/*.part*of*.wav"):
+              m = re.match(r"(.*)\.part(\d+)of(\d+)\.wav$", path)
+              groups.setdefault(m.group(1), []).append((int(m.group(2)), int(m.group(3)), path))
+          for base, parts in groups.items():
+              parts.sort()
+              pcm = b""
+              for _, _, path in parts:
+                  raw = open(path, "rb").read()
+                  pcm += raw[raw.find(b"data") + 8:]
+                  os.remove(path)
+              head = b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, 16000, 32000, 2, 16) + b"data" + struct.pack("<I", len(pcm))
+              open(base + ".wav", "wb").write(head + pcm)
+              print("joined", base + ".wav", f"{len(parts)}/{parts[0][1]} parts", f"{len(pcm) / 32000:.1f} s")
+          PY
           ls rec | head -50
       - name: The recordings' sound (level, and where the energy lies)
         run: |
