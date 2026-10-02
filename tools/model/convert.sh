@@ -25,6 +25,15 @@ import sys
 from huggingface_hub import snapshot_download
 snapshot_download(sys.argv[1], local_dir=sys.argv[2], allow_patterns=["*.json", "*.txt", "pytorch_model.bin"])
 PY
+  # convert-h5-to-ggml.py takes the decoder's context from max_length (1024 in Tarteel's base
+  # config, a generation setting) while its weights hold max_target_positions (448): whisper.cpp
+  # then refuses the file ("decoder.positional_embedding has wrong size").
+  python3 - "hf-$size/config.json" <<'PY'
+import json, sys
+c = json.load(open(sys.argv[1]))
+c["max_length"] = c.get("max_target_positions", 448)
+json.dump(c, open(sys.argv[1], "w"), indent=1)
+PY
   mkdir -p "ggml-$size"
   python3 whisper.cpp/models/convert-h5-to-ggml.py "hf-$size" whisper "ggml-$size" >/dev/null
   f16="../out/ggml-$size-ar-quran-f16.bin"

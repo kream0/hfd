@@ -31,6 +31,10 @@ jobs:
           pip install --quiet --index-url https://download.pytorch.org/whl/cpu torch
           pip install --quiet "transformers==4.46.3" huggingface_hub numpy
       - name: Convert and quantize
+        # Base only: the app pins the tiny file's SHA-256 (SpeechModel.DEFAULT), so re-uploading it
+        # must be deliberate (SIZES="tiny base").
+        env:
+          SIZES: base
         run: bash tools/model/convert.sh
       - name: Evaluate on EveryAyah recitations
         run: python3 tools/model/evaluate.py
