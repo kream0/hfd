@@ -21,7 +21,9 @@
   from the matching `## X.Y.Z` section of `CHANGELOG.md` (the first line is what the in-app
   update sheet shows).
 - A release build is never cancelled by a later push (its concurrency group includes the plan
-  mode), but check the release exists (`list_releases`) before telling the owner.
+  mode), but check the release exists (`list_releases`) before telling the owner. Push nothing
+  else until it does: if its publish step fails (a transient 403 on 2 Oct), the next push's build
+  sees an unreleased VERSION and publishes it from its own commit (1.13.0 went out that way).
 - versionCode = major·1,000,000 + minor·1,000 + patch. Plain pushes build a test APK
   (`0.dev.<run>`, Actions artifact) that the app never offers.
 
@@ -60,8 +62,8 @@
   the `speech-model` pre-release (never "latest", so the updater ignores it). The app uses
   `ggml-tiny-ar-quran-q8_0.bin` (43 MB, ~13 % WER, greedy); `SpeechModel.DEFAULT` pins its
   SHA-256, so a re-converted file needs the new checksum there. Keep audio_ctx 0 (a shorter
-  context wrecks this model) and chunks ≤ 20 s (it slips past ~25 s). The base models don't
-  load in whisper.cpp yet. whisper.cpp's version is pinned in `app/src/main/cpp/CMakeLists.txt`
+  context wrecks this model) and chunks ≤ 20 s (it slips past ~25 s). Tarteel's base model doesn't
+  load in whisper.cpp (its decoder positions are 448, whisper.cpp expects 1024). whisper.cpp's version is pinned in `app/src/main/cpp/CMakeLists.txt`
   and in `convert.sh`: change both together. Native code is arm64-v8a only.
 - Reciters: everyayah.com folders (probe new ones with `tools/reference/reciters.py`, run by
   reference.yml). A reciter only published as whole-sūra files (mp3quran.net) gets āya byte
@@ -79,7 +81,22 @@
   right / wrong / missed and how soon they show per case (`ReciteBench`, "Report" step). Cases
   (`tools/recite/prepare.py`) cover noise, a muffled microphone, rumble, restarts, repetitions and
   skipped āyāt. Run it after any change to Recite's logic, and compare with the previous run
-  before releasing. Pushing core changes while a bench runs cancels it.
+  before releasing. Pushing core changes while a bench runs cancels it. Every case runs steered
+  (below); the owner's sessions and the hard cases also free ("free" lines, SUBSET totals). The
+  owner's sessions are scored on the words they recited (`tools/recite/owner.tsv`: add each new
+  session there, from diag.yml's large-v3 transcription). `HFD_BENCH_ONLY` (a regular
+  expression) picks cases for a quick local run (`gradle :core:cleanTest :core:test --tests
+  …ReciteBench` with HFD_BENCH, HFD_DECODER, HFD_MODEL: whisper.cpp and the model build and
+  download here; EveryAyah doesn't, so use the reference clip or darkened copies of it).
+- Steered recognition (2 Oct): the app's tiny model misreads the owner's dark voice (large-v3
+  reads the same sessions word for word). `app/src/main/cpp/bias.h` (one header for the JNI and
+  the bench's decoder) filters whisper.cpp's logits: when the model's best token takes what was
+  heard away from every expected continuation (letter skeletons) and a token that doesn't is
+  within 4 nats, that one is taken. `Follower.expected` gives the continuations with a cost
+  (from the utterance's start 0; a few words back or the āya's start 1; next āyāt 2, 3; with or
+  without the isti'ādha and basmala). Without the costs, a next āya's start made garbage look
+  on track. `tools/experiment` (experiment.yml) decodes whole recordings free / steered / steered
+  toward a wrong passage (a control) / by bigger models: clear recitations come out unchanged.
 - The owner's own sessions: with *Send recordings* on, the app uploads each Recite session's raw
   microphone (`session-<passage>-<S_A>-<S_B>.wav`, ≤ 4 min). `diag.yml` prints its spectrum and a
   large model's transcription, and keeps it in the Actions cache (not published); touch
