@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
 Recognition experiment for Recite (.github/workflows/experiment.yml): each recording decoded by
-the app's model freely, steered toward the passage recited (tools/experiment/bias.h: soft, with
-a margin, or hard), and steered toward another passage (a control: it must not "recognise" it);
-and by bigger models, freely. Prints one line per recording and arm: tokens steered, time, the
+the app's model and Tarteel's base model freely, steered toward the passage recited
+(app/src/main/cpp/bias.h, bonus 6) and toward another passage (a control: it must not "recognise"
+it); and by general models, freely. Prints one line per recording and arm: tokens steered, time, the
 model's mean log-probability of the tokens, the text.
 Usage: run.py <work dir> <recordings…>  (passage from the name: …-session-<passage>-<S_A>-<S_B>…, or <SSSAAA>…)
 """
@@ -55,6 +55,7 @@ def expected_file(name, sura, first, last):
 IMRAN = expected_file("imran", 3, 1, 9)
 MULK = expected_file("mulk", 67, 1, 10)
 KAHF = expected_file("kahf", 18, 1, 10)
+YASIN = expected_file("yasin", 36, 1, 12)
 
 
 def passage_of(path):
@@ -79,17 +80,16 @@ models = {name: os.path.join(work, f) for name, f in [
 for wav in sys.argv[2:]:
     sura = passage_of(wav)
     right = {3: IMRAN, 67: MULK, 18: KAHF}.get(sura)
-    wrong = MULK if sura != 67 else KAHF
+    wrong = MULK if sura != 67 else YASIN
     print(f"\n== {os.path.basename(wav)}", flush=True)
-    arms = [("tiny-quran", "free", None)]
-    if right:
-        arms += [("tiny-quran", "4", right), ("tiny-quran", "8", right), ("tiny-quran", "hard", right)]
-    arms += [("tiny-quran", "8", wrong), ("tiny-quran", "hard", wrong)]
-    for m in ("base-quran", "base", "small"):
+    arms = []
+    for m in ("tiny-quran", "base-quran"):
         arms.append((m, "free", None))
-    if right:
-        arms.append(("base-quran", "hard", right))
-    arms.append(("base-quran", "hard", wrong))
+        if right:
+            arms.append((m, "6", right))
+        arms.append((m, "6", wrong))
+    for m in ("base", "small"):
+        arms.append((m, "free", None))
     for m, mode, exp in arms:
         if m not in models:
             continue
