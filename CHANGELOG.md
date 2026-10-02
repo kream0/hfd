@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.14.2
+The muffled-microphone warning only shows when the text stops following you.
+- Your phone's microphone always hears your voice a little muffled, and Recite now reads it well: the warning showed for nothing. It now shows only when the voice sounds muffled and the text hardly follows (under a word every 4 seconds of recitation), as with the phone in a pocket.
+- A breath or a short sound at the start of an āya no longer lights its first words before you say them.
+- Recordings sent to help improve Recite (Settings → About → Send recordings) now arrive past a minute too: longer ones were refused.
+
 ## 1.14.1
 Recite keeps up with your pace.
 - Each reading of your voice takes about half the time: the speech engine now uses the dot-product and half-float instructions of your phone's processor (539 ms instead of 1178 ms on an ARM test machine).
