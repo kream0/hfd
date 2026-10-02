@@ -1,10 +1,11 @@
-// Steers whisper.cpp's greedy decoding toward the text the reciter is expected to say: at each
-// token, if the model's best guess takes what was heard further from every expected continuation
-// (letter skeletons, as app.hfd.core.recite.Arabic compares words) while a token that doesn't is
-// nearly as likely (within [margin] nats), that one is taken. The model still decides: a word
-// the audio doesn't support stays out of reach, and once what was heard has left the expected
-// text, decoding goes on freely. With [hard], only the expected text may be written (the end of
-// the text otherwise): what the model makes of the audio as that text, and how likely it finds it.
+// Steers whisper.cpp's decoding toward the text the reciter is expected to say ("contextual
+// biasing"): among the model's likeliest next tokens, those that keep what was heard on one of the
+// expected continuations (letter skeletons, as app.hfd.core.recite.Arabic compares words) get a
+// bonus of [bonus] nats, less that continuation's cost (a skipped āya is less likely than going
+// on). With greedy decoding that takes a token on the text when it is nearly as likely as the
+// model's own guess; with beam search, whole readings compete and the one the audio and the text
+// both support best wins. The model still decides: a word the audio doesn't support stays out of
+// reach, and once what was heard has left every continuation, decoding goes on freely.
 // Header-only, shared by the app's JNI (whisper_jni.c) and the bench's decoder
 // (tools/recite/decoder.c), so the bench measures what the phone runs.
 #ifndef HFD_BIAS_H
@@ -16,30 +17,35 @@
 #include <string.h>
 #include "whisper.h"
 
-/** The app's margin (nats): measured on the owner's sessions (tools/experiment, 2 Oct). */
-#define HFD_BIAS_MARGIN 4.0f
+/** The app's bonus (nats): measured on the owner's sessions and the Recite bench (2 Oct). */
+#define HFD_BIAS_BONUS 4.0f
 #define HFD_BIAS_TOP 20
-#define HFD_BIAS_TOP_HARD 200
 #define HFD_MAX_LETTERS 512
+/** Rows kept for this many readings so far (beam search: one per beam, and their parents). */
+#define HFD_CACHE 12
+
+typedef struct {
+    uint16_t heard[HFD_MAX_LETTERS];
+    int len;        // letters of the reading so far
+    int *rows;      // per continuation c and prefix length j: edit distance of the reading to c's first j letters
+    int *mins;      // per continuation: the closest beginning of it
+    unsigned stamp; // last used
+    int valid;
+} hfd_rows;
 
 typedef struct {
     int n;               // expected continuations
     int *len;            // their skeleton lengths
     uint16_t **skel;     // their skeletons
-    int *pen;            // what each costs to begin with (edits): less likely continuations cost more
-    float margin;        // how much less likely (nats) a token on the expected text may be
-    int hard;            // only the expected text
-    int steered;         // tokens chosen by the bias
-    double logprob;      // the model's own log-probabilities of the tokens taken: sum and count
-    int taken;
-    float own;           // the logit of the token taken, before steering
+    int *pen;            // their cost (less likely continuations cost more): bonus − cost
+    float bonus;
+    int steered;         // greedy: tokens taken because of the bonus
     // scratch
     int cap;             // longest skeleton
-    int *row;            // one DP row per continuation, (cap + 1) each, for what was heard so far:
-    uint16_t heard[HFD_MAX_LETTERS];
-    int heard_len;       // its letters (kept between tokens: each step only extends the rows)
-    int cost;
+    hfd_rows cache[HFD_CACHE];
+    unsigned clock;
     int *tmp;
+    int *tmp_mins;
     char *buf;
     size_t buf_cap;
 } hfd_bias;
@@ -84,11 +90,10 @@ static int hfd_skeleton(const char *s, size_t n, uint16_t *out, int cap) {
 }
 
 // Expected continuations: UTF-8 texts separated by '\n', each possibly after "<cost>\t" (0 by default).
-static hfd_bias *hfd_bias_new(const char *expected, float margin, int hard) {
+static hfd_bias *hfd_bias_new(const char *expected, float bonus) {
     hfd_bias *b = calloc(1, sizeof(hfd_bias));
     if (!b) return NULL;
-    b->margin = margin;
-    b->hard = hard;
+    b->bonus = bonus;
     int lines = 1;
     for (const char *p = expected; *p; p++) if (*p == '\n') lines++;
     b->len = calloc(lines, sizeof(int));
@@ -119,22 +124,25 @@ static hfd_bias *hfd_bias_new(const char *expected, float margin, int hard) {
         p = e + 1;
     }
     size_t rows = (size_t) (b->n > 0 ? b->n : 1) * (b->cap + 1);
-    b->row = malloc(sizeof(int) * rows);
+    for (int i = 0; i < HFD_CACHE; i++) {
+        b->cache[i].rows = malloc(sizeof(int) * rows);
+        b->cache[i].mins = malloc(sizeof(int) * (b->n > 0 ? b->n : 1));
+    }
     b->tmp = malloc(sizeof(int) * rows);
+    b->tmp_mins = malloc(sizeof(int) * (b->n > 0 ? b->n : 1));
     return b;
 }
 
 static void hfd_bias_free(hfd_bias *b) {
     if (!b) return;
     for (int i = 0; i < b->n; i++) free(b->skel[i]);
-    free(b->skel); free(b->len); free(b->pen); free(b->row); free(b->tmp); free(b->buf);
+    for (int i = 0; i < HFD_CACHE; i++) { free(b->cache[i].rows); free(b->cache[i].mins); }
+    free(b->skel); free(b->len); free(b->pen); free(b->tmp); free(b->tmp_mins); free(b->buf);
     free(b);
 }
 
-// Rows extended by letters[0..k) (per continuation c, the edit distance of what was heard to
-// c's first j letters); returns the distance to the closest beginning of a continuation.
-static int hfd_extend(const hfd_bias *b, int *rows, const uint16_t *letters, int k) {
-    int best = 1 << 28;
+// Rows extended by letters[0..k); mins gets, per continuation, the distance to its closest beginning.
+static void hfd_extend(const hfd_bias *b, int *rows, int *mins, const uint16_t *letters, int k) {
     for (int c = 0; c < b->n; c++) {
         int *r = rows + (size_t) c * (b->cap + 1);
         const uint16_t *e = b->skel[c];
@@ -152,9 +160,10 @@ static int hfd_extend(const hfd_bias *b, int *rows, const uint16_t *letters, int
                 r[j] = v;
             }
         }
+        int best = 1 << 28;
         for (int j = 0; j <= m; j++) if (r[j] < best) best = r[j];
+        mins[c] = best;
     }
-    return best;
 }
 
 // Letters heard may differ from the expected text's by about one in four (spellings: الصلاة / ٱلصَّلَوٰةَ).
@@ -164,12 +173,52 @@ static void hfd_buf_fit(hfd_bias *b, size_t need) {
     if (need > b->buf_cap) { b->buf = realloc(b->buf, need + 256); b->buf_cap = need + 256; }
 }
 
-// Chooses the token (by raising its logit); returns it.
-static int hfd_bias_steer(hfd_bias *b, struct whisper_context *ctx, const whisper_token_data *tokens, int n_tokens,
-                          float *logits, int best) {
+// The rows for reading heard[0..h): from the cache, extended from the longest reading it holds
+// that this one goes on from (each beam extends its own by a token or so).
+static hfd_rows *hfd_rows_for(hfd_bias *b, const uint16_t *heard, int h) {
+    size_t width = (size_t) b->cap + 1;
+    hfd_rows *from = NULL;
+    for (int i = 0; i < HFD_CACHE; i++) {
+        hfd_rows *e = &b->cache[i];
+        if (e->valid && e->len <= h && memcmp(e->heard, heard, sizeof(uint16_t) * e->len) == 0 && (!from || e->len > from->len)) from = e;
+    }
+    b->clock++;
+    if (from && from->len == h) { from->stamp = b->clock; return from; }
+    // A free slot, or the least recently used one (not the one extended from).
+    hfd_rows *to = NULL;
+    for (int i = 0; i < HFD_CACHE; i++) {
+        hfd_rows *e = &b->cache[i];
+        if (e == from) continue;
+        if (!e->valid) { to = e; break; }
+        if (!to || e->stamp < to->stamp) to = e;
+    }
+    if (from) {
+        memcpy(to->rows, from->rows, sizeof(int) * width * b->n);
+        memcpy(to->mins, from->mins, sizeof(int) * b->n);
+        hfd_extend(b, to->rows, to->mins, heard + from->len, h - from->len);
+    } else {
+        for (int c = 0; c < b->n; c++) for (size_t j = 0; j < width; j++) to->rows[c * width + j] = (int) j;
+        hfd_extend(b, to->rows, to->mins, heard, h);
+    }
+    memcpy(to->heard, heard, sizeof(uint16_t) * h);
+    to->len = h;
+    to->valid = 1;
+    to->stamp = b->clock;
+    return to;
+}
+
+static void hfd_bias_filter(struct whisper_context *ctx, struct whisper_state *state, const whisper_token_data *tokens,
+                            int n_tokens, float *logits, void *user) {
+    (void) state;
+    hfd_bias *b = (hfd_bias *) user;
+    if (!b || b->n == 0) return;
     const whisper_token eot = whisper_token_eot(ctx);
-    if (b->n == 0 || best == eot) return best;
-    // The text so far.
+    const int n_vocab = whisper_n_vocab(ctx);
+    // The model's own guess: if it is the end, so be it.
+    int best = 0;
+    for (int id = 1; id < n_vocab; id++) if (logits[id] > logits[best]) best = id;
+    if (best == eot || !(logits[best] > -INFINITY)) return;
+    // The reading so far.
     size_t n = 0;
     for (int i = 0; i < n_tokens; i++) if (tokens[i].id < eot) n += strlen(whisper_token_to_str(ctx, tokens[i].id));
     hfd_buf_fit(b, n + 64);
@@ -183,22 +232,11 @@ static int hfd_bias_steer(hfd_bias *b, struct whisper_context *ctx, const whispe
     }
     uint16_t heard[HFD_MAX_LETTERS];
     int h = hfd_skeleton(b->buf, n, heard, HFD_MAX_LETTERS);
-    size_t width = (size_t) b->cap + 1;
-    // The rows for what was heard: extended from the last step's when it goes on from it.
-    int common = 0;
-    while (common < b->heard_len && common < h && b->heard[common] == heard[common]) common++;
-    if (n_tokens == 0 || common < b->heard_len) {
-        int least = 1 << 28;
-        for (int c = 0; c < b->n; c++) if (b->pen[c] < least) least = b->pen[c];
-        for (int c = 0; c < b->n; c++) for (int j = 0; j <= b->cap; j++) b->row[c * width + j] = j + b->pen[c];
-        b->heard_len = 0;
-        b->cost = least;
-        common = 0;
-    }
-    if (h > common) b->cost = hfd_extend(b, b->row, heard + common, h - common);
-    memcpy(b->heard, heard, sizeof(uint16_t) * h);
-    b->heard_len = h;
-    int cost = b->cost;
+    hfd_rows *r = hfd_rows_for(b, heard, h);
+    // Continuations still possible.
+    int any = 0;
+    for (int c = 0; c < b->n; c++) if (r->mins[c] <= hfd_tolerance(h)) any = 1;
+    if (!any) return; // off the expected text: decode freely
     // Tokens without a letter in a row (vowel signs, alifs): a fourth one would only wander.
     int bare = 0;
     for (int i = n_tokens - 1; i >= 0 && tokens[i].id < eot; i--) {
@@ -207,24 +245,23 @@ static int hfd_bias_steer(hfd_bias *b, struct whisper_context *ctx, const whispe
         if (hfd_skeleton(t, strlen(t), one, 64) > 0) break;
         bare++;
     }
-    if (!b->hard && cost > hfd_tolerance(h)) return best; // already off the expected text: decode freely
     // The likeliest text tokens.
-    const int want = b->hard ? HFD_BIAS_TOP_HARD : HFD_BIAS_TOP;
-    int top[HFD_BIAS_TOP_HARD];
+    int top[HFD_BIAS_TOP];
     int k = 0;
-    const int n_vocab = whisper_n_vocab(ctx);
     for (int id = 0; id < eot && id < n_vocab; id++) {
         float v = logits[id];
         if (!(v > -INFINITY)) continue;
-        if (k < want) k++;
+        if (k < HFD_BIAS_TOP) k++;
         else if (v <= logits[top[k - 1]]) continue;
         int at = k - 1;
         while (at > 0 && logits[top[at - 1]] < v) { top[at] = top[at - 1]; at--; }
         top[at] = id;
     }
-    // The likeliest token that doesn't take what was heard further from the expected text.
+    // Each gets the bonus of the likeliest continuation it keeps to (no further from it than before).
+    size_t width = (size_t) b->cap + 1;
+    float add[HFD_BIAS_TOP];
     for (int i = 0; i < k; i++) {
-        if (!b->hard && logits[best] - logits[top[i]] > b->margin) return best;
+        add[i] = 0;
         const char *t = whisper_token_to_str(ctx, top[i]);
         size_t l = strlen(t);
         hfd_buf_fit(b, n + l + 1);
@@ -232,42 +269,19 @@ static int hfd_bias_steer(hfd_bias *b, struct whisper_context *ctx, const whispe
         uint16_t all[HFD_MAX_LETTERS];
         int hl = hfd_skeleton(b->buf, n + l, all, HFD_MAX_LETTERS);
         if (hl < h || (hl == h && bare >= 3)) continue;
-        memcpy(b->tmp, b->row, sizeof(int) * width * b->n);
-        if (hfd_extend(b, b->tmp, all + h, hl - h) > cost) continue;
-        if (top[i] != best) {
-            b->own = logits[top[i]];
-            logits[top[i]] = logits[best] + 1.0f;
-            b->steered++;
+        memcpy(b->tmp, r->rows, sizeof(int) * width * b->n);
+        memcpy(b->tmp_mins, r->mins, sizeof(int) * b->n);
+        hfd_extend(b, b->tmp, b->tmp_mins, all + h, hl - h);
+        for (int c = 0; c < b->n; c++) {
+            if (r->mins[c] > hfd_tolerance(h) || b->tmp_mins[c] > r->mins[c]) continue;
+            float bonus = b->bonus - (float) b->pen[c];
+            if (bonus > add[i]) add[i] = bonus;
         }
-        return top[i];
     }
-    if (b->hard) {
-        // Nothing likely goes on with the expected text: it ends here.
-        b->own = logits[eot];
-        logits[eot] = logits[best] + 1.0f;
-        return eot;
-    }
-    return best;
-}
-
-static void hfd_bias_filter(struct whisper_context *ctx, struct whisper_state *state, const whisper_token_data *tokens,
-                            int n_tokens, float *logits, void *user) {
-    (void) state;
-    hfd_bias *b = (hfd_bias *) user;
-    if (!b) return;
-    const int n_vocab = whisper_n_vocab(ctx);
-    float mx = -INFINITY;
-    int best = 0;
-    for (int id = 0; id < n_vocab; id++) if (logits[id] > mx) { mx = logits[id]; best = id; }
-    if (!(mx > -INFINITY)) return;
-    double z = 0;
-    for (int id = 0; id < n_vocab; id++) if (logits[id] > -INFINITY) z += exp(logits[id] - mx);
-    const double lse = mx + log(z);
-    b->own = logits[best];
-    hfd_bias_steer(b, ctx, tokens, n_tokens, logits, best);
-    // The model's own log-probability of the token taken (steering only raised its logit).
-    b->logprob += (double) b->own - lse;
-    b->taken++;
+    for (int i = 0; i < k; i++) logits[top[i]] += add[i];
+    int after = best;
+    for (int i = 0; i < k; i++) if (logits[top[i]] > logits[after]) after = top[i];
+    if (after != best) b->steered++;
 }
 
 #endif

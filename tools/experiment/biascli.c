@@ -1,7 +1,7 @@
 // The app's decoding of one WAV (16 kHz mono 16-bit), freely or steered toward expected text
 // (bias.h), for .github/workflows/experiment.yml.
-// Usage: biascli <model> <wav> <free|hard|margin> [expected.txt (one continuation per line)]
-// Prints: <steered tokens> <ms> <mean log-probability of the tokens, the model's own> <text>
+// Usage: biascli <model> <wav> <free|bonus> [expected.txt (one continuation per line)]; HFD_BEAM=n
+// for beam search. Prints: <greedy tokens steered> <ms> <mean log-probability of the tokens> <text>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +51,7 @@ static char *read_text(const char *path) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 4) { fprintf(stderr, "usage: biascli <model> <wav> <free|hard|margin> [expected.txt]\n"); return 2; }
+    if (argc < 4) { fprintf(stderr, "usage: biascli <model> <wav> <free|bonus> [expected.txt]\n"); return 2; }
     whisper_log_set(quiet, NULL);
     struct whisper_context_params cp = whisper_context_default_params();
     cp.use_gpu = false;
@@ -64,12 +64,14 @@ int main(int argc, char **argv) {
     hfd_bias *bias = NULL;
     if (!free_run && argc > 4) {
         char *expected = read_text(argv[4]);
-        int hard = strcmp(argv[3], "hard") == 0;
-        bias = hfd_bias_new(expected, hard ? 0.0f : (float) atof(argv[3]), hard);
+        bias = hfd_bias_new(expected, (float) atof(argv[3]));
         free(expected);
     }
 
-    struct whisper_full_params p = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+    const char *beam_env = getenv("HFD_BEAM");
+    int beam = beam_env ? atoi(beam_env) : 0;
+    struct whisper_full_params p = whisper_full_default_params(beam > 1 ? WHISPER_SAMPLING_BEAM_SEARCH : WHISPER_SAMPLING_GREEDY);
+    if (beam > 1) p.beam_search.beam_size = beam;
     p.n_threads = 4;
     p.language = "ar";
     p.translate = false;
@@ -83,8 +85,6 @@ int main(int argc, char **argv) {
     p.suppress_blank = true;
     p.audio_ctx = 0;
     if (bias) {
-        // Steered decoding takes less likely tokens on purpose: no fallback to sampling.
-        p.temperature_inc = 0.0f;
         p.logits_filter_callback = hfd_bias_filter;
         p.logits_filter_callback_user_data = bias;
     }
@@ -95,10 +95,7 @@ int main(int argc, char **argv) {
     long ms = (t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000;
     double lp = 0;
     int taken = 0;
-    if (bias) {
-        lp = bias->logprob;
-        taken = bias->taken;
-    } else if (rc == 0) {
+    if (rc == 0) {
         const whisper_token eot = whisper_token_eot(ctx);
         for (int i = 0; i < whisper_full_n_segments(ctx); i++) {
             for (int j = 0; j < whisper_full_n_tokens(ctx, i); j++) {

@@ -58,7 +58,7 @@ Java_app_hfd_recite_Whisper_nativeTranscribe(JNIEnv *env, jclass clazz, jlong ct
         if (text != NULL) {
             (*env)->GetByteArrayRegion(env, expected, 0, len, (jbyte *) text);
             text[len] = 0;
-            bias = hfd_bias_new(text, HFD_BIAS_MARGIN, 0);
+            bias = hfd_bias_new(text, HFD_BIAS_BONUS);
             free(text);
         }
     }

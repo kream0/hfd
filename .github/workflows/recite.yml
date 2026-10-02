@@ -25,6 +25,17 @@ concurrency:
 
 jobs:
   bench:
+    # The app's settings on every case; other settings of the steered decoding on the owner's
+    # sessions and the hard cases, side by side (tools/recite/decoder.c reads them).
+    name: bench (${{ matrix.config.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { name: 'app: greedy, bonus 4', bonus: '4', beam: '0', only: '' }
+          - { name: 'greedy, bonus 6', bonus: '6', beam: '0', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
+          - { name: 'beam 5, bonus 4', bonus: '4', beam: '5', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
+          - { name: 'beam 5, bonus 6', bonus: '6', beam: '5', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -67,6 +78,9 @@ jobs:
           HFD_BENCH: ${{ github.workspace }}/work/bench
           HFD_DECODER: ${{ github.workspace }}/work/decoder
           HFD_MODEL: ${{ github.workspace }}/work/model.bin
+          HFD_BIAS_BONUS: ${{ matrix.config.bonus }}
+          HFD_BEAM: ${{ matrix.config.beam }}
+          HFD_BENCH_ONLY: ${{ matrix.config.only }}
         run: ./gradlew --no-daemon -q :core:test --tests app.hfd.core.recite.ReciteBench
       - name: Report
         if: always()

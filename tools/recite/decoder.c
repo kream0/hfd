@@ -3,7 +3,9 @@
 // stdin (int32 little-endian sample count, float32 samples at 16 kHz mono; then int32 byte count
 // and UTF-8 text of the prompt, the text before: 0 for none; then int32 byte count and UTF-8 text
 // of what the reciter is expected to say, one continuation per line: 0 to decode freely) writes
-// the text heard on one line of stdout. Usage: decoder <model> [threads]
+// the text heard on one line of stdout. Usage: decoder <model> [threads]. Environment (to compare
+// settings on the bench): HFD_BIAS_BONUS (nats), HFD_BEAM (beam size for steered decoding; greedy
+// by default, as the app).
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,10 +38,13 @@ int main(int argc, char **argv) {
         char *expected = malloc(ne + 1);
         if (fread(expected, 1, ne, stdin) != (size_t) ne) { free(pcm); free(prompt); free(expected); break; }
         expected[ne] = 0;
-        const char *margin = getenv("HFD_BIAS_MARGIN");
-        hfd_bias *bias = ne > 0 ? hfd_bias_new(expected, margin ? (float) atof(margin) : HFD_BIAS_MARGIN, 0) : NULL;
+        const char *bonus = getenv("HFD_BIAS_BONUS");
+        hfd_bias *bias = ne > 0 ? hfd_bias_new(expected, bonus ? (float) atof(bonus) : HFD_BIAS_BONUS) : NULL;
+        const char *beam_env = getenv("HFD_BEAM");
+        int beam = bias && beam_env ? atoi(beam_env) : 0;
 
-        struct whisper_full_params p = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+        struct whisper_full_params p = whisper_full_default_params(beam > 1 ? WHISPER_SAMPLING_BEAM_SEARCH : WHISPER_SAMPLING_GREEDY);
+        if (beam > 1) p.beam_search.beam_size = beam;
         p.n_threads = threads;
         p.language = "ar";
         p.translate = false;

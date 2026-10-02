@@ -79,6 +79,8 @@ class Case(
     val id: String, val refs: List<AyahRef>, val wav: String, val spans: Map<AyahRef, Pair<Double, Double>>,
     /** The owner's sessions: the words recited in them, per āya (from listening to them, tools/recite/owner.tsv), if known. */
     val recited: Map<AyahRef, IntRange>? = null,
+    /** The āya where the app stood when the session began (those before it were recited already). */
+    val from: AyahRef? = null,
 ) {
     /** One of the owner's own sessions: when each word was said isn't known (tools/recite/owner.py). */
     val owner: Boolean get() = spans.isEmpty()
@@ -103,7 +105,8 @@ class Case(
                 val range = words?.split('-')?.map(String::toInt)?.let { (w0, w1) -> (w0 - 1)..(w1 - 1) } ?: 0..Int.MAX_VALUE
                 AyahRef(rs, ra) to range
             }
-            return Case(p[0], refs, p[2], spans, recited)
+            val from = p.getOrNull(5)?.takeIf { it.isNotBlank() }?.split(':')?.map(String::toInt)?.let { (s, a) -> AyahRef(s, a) }
+            return Case(p[0], refs, p[2], spans, recited, from)
         }
     }
 }
@@ -120,12 +123,14 @@ class Result(
     val lags: List<Double>,
     val flips: Int, val partials: Int, val finals: Int,
     val detail: String,
+    /** Time the decoder took per call here (the phone's is about 1.25 s + 0.04 s per second of audio, greedy). */
+    val msPerCall: Long = 0,
 ) {
     fun line(): String {
         if (id.startsWith("owner-")) {
             return String.format(
-                Locale.US, "%-34s OWNER'S SESSION: ok %d/%d words recited (wrong %d, missed %d, pending %d)  before them %d missed/%d  after them marked %d/%d  flips %d  calls %d+%d",
-                id, ok, said, wrong, missed, pending, skippedMissed, skipped, unreachedMarked, unreached, flips, partials, finals,
+                Locale.US, "%-34s OWNER'S SESSION: ok %d/%d words recited (wrong %d, missed %d, pending %d)  before them %d missed/%d  after them marked %d/%d  flips %d  calls %d+%d  %d ms/call",
+                id, ok, said, wrong, missed, pending, skippedMissed, skipped, unreachedMarked, unreached, flips, partials, finals, msPerCall,
             )
         }
         val l = lags.sorted()
@@ -133,8 +138,8 @@ class Result(
         val skip = (if (skipped > 0) "  skipped $skippedMissed/$skipped missed" else "") +
             (if (unreachedMarked > 0) "  UNREACHED MARKED $unreachedMarked/$unreached" else "")
         return String.format(
-            Locale.US, "%-34s ok %3d/%-3d wrong %2d missed %2d pending %2d  lag p50 %4.1f p90 %4.1f s  flips %2d  calls %d+%d%s",
-            id, ok, said, wrong, missed, pending, q(0.5), q(0.9), flips, partials, finals, skip,
+            Locale.US, "%-34s ok %3d/%-3d wrong %2d missed %2d pending %2d  lag p50 %4.1f p90 %4.1f s  flips %2d  calls %d+%d  %d ms/call%s",
+            id, ok, said, wrong, missed, pending, q(0.5), q(0.9), flips, partials, finals, msPerCall, skip,
         )
     }
 }
@@ -176,9 +181,19 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private var finals = 0
     private val queue = ArrayDeque<Utterance>()
     private var inFlight: Triple<Utterance, String, Double>? = null
+    private var decodeNanos = 0L
     private val readings = StringBuilder()
 
     fun run(): Result {
+        // Where the app stood when the owner's session began: the āyāt before it done.
+        case.from?.let { from ->
+            val at = targets.indexOfFirst { it.ref == from }
+            if (at > 0) {
+                val position = tracker.startOf(at)
+                tracker.reset(Tracker.Mark(position, Array(n) { if (it < position) WordStatus.OK else WordStatus.PENDING }))
+                last = tracker.status.copyOf()
+            }
+        }
         val seg = Segmenter()
         val frame = Segmenter.FRAME
         var t = 0.0
@@ -222,7 +237,9 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         if (inFlight == null) {
             val u = queue.removeFirstOrNull() ?: return
             if (u.final) finals++ else partials++
+            val started = System.nanoTime()
             val text = decoder.transcribe(Clarity.prepare(u.pcm), expected = if (steer) follower.expected(u.id) else "")
+            decodeNanos += System.nanoTime() - started
             inFlight = Triple(u, text, t + 1.25 + 0.04 * u.seconds)
         }
     }
@@ -309,6 +326,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         return Result(
             case.id, said, ok, wrong, missed, pending, skipped, skippedMissed, unreached, unreachedMarked, lags, flips, partials, finals,
             if (bad > 0 || case.owner) detail.toString() + readings else "",
+            decodeNanos / 1_000_000 / maxOf(1, partials + finals),
         )
     }
 
