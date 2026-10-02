@@ -1,0 +1,86 @@
+name: Word timings
+
+# When each word of the passages starts in each reciter's recording (tools/words/words.py), for
+# the reading view to light up the word being recited while listening. One job per reciter
+# (the app's list, core Reciters.kt), then one commit of app/src/main/assets/audio/words/*.json.
+# The dev sandbox can't reach the audio hosts; read the reports with get_job_logs, and pull
+# before your next push.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'tools/words/**'
+      - '.github/workflows/words.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: words-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    outputs:
+      reciters: ${{ steps.list.outputs.reciters }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: list
+        run: |
+          pip install --quiet numpy
+          ids=$(cd tools/words && python3 -c 'import json, words; print(json.dumps(sorted(words.reciters())))')
+          echo "reciters=$ids" >> "$GITHUB_OUTPUT"
+          echo "$ids"
+
+  words:
+    needs: list
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        reciter: ${{ fromJson(needs.list.outputs.reciters) }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: ffmpeg, numpy
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          pip install --quiet numpy
+      - name: whisper.cpp and the app's speech model
+        run: |
+          mkdir -p work && cd work
+          git clone -q --depth 1 --branch v1.7.6 https://github.com/ggml-org/whisper.cpp
+          cmake -S whisper.cpp -B whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF >/dev/null
+          cmake --build whisper.cpp/build -j"$(nproc)" --config Release --target whisper-cli >/dev/null
+          curl -sSfL -o ggml-tiny-ar-quran-q8_0.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-tiny-ar-quran-q8_0.bin
+          echo "ef01ab441b004f9e6f1ea98d397b43452b3a45efab7c3928ab37af655dde8b52  ggml-tiny-ar-quran-q8_0.bin" | sha256sum -c
+      - name: Word timings
+        run: python3 tools/words/words.py ${{ matrix.reciter }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: words-${{ matrix.reciter }}
+          path: app/src/main/assets/audio/words/${{ matrix.reciter }}.json
+
+  commit:
+    needs: words
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: words-*
+          path: app/src/main/assets/audio/words
+          merge-multiple: true
+      - name: Commit
+        run: |
+          ls -la app/src/main/assets/audio/words
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/assets/audio/words
+          if git diff --cached --quiet; then echo "Word timings unchanged"; exit 0; fi
+          git commit -m "Word timings (tools/words/words.py)"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
