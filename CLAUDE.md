@@ -105,7 +105,9 @@
   toward a wrong passage (a control) / by bigger models: clear recitations come out unchanged.
 - The owner's own sessions: with *Send recordings* on, the app uploads each Recite session's raw
   microphone (`session-<passage>-<S_A>-<S_B>.wav`, ≤ 4 min; past a minute in `.part<i>of<n>.wav` parts,
-  since ntfy.sh refuses attachments over 2 MB with a 413 (`ntfyprobe.yml`), joined by diag.yml). `diag.yml` prints its spectrum and a
+  since ntfy.sh refuses attachments over 2 MB with a 413 (`ntfyprobe.yml`), joined by diag.yml; it
+  also refuses past ~20 MB of attachments in 3 h, about two and a half 4-minute sessions: a session
+  joined from k < n parts lacks its end). `diag.yml` prints its spectrum and a
   large model's transcription, and keeps it in the Actions cache (not published); touch
   `tools/recite/owner.trigger` to replay the kept sessions in `recite.yml` ("OWNER'S SESSION"
   lines, and "+boost" lines with `Clarity`'s highs boost, which the app doesn't use: it made muffled
