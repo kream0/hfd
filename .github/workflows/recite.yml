@@ -32,10 +32,10 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { name: 'app: tiny, greedy, bonus 6', model: model.bin, factor: '1', bonus: '6', beam: '0', only: '' }
-          - { name: 'tiny, greedy, bonus 8', model: model.bin, factor: '1', bonus: '8', beam: '0', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
+          - { name: 'app: tiny, greedy, bonus 6, readings every 0.3 s', model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', only: '' }
+          - { name: 'readings every 1 s', model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '50', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
           # Tarteel's base model: 2.1 times the tiny one's time per reading (experiment.yml, 2 Oct).
-          - { name: 'base, greedy, bonus 6', model: base.bin, factor: '2.1', bonus: '6', beam: '0', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
+          - { name: 'base, greedy, bonus 6', model: base.bin, factor: '2.1', bonus: '6', beam: '0', partial: '15', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -80,6 +80,7 @@ jobs:
           HFD_DECODER: ${{ github.workspace }}/work/decoder
           HFD_MODEL: ${{ github.workspace }}/work/${{ matrix.config.model }}
           HFD_PHONE_FACTOR: ${{ matrix.config.factor }}
+          HFD_PARTIAL_FRAMES: ${{ matrix.config.partial }}
           HFD_BIAS_BONUS: ${{ matrix.config.bonus }}
           HFD_BEAM: ${{ matrix.config.beam }}
           HFD_BENCH_ONLY: ${{ matrix.config.only }}

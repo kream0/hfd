@@ -16,7 +16,7 @@ class Utterance(val id: Int, val pcm: FloatArray, val final: Boolean) {
  * 10 s, or at its quietest moment of the last two seconds at [MAX_FRAMES] (the model reads 30 s
  * windows and slips beyond ~25 s).
  */
-class Segmenter {
+class Segmenter(private val partialFrames: Int = PARTIAL_FRAMES) {
     /**
      * The room's noise level (RMS): down at once to a quieter moment, up slowly — five times
      * slower during speech, or the soft sounds of a slow recitation (a ghunna, a madd) would
@@ -76,7 +76,7 @@ class Segmenter {
             silentFrames >= PAUSE_FRAMES -> listOfNotNull(finish())
             n >= SOFT_MAX_FRAMES && silentFrames >= SHORT_PAUSE_FRAMES -> listOfNotNull(finish())
             n >= MAX_FRAMES -> listOfNotNull(split())
-            n - sizeAtPartial >= PARTIAL_FRAMES && voicedFrames > voicedAtPartial && voicedFrames >= MIN_VOICED_FRAMES -> {
+            n - sizeAtPartial >= partialFrames && voicedFrames > voicedAtPartial && voicedFrames >= MIN_VOICED_FRAMES -> {
                 sizeAtPartial = n
                 voicedAtPartial = voicedFrames
                 listOf(Utterance(id, join(chunk), final = false))

@@ -16,8 +16,9 @@ import kotlin.random.Random
  * EveryAyah recordings of a passage, brought down to the level and noise of the owner's phone
  * microphone) is fed to [Segmenter] frame by frame on a simulated clock; each utterance goes
  * through [Level] to the app's decoding (tools/recite/decoder.c: the JNI's parameters, the same
- * model) and takes the phone's recognition time (1.25 s + 0.04 s per second of audio, from the
- * diagnostics); the text is followed by [Follower]. As in the app, the recogniser is steered toward
+ * model) and takes the phone's recognition time (0.57 s + 0.018 s per second of audio: 1.25 s +
+ * 0.04 s in the diagnostics with the plain ARMv8 build, ×0.46 with ARMv8.2's dot products); the
+ * text is followed by [Follower]. A word heard right once stays right, as on the phone's screen. As in the app, the recogniser is steered toward
  * what the reciter is expected to say ([Follower.expected], app/src/main/cpp/bias.h). Reports how
  * many words end right and how long after being said each word shows. Runs only in
  * .github/workflows/recite.yml (HFD_BENCH set; HFD_BENCH_ONLY, a regular expression, picks cases).
@@ -179,6 +180,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private val tracker = follower.tracker
     private val n = tracker.size
     private val shownAt = DoubleArray(n) { Double.NaN }
+    /** Words heard right in some reading: they stay so (ReciteSession.wasRight). */
+    private val everOk = BooleanArray(n)
     private var last = Array(n) { WordStatus.PENDING }
     private var flips = 0
     private var partials = 0
@@ -198,7 +201,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                 last = tracker.status.copyOf()
             }
         }
-        val seg = Segmenter()
+        val seg = Segmenter(System.getenv("HFD_PARTIAL_FRAMES")?.toIntOrNull() ?: Segmenter.PARTIAL_FRAMES)
         val frame = Segmenter.FRAME
         var t = 0.0
         var i = 0
@@ -244,12 +247,13 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             val started = System.nanoTime()
             val text = decoder.transcribe(Clarity.prepare(u.pcm), expected = if (steer) follower.expected(u.id) else "")
             decodeNanos += System.nanoTime() - started
-            inFlight = Triple(u, text, t + (1.25 + 0.04 * u.seconds) * PHONE_FACTOR)
+            inFlight = Triple(u, text, t + (0.57 + 0.018 * u.seconds) * PHONE_FACTOR)
         }
     }
 
     private fun observe(t: Double) {
         val now = tracker.status
+        for (w in 0 until n) if (now[w] == WordStatus.OK) everOk[w] = true
         for (w in 0 until n) {
             if (now[w] != WordStatus.PENDING && shownAt[w].isNaN()) shownAt[w] = t
             else if (!shownAt[w].isNaN() && now[w] != last[w]) flips++
@@ -282,7 +286,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             var acc = 0.0
             val marks = StringBuilder()
             for ((w, word) in t.words.withIndex()) {
-                val st = tracker.status[flat + w]
+                val st = if (everOk[flat + w]) WordStatus.OK else tracker.status[flat + w]
                 acc += weights[w]
                 if (case.owner && !recitedFlat[flat + w]) {
                     if (flat + w > lastSaid) {
