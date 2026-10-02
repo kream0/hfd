@@ -99,6 +99,9 @@ class ReciteSession(
             for (x in wake) {
                 while (true) {
                     val u = queue.removeFirstOrNull() ?: break
+                    // What the reciter may be saying from where this utterance began: the
+                    // recogniser prefers it among what it nearly hears (a dark or faint voice).
+                    val expected = follower.expected(u.id)
                     val text = withContext(recognizer) {
                         // The phone's speech microphone is faint: at a normal level first (the bench
                         // does the same, Clarity.prepare).
@@ -117,7 +120,7 @@ class ReciteSession(
                                 "zcr" to st.zcr, "bands" to st.bands.joinToString("/"),
                             )
                         }
-                        loadedWhisper()?.transcribe(pcm)
+                        loadedWhisper()?.transcribe(pcm, expected)
                     }
                     if (u.final) _ui.value = _ui.value.copy(pending = (_ui.value.pending - 1).coerceAtLeast(0))
                     if (text != null) onHeard(u.id, text, u.final)

@@ -34,7 +34,7 @@ jobs:
           git clone -q --depth 1 --branch v1.7.6 https://github.com/ggml-org/whisper.cpp
           cmake -S whisper.cpp -B whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF >/dev/null
           cmake --build whisper.cpp/build -j"$(nproc)" --config Release --target whisper whisper-cli >/dev/null
-          gcc -O2 -o biascli ../tools/experiment/biascli.c -I../tools/experiment -Iwhisper.cpp/include -Iwhisper.cpp/ggml/include \
+          gcc -O2 -o biascli ../tools/experiment/biascli.c -I../app/src/main/cpp -Iwhisper.cpp/include -Iwhisper.cpp/ggml/include \
             whisper.cpp/build/src/libwhisper.so -Wl,-rpath,$PWD/whisper.cpp/build/src:$PWD/whisper.cpp/build/ggml/src -lm
           REL=https://github.com/kream0/hfd/releases/download/speech-model
           curl -sSfL -o model.bin $REL/ggml-tiny-ar-quran-q8_0.bin

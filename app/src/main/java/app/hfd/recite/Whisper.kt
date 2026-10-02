@@ -9,11 +9,15 @@ import app.hfd.diag.Diag
  */
 class Whisper private constructor(private var ctx: Long) : AutoCloseable {
 
-    /** What was heard in [pcm] (16 kHz mono, −1…1), or null if recognition failed. */
-    fun transcribe(pcm: FloatArray, threads: Int = THREADS): String? {
+    /**
+     * What was heard in [pcm] (16 kHz mono, −1…1), or null if recognition failed; steered toward
+     * [expected] (what the reciter may be saying, [app.hfd.core.recite.Follower.expected]) if given.
+     */
+    fun transcribe(pcm: FloatArray, expected: String = "", threads: Int = THREADS): String? {
         check(ctx != 0L) { "closed" }
         val started = System.currentTimeMillis()
-        val text = nativeTranscribe(ctx, pcm, threads, audioContext(pcm.size))?.toString(Charsets.UTF_8)?.trim()
+        val bias = expected.takeIf { it.isNotEmpty() }?.toByteArray(Charsets.UTF_8)
+        val text = nativeTranscribe(ctx, pcm, threads, audioContext(pcm.size), bias)?.toString(Charsets.UTF_8)?.trim()
         Diag.log("whisper.text", "seconds" to pcm.size / SAMPLE_RATE.toFloat(), "ms" to System.currentTimeMillis() - started, "threads" to threads, "text" to text)
         return text
     }
@@ -58,6 +62,6 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
 
         @JvmStatic private external fun nativeInit(path: String): Long
         @JvmStatic private external fun nativeFree(ctx: Long)
-        @JvmStatic private external fun nativeTranscribe(ctx: Long, samples: FloatArray, threads: Int, audioCtx: Int): ByteArray?
+        @JvmStatic private external fun nativeTranscribe(ctx: Long, samples: FloatArray, threads: Int, audioCtx: Int, expected: ByteArray?): ByteArray?
     }
 }

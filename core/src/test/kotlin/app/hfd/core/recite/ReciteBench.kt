@@ -17,23 +17,28 @@ import kotlin.random.Random
  * microphone) is fed to [Segmenter] frame by frame on a simulated clock; each utterance goes
  * through [Level] to the app's decoding (tools/recite/decoder.c: the JNI's parameters, the same
  * model) and takes the phone's recognition time (1.25 s + 0.04 s per second of audio, from the
- * diagnostics); the text is followed by [Follower]. Reports how many words end right and how long
- * after being said each word shows. Runs only in .github/workflows/recite.yml (HFD_BENCH set).
+ * diagnostics); the text is followed by [Follower]. As in the app, the recogniser is steered toward
+ * what the reciter is expected to say ([Follower.expected], app/src/main/cpp/bias.h). Reports how
+ * many words end right and how long after being said each word shows. Runs only in
+ * .github/workflows/recite.yml (HFD_BENCH set; HFD_BENCH_ONLY, a regular expression, picks cases).
  */
 class ReciteBench {
     @Test
     fun bench() {
         val dir = System.getenv("HFD_BENCH")
         Assume.assumeTrue("HFD_BENCH not set", dir != null)
+        val only = System.getenv("HFD_BENCH_ONLY")?.takeIf { it.isNotBlank() }?.let(::Regex)
         val cases = File(dir, "cases.tsv").readLines().filter { it.isNotBlank() && !it.startsWith("#") }.map(Case::parse)
+            .filter { only == null || only.containsMatchIn(it.id) }
         val report = StringBuilder()
         val totals = Totals()
-        // These cases also run with each utterance equalised to a speaking voice (Clarity.match):
-        // degraded audio, the owner's sessions, going back / skipping, and clean al-Fātiḥa (it
-        // mustn't hurt a clear voice). (Priming the recogniser with the text before, measured on
-        // 30 Sept, made it worse: 80 % of these words right → 38 %.)
-        val plainTotals = Totals()
-        val matchedTotals = Totals()
+        // These cases also run decoded freely (the app before 2 Oct), to compare: degraded audio,
+        // the owner's sessions, going back / skipping, and clean al-Fātiḥa (steering mustn't hurt a
+        // clear voice). (Measured and not kept: priming the recogniser with the text before, 30 Sept,
+        // 80 % of these words right → 38 %; equalising each utterance to a speaking voice, 1 Oct.)
+        val freeTotals = Totals()
+        val steeredTotals = Totals()
+        val owners = ArrayList<String>()
         Decoder(System.getenv("HFD_DECODER"), System.getenv("HFD_MODEL")).use { decoder ->
             for (c in cases) {
                 val pcm = Wav.read(File(dir, c.wav))
@@ -42,25 +47,27 @@ class ReciteBench {
                 report.append(r.line()).append('\n')
                 if (r.detail.isNotEmpty()) report.append(r.detail)
                 println(r.line())
-                if (c.owner || PRIMED.any { it in c.id } || c.id.startsWith("fatiha-") && c.id.endsWith("-flow")) {
-                    val p = Simulation(c, pcm, decoder, match = true).run()
-                    if (!c.owner) { plainTotals += r; matchedTotals += p }
-                    val line = "+match " + p.line()
+                if (c.owner || COMPARED.any { it in c.id } || c.id.startsWith("fatiha-") && c.id.endsWith("-flow")) {
+                    val p = Simulation(c, pcm, decoder, steer = false).run()
+                    if (!c.owner) { steeredTotals += r; freeTotals += p }
+                    val line = "free   " + p.line()
                     report.append(line).append('\n')
                     if (p.detail.isNotEmpty()) report.append(p.detail)
                     println(line)
+                    if (c.owner) { owners += r.line(); owners += line }
                 }
             }
         }
         report.append('\n').append(totals.line()).append('\n')
-        report.append("SUBSET as heard:   ").append(plainTotals.line()).append('\n')
-        report.append("SUBSET equalised:  ").append(matchedTotals.line()).append('\n')
+        report.append("SUBSET steered: ").append(steeredTotals.line()).append('\n')
+        report.append("SUBSET free:    ").append(freeTotals.line()).append('\n')
+        for (line in owners) report.append(line).append('\n')
         File(dir, "report.txt").writeText(report.toString())
         println(totals.line())
     }
 
     companion object {
-        private val PRIMED = listOf("muffled", "pocket", "noisy", "sco", "-skip", "-again")
+        private val COMPARED = listOf("muffled", "pocket", "noisy", "sco", "-skip", "-again")
     }
 }
 
@@ -68,12 +75,16 @@ class ReciteBench {
  * A recording of [refs] (the passage), with where each āya recited lies in it (the first time,
  * when the reciter went back and said it again).
  */
-class Case(val id: String, val refs: List<AyahRef>, val wav: String, val spans: Map<AyahRef, Pair<Double, Double>>) {
-    /** One of the owner's own sessions: what was said and when isn't known (tools/recite/owner.py). */
+class Case(
+    val id: String, val refs: List<AyahRef>, val wav: String, val spans: Map<AyahRef, Pair<Double, Double>>,
+    /** The owner's sessions: the words recited in them, per āya (from listening to them, tools/recite/owner.tsv), if known. */
+    val recited: Map<AyahRef, IntRange>? = null,
+) {
+    /** One of the owner's own sessions: when each word was said isn't known (tools/recite/owner.py). */
     val owner: Boolean get() = spans.isEmpty()
 
     companion object {
-        /** `id  2:1-5  file.wav  2:1@0.52-2.10,2:2@2.40-8.01,…` */
+        /** `id  2:1-5  file.wav  2:1@0.52-2.10,2:2@2.40-8.01,…  [3:1,3:3#1-8 (owner: words recited)]` */
         fun parse(line: String): Case {
             val p = line.split('\t')
             val (s, range) = p[1].split(':')
@@ -86,7 +97,13 @@ class Case(val id: String, val refs: List<AyahRef>, val wav: String, val spans: 
                 val (t0, t1) = times.split('-').map(String::toDouble)
                 spans.putIfAbsent(AyahRef(rs, ra), t0 to t1)
             }
-            return Case(p[0], refs, p[2], spans)
+            val recited = p.getOrNull(4)?.takeIf { it.isNotBlank() }?.split(',')?.associate { item ->
+                val (ref, words) = if ('#' in item) item.split('#').let { it[0] to it[1] } else item to null
+                val (rs, ra) = ref.split(':').map(String::toInt)
+                val range = words?.split('-')?.map(String::toInt)?.let { (w0, w1) -> (w0 - 1)..(w1 - 1) } ?: 0..Int.MAX_VALUE
+                AyahRef(rs, ra) to range
+            }
+            return Case(p[0], refs, p[2], spans, recited)
         }
     }
 }
@@ -106,7 +123,10 @@ class Result(
 ) {
     fun line(): String {
         if (id.startsWith("owner-")) {
-            return String.format(Locale.US, "%-34s OWNER'S SESSION: ok %d, wrong %d, missed %d, pending %d of %d words  calls %d+%d", id, ok, wrong, missed, pending, said, partials, finals)
+            return String.format(
+                Locale.US, "%-34s OWNER'S SESSION: ok %d/%d words recited (wrong %d, missed %d, pending %d)  before them %d missed/%d  after them marked %d/%d  flips %d  calls %d+%d",
+                id, ok, said, wrong, missed, pending, skippedMissed, skipped, unreachedMarked, unreached, flips, partials, finals,
+            )
         }
         val l = lags.sorted()
         fun q(f: Double) = if (l.isEmpty()) Double.NaN else l[((l.size - 1) * f).toInt()]
@@ -144,7 +164,7 @@ class Totals {
     }
 }
 
-private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val boost: Boolean = false, val match: Boolean = false) {
+private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val steer: Boolean = true) {
     private val targets = case.refs.map { ReciteTarget(it, Arabic.words(Assets.quran.text(it).orEmpty())) }
     private val follower = Follower(targets)
     private val tracker = follower.tracker
@@ -202,7 +222,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         if (inFlight == null) {
             val u = queue.removeFirstOrNull() ?: return
             if (u.final) finals++ else partials++
-            val text = decoder.transcribe(Clarity.prepare(u.pcm, boost, match))
+            val text = decoder.transcribe(Clarity.prepare(u.pcm), expected = if (steer) follower.expected(u.id) else "")
             inFlight = Triple(u, text, t + 1.25 + 0.04 * u.seconds)
         }
     }
@@ -221,8 +241,16 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         var said = 0; var ok = 0; var wrong = 0; var missed = 0; var pending = 0
         var skipped = 0; var skippedMissed = 0
         var unreached = 0; var unreachedMarked = 0
-        // The owner's sessions: every word counted as it ended (what was said isn't known).
+        // The owner's sessions: the words recited in them (all, if not known).
         val lastRecited = if (case.owner) targets.lastIndex else targets.indexOfLast { it.ref in case.spans }
+        val recitedFlat = BooleanArray(n).also { r ->
+            var at = 0
+            for (t in targets) {
+                for (w in t.words.indices) r[at + w] = case.owner && (case.recited?.get(t.ref)?.contains(w) ?: (case.recited == null))
+                at += t.words.size
+            }
+        }
+        val lastSaid = recitedFlat.lastIndexOf(true)
         val lags = ArrayList<Double>()
         val detail = StringBuilder()
         for ((a, t) in targets.withIndex()) {
@@ -235,7 +263,15 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             for ((w, word) in t.words.withIndex()) {
                 val st = tracker.status[flat + w]
                 acc += weights[w]
-                if (span != null || case.owner) {
+                if (case.owner && !recitedFlat[flat + w]) {
+                    if (flat + w > lastSaid) {
+                        unreached++
+                        if (st != WordStatus.PENDING) unreachedMarked++
+                    } else {
+                        skipped++
+                        if (st == WordStatus.MISSED) skippedMissed++
+                    }
+                } else if (span != null || case.owner) {
                     said++
                     when (st) {
                         WordStatus.OK -> ok++
@@ -263,7 +299,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                         WordStatus.PENDING -> "·"
                     },
                 )
-                if ((span != null || case.owner) && st != WordStatus.OK) marks.append("(").append(word).append(")")
+                if ((span != null || recitedFlat[flat + w]) && st != WordStatus.OK) marks.append("(").append(word).append(")")
                 marks.append(' ')
             }
             flat += t.words.size
@@ -283,20 +319,23 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
 
 /**
  * The app's decoding, as a process: 4-byte little-endian sample count, float32 samples, 4-byte
- * prompt length and its UTF-8 bytes → a line of text.
+ * prompt length and its UTF-8 bytes, 4-byte length and UTF-8 bytes of the expected text → a line of text.
  */
 private class Decoder(exe: String, model: String) : AutoCloseable {
     private val process = ProcessBuilder(exe, model).redirectError(ProcessBuilder.Redirect.DISCARD).start()
     private val out = BufferedOutputStream(process.outputStream)
     private val input = process.inputStream.bufferedReader(Charsets.UTF_8)
 
-    fun transcribe(pcm: FloatArray, prompt: String = ""): String {
+    fun transcribe(pcm: FloatArray, prompt: String = "", expected: String = ""): String {
         val text = prompt.toByteArray(Charsets.UTF_8)
-        val buf = ByteBuffer.allocate(4 + 4 * pcm.size + 4 + text.size).order(ByteOrder.LITTLE_ENDIAN)
+        val exp = expected.toByteArray(Charsets.UTF_8)
+        val buf = ByteBuffer.allocate(4 + 4 * pcm.size + 4 + text.size + 4 + exp.size).order(ByteOrder.LITTLE_ENDIAN)
         buf.putInt(pcm.size)
         for (x in pcm) buf.putFloat(x)
         buf.putInt(text.size)
         buf.put(text)
+        buf.putInt(exp.size)
+        buf.put(exp)
         out.write(buf.array())
         out.flush()
         return input.readLine()?.trim() ?: error("decoder stopped")

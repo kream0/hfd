@@ -16,6 +16,34 @@ class TrackerTest {
     private fun target(sura: Int, aya: Int) = AyahRef(sura, aya).let { ReciteTarget(it, Arabic.words(Assets.quran.text(it)!!)) }
 
     @Test
+    fun theRecogniserIsToldWhatMayComeNext() {
+        // Lines as "<cost> <letter skeletons>" (Tanzil's diacritics come in their own order).
+        fun lines(text: String) = text.lines().map { l ->
+            val (cost, words) = l.split('\t')
+            "$cost " + words.split(' ').map(Arabic::skeleton).filter { it.isNotEmpty() }.joinToString(" ")
+        }
+        fun sk(text: String) = text.split(' ').map(Arabic::skeleton).joinToString(" ")
+        val f = Follower((1..4).map { target(112, it) })
+        val start = lines(f.expected(0))
+        // From where the recitation stands (no cost), and after the opening formulas.
+        assertTrue(start.first(), start.first().startsWith("0 " + sk("قل هو الله أحد الله الصمد")))
+        assertTrue(start.any { it.startsWith("0 " + sk("بسم الله الرحمن الرحيم قل هو")) })
+        // The next two āyāt, skipped: at a cost.
+        assertTrue(start.any { it.startsWith("2 " + sk("الله الصمد لم")) })
+        assertTrue(start.any { it.startsWith("3 " + sk("لم يلد ولم يولد")) })
+        // A reading of the utterance being followed starts where the utterance began; the next
+        // utterance from where the recitation stands, or a few words before.
+        f.heard(0, "قل هو الله", final = false)
+        assertTrue(lines(f.expected(0)).first().startsWith("0 " + sk("قل هو")))
+        assertTrue(lines(f.expected(1)).any { it.startsWith("0 " + sk("أحد الله")) })
+        assertTrue(lines(f.expected(1)).none { it.startsWith("0 " + sk("قل")) })
+        assertTrue(lines(f.expected(1)).any { it.startsWith("1 " + sk("قل هو الله أحد")) })
+        // Done: read freely.
+        f.heard(0, "قل هو الله أحد الله الصمد لم يلد ولم يولد ولم يكن له كفوا أحد", final = true)
+        assertEquals("", f.expected(1))
+    }
+
+    @Test
     fun uthmaniAndOrdinarySpellingShareTheirSkeleton() {
         assertEquals(Arabic.skeleton("الحمد"), Arabic.skeleton("ٱلْحَمْدُ"))
         assertEquals(Arabic.skeleton("خالدون"), Arabic.skeleton("خَٰلِدُونَ"))

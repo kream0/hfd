@@ -5,7 +5,8 @@
 // the audio doesn't support stays out of reach, and once what was heard has left the expected
 // text, decoding goes on freely. With [hard], only the expected text may be written (the end of
 // the text otherwise): what the model makes of the audio as that text, and how likely it finds it.
-// Header-only, shared by the app's JNI and the bench's decoder.
+// Header-only, shared by the app's JNI (whisper_jni.c) and the bench's decoder
+// (tools/recite/decoder.c), so the bench measures what the phone runs.
 #ifndef HFD_BIAS_H
 #define HFD_BIAS_H
 
@@ -15,6 +16,8 @@
 #include <string.h>
 #include "whisper.h"
 
+/** The app's margin (nats): measured on the owner's sessions (tools/experiment, 2 Oct). */
+#define HFD_BIAS_MARGIN 4.0f
 #define HFD_BIAS_TOP 20
 #define HFD_BIAS_TOP_HARD 200
 #define HFD_MAX_LETTERS 512
@@ -23,6 +26,7 @@ typedef struct {
     int n;               // expected continuations
     int *len;            // their skeleton lengths
     uint16_t **skel;     // their skeletons
+    int *pen;            // what each costs to begin with (edits): less likely continuations cost more
     float margin;        // how much less likely (nats) a token on the expected text may be
     int hard;            // only the expected text
     int steered;         // tokens chosen by the bias
@@ -31,7 +35,10 @@ typedef struct {
     float own;           // the logit of the token taken, before steering
     // scratch
     int cap;             // longest skeleton
-    int *row;            // one DP row per continuation, (cap + 1) each
+    int *row;            // one DP row per continuation, (cap + 1) each, for what was heard so far:
+    uint16_t heard[HFD_MAX_LETTERS];
+    int heard_len;       // its letters (kept between tokens: each step only extends the rows)
+    int cost;
     int *tmp;
     char *buf;
     size_t buf_cap;
@@ -76,7 +83,7 @@ static int hfd_skeleton(const char *s, size_t n, uint16_t *out, int cap) {
     return k;
 }
 
-// Expected continuations: UTF-8 texts separated by '\n'.
+// Expected continuations: UTF-8 texts separated by '\n', each possibly after "<cost>\t" (0 by default).
 static hfd_bias *hfd_bias_new(const char *expected, float margin, int hard) {
     hfd_bias *b = calloc(1, sizeof(hfd_bias));
     if (!b) return NULL;
@@ -86,16 +93,24 @@ static hfd_bias *hfd_bias_new(const char *expected, float margin, int hard) {
     for (const char *p = expected; *p; p++) if (*p == '\n') lines++;
     b->len = calloc(lines, sizeof(int));
     b->skel = calloc(lines, sizeof(uint16_t *));
+    b->pen = calloc(lines, sizeof(int));
     const char *p = expected;
     while (1) {
         const char *e = strchr(p, '\n');
         size_t n = e ? (size_t) (e - p) : strlen(p);
+        int pen = 0;
+        if (n > 1 && p[0] >= '0' && p[0] <= '9' && p[1] == '\t') {
+            pen = p[0] - '0';
+            p += 2;
+            n -= 2;
+        }
         if (n > 0) {
             uint16_t *s = malloc(sizeof(uint16_t) * (n + 1));
             int k = hfd_skeleton(p, n, s, (int) n);
             if (k > 0) {
                 b->skel[b->n] = s;
                 b->len[b->n] = k;
+                b->pen[b->n] = pen;
                 if (k > b->cap) b->cap = k;
                 b->n++;
             } else free(s);
@@ -112,7 +127,7 @@ static hfd_bias *hfd_bias_new(const char *expected, float margin, int hard) {
 static void hfd_bias_free(hfd_bias *b) {
     if (!b) return;
     for (int i = 0; i < b->n; i++) free(b->skel[i]);
-    free(b->skel); free(b->len); free(b->row); free(b->tmp); free(b->buf);
+    free(b->skel); free(b->len); free(b->pen); free(b->row); free(b->tmp); free(b->buf);
     free(b);
 }
 
@@ -168,6 +183,22 @@ static int hfd_bias_steer(hfd_bias *b, struct whisper_context *ctx, const whispe
     }
     uint16_t heard[HFD_MAX_LETTERS];
     int h = hfd_skeleton(b->buf, n, heard, HFD_MAX_LETTERS);
+    size_t width = (size_t) b->cap + 1;
+    // The rows for what was heard: extended from the last step's when it goes on from it.
+    int common = 0;
+    while (common < b->heard_len && common < h && b->heard[common] == heard[common]) common++;
+    if (n_tokens == 0 || common < b->heard_len) {
+        int least = 1 << 28;
+        for (int c = 0; c < b->n; c++) if (b->pen[c] < least) least = b->pen[c];
+        for (int c = 0; c < b->n; c++) for (int j = 0; j <= b->cap; j++) b->row[c * width + j] = j + b->pen[c];
+        b->heard_len = 0;
+        b->cost = least;
+        common = 0;
+    }
+    if (h > common) b->cost = hfd_extend(b, b->row, heard + common, h - common);
+    memcpy(b->heard, heard, sizeof(uint16_t) * h);
+    b->heard_len = h;
+    int cost = b->cost;
     // Tokens without a letter in a row (vowel signs, alifs): a fourth one would only wander.
     int bare = 0;
     for (int i = n_tokens - 1; i >= 0 && tokens[i].id < eot; i--) {
@@ -176,9 +207,6 @@ static int hfd_bias_steer(hfd_bias *b, struct whisper_context *ctx, const whispe
         if (hfd_skeleton(t, strlen(t), one, 64) > 0) break;
         bare++;
     }
-    size_t width = (size_t) b->cap + 1;
-    for (int c = 0; c < b->n; c++) for (int j = 0; j <= b->cap; j++) b->row[c * width + j] = j;
-    int cost = hfd_extend(b, b->row, heard, h);
     if (!b->hard && cost > hfd_tolerance(h)) return best; // already off the expected text: decode freely
     // The likeliest text tokens.
     const int want = b->hard ? HFD_BIAS_TOP_HARD : HFD_BIAS_TOP;

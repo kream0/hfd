@@ -17,4 +17,4 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(whisper)
 
 add_library(hfdwhisper SHARED whisper_jni.c)
-target_link_libraries(hfdwhisper PRIVATE whisper log)
+target_link_libraries(hfdwhisper PRIVATE whisper log m)

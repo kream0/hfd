@@ -12,6 +12,7 @@ on:
       - 'core/src/main/kotlin/app/hfd/core/recite/**'
       - 'core/src/test/kotlin/app/hfd/core/recite/ReciteBench.kt'
       - 'tools/recite/**'
+      - 'app/src/main/cpp/bias.h'
       - '.github/workflows/recite.yml'
   workflow_dispatch:
 
@@ -25,7 +26,7 @@ concurrency:
 jobs:
   bench:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
@@ -49,8 +50,8 @@ jobs:
           cmake --build whisper.cpp/build -j"$(nproc)" --config Release --target whisper >/dev/null
           curl -sSfL -o model.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-tiny-ar-quran-q8_0.bin
           echo "ef01ab441b004f9e6f1ea98d397b43452b3a45efab7c3928ab37af655dde8b52  model.bin" | sha256sum -c
-          gcc -O2 -o decoder ../tools/recite/decoder.c -Iwhisper.cpp/include -Iwhisper.cpp/ggml/include \
-            whisper.cpp/build/src/libwhisper.so -Wl,-rpath,$PWD/whisper.cpp/build/src:$PWD/whisper.cpp/build/ggml/src
+          gcc -O2 -o decoder ../tools/recite/decoder.c -I../app/src/main/cpp -Iwhisper.cpp/include -Iwhisper.cpp/ggml/include \
+            whisper.cpp/build/src/libwhisper.so -Wl,-rpath,$PWD/whisper.cpp/build/src:$PWD/whisper.cpp/build/ggml/src -lm
       - name: The owner's Recite sessions (kept by diag.yml)
         uses: actions/cache/restore@v5
         with:

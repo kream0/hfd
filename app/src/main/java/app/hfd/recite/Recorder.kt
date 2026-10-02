@@ -99,8 +99,14 @@ class Recorder(private val audio: AudioManager? = null) {
         val linked = headset && link != null && earbuds != null && link.connect(earbuds)
         val onEarbuds = if (linked) open(MediaRecorder.AudioSource.VOICE_COMMUNICATION, link!!.input(earbuds!!)) else null
         if (linked && onEarbuds == null) link!!.release()
+        // The phone's own microphone, asked for by name: with earbuds connected, Android may
+        // otherwise keep their call link (the owner's session of 2 Oct reported it while the
+        // phone's microphone had been chosen).
+        val builtIn = if (onEarbuds == null) {
+            audio?.let { a -> runCatching { a.getDevices(AudioManager.GET_DEVICES_INPUTS).firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC } }.getOrNull() }
+        } else null
         val record = checkNotNull(
-            onEarbuds ?: open(MediaRecorder.AudioSource.VOICE_RECOGNITION, null) ?: open(MediaRecorder.AudioSource.MIC, null),
+            onEarbuds ?: open(MediaRecorder.AudioSource.VOICE_RECOGNITION, builtIn) ?: open(MediaRecorder.AudioSource.MIC, builtIn),
         ) { "microphone unavailable" }
         // Which microphone Android gives: the phone's, or the earbuds'.
         val routed = record.routedDevice
@@ -123,6 +129,7 @@ class Recorder(private val audio: AudioManager? = null) {
         var secMax = 0f
         var secVoiced = 0
         var finals = 0
+        var routedLogged = false
         // The waveform: a bar every WAVE_FRAMES frames, the last WAVE_BARS kept.
         val barLevels = ArrayDeque<Float>()
         val barVoiced = ArrayDeque<Boolean>()
@@ -157,6 +164,12 @@ class Recorder(private val audio: AudioManager? = null) {
                 secMax = maxOf(secMax, seg.rms)
                 if (seg.voiced) secVoiced++
                 if (secFrames == 50) {
+                    // A second in, where Android really routes the recording.
+                    if (!routedLogged) {
+                        routedLogged = true
+                        val r = record.routedDevice
+                        Diag.log("mic.routed", "type" to r?.type, "name" to r?.productName?.toString(), "id" to r?.id, "headset" to onHeadset)
+                    }
                     Diag.log(
                         "mic.second", "avgDb" to dB((secSum / secFrames).toFloat()), "maxDb" to dB(secMax),
                         "noiseDb" to dB(seg.noise), "voiced" to secVoiced, "inSpeech" to seg.inSpeech, "utterances" to finals,

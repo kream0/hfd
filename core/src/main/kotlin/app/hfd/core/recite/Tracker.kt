@@ -66,6 +66,12 @@ class Tracker(val targets: List<ReciteTarget>) {
 
     fun statusOf(aya: Int, word: Int): WordStatus = status[starts[aya] + word]
 
+    /** Flat index of āya [aya]'s first word. */
+    fun startOf(aya: Int): Int = starts[aya]
+
+    /** Words [from] until [to] (flat indices) as written, space-separated. */
+    fun text(from: Int, to: Int): String = flat.subList(from, to).joinToString(" ")
+
     /** Āyāt finished so far (all their words decided), as results. */
     fun finished(): List<AyahResult> = targets.indices.filter { starts[it + 1] <= position && targets[it].words.isNotEmpty() }.map(::resultOf)
 

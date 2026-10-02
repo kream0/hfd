@@ -72,6 +72,40 @@ class Follower(val targets: List<ReciteTarget>) {
     }
 
     /**
+     * What the reciter may be saying in utterance [id], for the recogniser to prefer among what it
+     * nearly hears (app/src/main/cpp/bias.h): the text from where the utterance began; at a cost
+     * (edits the audio must make up for), from a few words before (a phrase said again), from the
+     * start of its āya (started over) and of the next two (skipped); at an āya's start also after
+     * the isti'ādha and the basmala. One continuation per line ("<cost>\t<text>"); empty once the
+     * passage is done (a recitation going back is read freely).
+     */
+    fun expected(id: Int): String {
+        val from = (if (id == current && id > closed) before?.position else null) ?: tracker.position
+        if (from >= tracker.size) return ""
+        val aya = tracker.locate(from).first
+        // Each start and its cost: the cheapest reason to begin there.
+        val starts = sortedMapOf<Int, Int>()
+        fun start(at: Int, cost: Int) { if (at in 0 until tracker.size) starts[at] = minOf(starts[at] ?: cost, cost) }
+        start(from, 0)
+        for (back in 1..BACK_WORDS) start(from - back, 1)
+        start(tracker.startOf(aya), 1)
+        if (aya + 1 < targets.size) start(tracker.startOf(aya + 1), 2)
+        if (aya + 2 < targets.size) start(tracker.startOf(aya + 2), 3)
+        val ayaStarts = targets.indices.map { tracker.startOf(it) }.toSet()
+        val lines = ArrayList<String>()
+        for ((s, cost) in starts) {
+            val text = tracker.text(s, minOf(tracker.size, s + EXPECTED_WORDS))
+            lines += "$cost\t$text"
+            if (s in ayaStarts) {
+                lines += "$cost\t$BASMALA $text"
+                lines += "$cost\t$ISTIADHA $text"
+                lines += "$cost\t$ISTIADHA $BASMALA $text"
+            }
+        }
+        return lines.joinToString("\n")
+    }
+
+    /**
      * The next word shown: what has been followed so far stays, and readings of utterances up to
      * [through] are ignored from now on (the recorder starts a new one).
      */
@@ -101,6 +135,10 @@ class Follower(val targets: List<ReciteTarget>) {
     }
 
     companion object {
+        /** Words before the utterance's start it may begin with (said again). */
+        private const val BACK_WORDS = 3
+        /** An utterance holds at most 20 s of recitation: some forty words. */
+        private const val EXPECTED_WORDS = 50
         private const val ISTIADHA = "أعوذ بالله من الشيطان الرجيم"
         private const val BASMALA = "بسم الله الرحمن الرحيم"
     }

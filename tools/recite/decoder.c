@@ -1,13 +1,15 @@
 // The app's decoding (app/src/main/cpp/whisper_jni.c, nativeTranscribe) as a process, for the
 // Recite bench (core/src/test/.../ReciteBench.kt): loads the model once, then for each request on
-// stdin (int32 little-endian sample count, float32 samples at 16 kHz mono, then int32 byte count
-// and UTF-8 text of the prompt, the text before: 0 for none) writes the text heard on one line of
-// stdout. Usage: decoder <model> [threads]
+// stdin (int32 little-endian sample count, float32 samples at 16 kHz mono; then int32 byte count
+// and UTF-8 text of the prompt, the text before: 0 for none; then int32 byte count and UTF-8 text
+// of what the reciter is expected to say, one continuation per line: 0 to decode freely) writes
+// the text heard on one line of stdout. Usage: decoder <model> [threads]
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "whisper.h"
+#include "bias.h"
 
 static void quiet(enum ggml_log_level level, const char *text, void *user) {}
 
@@ -29,6 +31,13 @@ int main(int argc, char **argv) {
         char *prompt = malloc(np + 1);
         if (fread(prompt, 1, np, stdin) != (size_t) np) { free(pcm); free(prompt); break; }
         prompt[np] = 0;
+        int32_t ne;
+        if (fread(&ne, 4, 1, stdin) != 1 || ne < 0) { free(pcm); free(prompt); break; }
+        char *expected = malloc(ne + 1);
+        if (fread(expected, 1, ne, stdin) != (size_t) ne) { free(pcm); free(prompt); free(expected); break; }
+        expected[ne] = 0;
+        const char *margin = getenv("HFD_BIAS_MARGIN");
+        hfd_bias *bias = ne > 0 ? hfd_bias_new(expected, margin ? (float) atof(margin) : HFD_BIAS_MARGIN, 0) : NULL;
 
         struct whisper_full_params p = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
         p.n_threads = threads;
@@ -44,6 +53,10 @@ int main(int argc, char **argv) {
         p.suppress_blank = true;
         p.audio_ctx = 0;
         if (np > 0) p.initial_prompt = prompt;
+        if (bias) {
+            p.logits_filter_callback = hfd_bias_filter;
+            p.logits_filter_callback_user_data = bias;
+        }
         if (whisper_full(ctx, p, pcm, n) == 0) {
             for (int i = 0; i < whisper_full_n_segments(ctx); i++) {
                 const char *s = whisper_full_get_segment_text(ctx, i);
@@ -55,6 +68,8 @@ int main(int argc, char **argv) {
         fflush(stdout);
         free(pcm);
         free(prompt);
+        free(expected);
+        hfd_bias_free(bias);
     }
     whisper_free(ctx);
     return 0;
