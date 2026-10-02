@@ -239,6 +239,7 @@ class ReciteSession(
         wake.close()
         // Freed on the recognition thread, after any chunk still being recognised.
         scope.launch(recognizer) {
+            whisper?.let(::selfTest)
             whisper?.close()
             whisper = null
         }.invokeOnCompletion { recognizer.close() }
@@ -316,15 +317,14 @@ class ReciteSession(
     private fun loadedWhisper(): Whisper? {
         whisper?.let { return it }
         val file = model() ?: return null
-        return Whisper.load(file.path).also {
-            whisper = it
-            if (it != null) selfTest(it)
-        }
+        return Whisper.load(file.path).also { whisper = it }
     }
 
     /**
-     * Once a run: the model on a reference recitation (al-Ikhlāṣ 112:1, Alafasy), to tell a
-     * recognition problem on the phone from a problem with what the microphone hears.
+     * Once a run, when the session closes (not at its start, where it held up the first readings):
+     * the model on a reference recitation (al-Ikhlāṣ 112:1, Alafasy), to tell a recognition
+     * problem on the phone from a problem with what the microphone hears. (Threads, measured on
+     * the owner's phone on 2 Oct: 4 take 1.38 s a reading, 6 take 1.47 s, 8 take 1.62 s.)
      */
     private fun selfTest(w: Whisper) {
         if (selfTested) return
@@ -333,13 +333,6 @@ class ReciteSession(
         val started = System.currentTimeMillis()
         val text = w.transcribe(pcm)
         Diag.log("whisper.selftest", "expected" to "قُلْ هُوَ ٱللَّهُ أَحَدٌ", "text" to text, "ms" to System.currentTimeMillis() - started)
-        // How long a reading takes with more threads (the phone's 8 cores; the app uses
-        // Whisper.THREADS): the time each reading takes is how far the text lags behind the voice.
-        for (threads in listOf(6, 8, Whisper.THREADS)) {
-            val t0 = System.currentTimeMillis()
-            w.transcribe(pcm, threads = threads)
-            Diag.log("whisper.threads", "threads" to threads, "ms" to System.currentTimeMillis() - t0)
-        }
     }
 
     companion object {

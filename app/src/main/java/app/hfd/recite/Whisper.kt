@@ -36,8 +36,23 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
         /** Big cores do the work; more threads than that only contend. */
         val THREADS: Int = Runtime.getRuntime().availableProcessors().coerceIn(2, 8).let { (it / 2).coerceAtLeast(2) }
 
-        /** False where the native library isn't there (not a 64-bit ARM phone, or tests). */
+        /**
+         * The CPU features the native code is built for (CMakeLists.txt: ARMv8.2 with dot products
+         * and half floats): without them it would stop on an illegal instruction.
+         */
+        private val REQUIRED = listOf("asimddp", "asimdhp")
+
+        private fun cpuFeatures(): Set<String> = runCatching {
+            java.io.File("/proc/cpuinfo").readLines().firstOrNull { it.startsWith("Features") }
+                ?.substringAfter(':')?.trim()?.split(Regex("\\s+"))?.toSet()
+        }.getOrNull().orEmpty()
+
+        /** False where the native library isn't there (not a 64-bit ARM phone, too old a CPU, or tests). */
         val available: Boolean by lazy {
+            val features = cpuFeatures()
+            val missing = REQUIRED.filter { it !in features }
+            Diag.log("whisper.cpu", "features" to features.sorted().joinToString(" "), "missing" to missing.joinToString(" "))
+            if (missing.isNotEmpty()) return@lazy false
             runCatching { System.loadLibrary("hfdwhisper") }
                 .onFailure { Log.w(TAG, "whisper.cpp unavailable", it); Diag.error("whisper.library", it) }
                 .onSuccess { Diag.log("whisper.library", "ok" to true) }

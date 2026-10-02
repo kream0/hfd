@@ -7,8 +7,11 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_SERVER OFF CACHE BOOL "" FORCE)
-# Portable ARMv8 build (no -march=native when cross-compiling), and ggml's own thread pool.
+# Portable build (no -march=native when cross-compiling), and ggml's own thread pool. ARMv8.2 with
+# dot products and half floats (phones since ~2019; Whisper.kt checks the CPU before loading):
+# a reading takes 2.2 times less than with plain ARMv8 (armspeed.yml, 2 Oct: 539 vs 1178 ms).
 set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
+set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16" CACHE STRING "" FORCE)
 set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
     whisper
