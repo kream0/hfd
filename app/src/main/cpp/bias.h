@@ -17,8 +17,12 @@
 #include <string.h>
 #include "whisper.h"
 
-/** The app's bonus (nats): measured on the owner's sessions and the Recite bench (2 Oct). */
-#define HFD_BIAS_BONUS 4.0f
+/**
+ * The app's bonus (nats). Recite bench, 2 Oct (26 hard cases; the owner's 5 sessions, 40 words):
+ * greedy 4: 83.9 %, owner 18/40; greedy 6: 85.2 %, 27/40; beam 5 with 4: 85.3 %, 19/40, with 6:
+ * 84.8 %, 27/40, at twice the time per reading. Free decoding: 80.3 %, 8/40.
+ */
+#define HFD_BIAS_BONUS 6.0f
 #define HFD_BIAS_TOP 20
 #define HFD_MAX_LETTERS 512
 /** Rows kept for this many readings so far (beam search: one per beam, and their parents). */

@@ -32,10 +32,9 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { name: 'app: greedy, bonus 4', bonus: '4', beam: '0', only: '' }
-          - { name: 'greedy, bonus 6', bonus: '6', beam: '0', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
-          - { name: 'beam 5, bonus 4', bonus: '4', beam: '5', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
-          - { name: 'beam 5, bonus 6', bonus: '6', beam: '5', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
+          - { name: 'app: greedy, bonus 6', bonus: '6', beam: '0', only: '' }
+          - { name: 'greedy, bonus 5', bonus: '5', beam: '0', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
+          - { name: 'greedy, bonus 8', bonus: '8', beam: '0', only: 'owner|muffled|pocket|noisy|sco|skip|again|fatiha-[a-z]+-flow$' }
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
