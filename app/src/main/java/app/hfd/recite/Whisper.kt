@@ -50,7 +50,8 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
         /** False where the native library isn't there (not a 64-bit ARM phone, too old a CPU, or tests). */
         val available: Boolean by lazy {
             val features = cpuFeatures()
-            val missing = REQUIRED.filter { it !in features }
+            // Unreadable features (an empty set) don't stop it: only features known to be missing do.
+            val missing = if (features.isEmpty()) emptyList() else REQUIRED.filter { it !in features }
             Diag.log("whisper.cpu", "features" to features.sorted().joinToString(" "), "missing" to missing.joinToString(" "))
             if (missing.isNotEmpty()) return@lazy false
             runCatching { System.loadLibrary("hfdwhisper") }

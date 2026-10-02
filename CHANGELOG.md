@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.14.1
+Recite keeps up with your pace.
+- Each reading of your voice takes about half the time: the speech engine now uses the dot-product and half-float instructions of your phone's processor (539 ms instead of 1178 ms on an ARM test machine).
+- The text follows your voice every 0.3 s instead of every second, and newly recited words appear over 0.3 s instead of 0.7 s.
+- The first words are followed at once: a check that held up the start by about 6 s now runs when you leave Recite.
+- Recite needs a processor with these instructions (ARMv8.2, phones from about 2018 on); without them everything else still works.
+
 ## 1.14.0
 Recite follows your voice better, and what you recited stays white.
 - Recognition is now guided by the passage: among what it almost hears, the app prefers the words you should be saying. Replayed on your own recordings (7 sessions, earbuds and phone), it follows 88 % of the words you recited; clear recitations are read exactly as before.
