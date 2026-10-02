@@ -1,0 +1,28 @@
+name: ntfy limits
+
+# How large an attachment ntfy.sh takes from an anonymous sender (the app's recordings, Diag.attach):
+# puts files of several sizes to a throwaway topic and prints each answer.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - '.github/workflows/ntfyprobe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: |
+          topic="hfd-probe-$(head -c 8 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+          for kb in 1500 1950 2050 2600 5000; do
+            head -c $((kb * 1024)) /dev/urandom > f.bin
+            echo "== $kb KB"
+            curl -sS -o out.txt -w "HTTP %{http_code}\n" -T f.bin -H "Filename: probe-$kb.wav" "https://ntfy.sh/$topic"
+            head -c 400 out.txt; echo
+            sleep 6
+          done
