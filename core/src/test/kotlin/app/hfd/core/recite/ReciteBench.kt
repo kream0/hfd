@@ -244,7 +244,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             val started = System.nanoTime()
             val text = decoder.transcribe(Clarity.prepare(u.pcm), expected = if (steer) follower.expected(u.id) else "")
             decodeNanos += System.nanoTime() - started
-            inFlight = Triple(u, text, t + 1.25 + 0.04 * u.seconds)
+            inFlight = Triple(u, text, t + (1.25 + 0.04 * u.seconds) * PHONE_FACTOR)
         }
     }
 
@@ -336,6 +336,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
 
     companion object {
         const val RATE = Segmenter.RATE.toDouble()
+        /** The phone's time per reading relative to the app's model (a bigger model: HFD_PHONE_FACTOR). */
+        val PHONE_FACTOR = System.getenv("HFD_PHONE_FACTOR")?.toDoubleOrNull() ?: 1.0
     }
 }
 
