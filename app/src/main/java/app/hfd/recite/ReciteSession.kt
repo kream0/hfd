@@ -80,6 +80,9 @@ class ReciteSession(
     private val consumer: Job
     private var heardChunks = 0
     private val muffledWarning = MuffledWarning()
+    /** The last partial reading: utterance, samples read, text. */
+    private class Reading(val id: Int, val samples: Int, val text: String)
+    private var lastRead: Reading? = null
     private val startedAt = System.currentTimeMillis()
     /** When each āya was first finished, and those already written to the log. */
     private val finishedAt = LinkedHashMap<AyahRef, Long>()
@@ -112,6 +115,9 @@ class ReciteSession(
                     // recogniser prefers it among what it nearly hears (a dark or faint voice).
                     val expected = follower.expected(u.id)
                     var muffled = false
+                    // A whole utterance whose voice the last partial read held all of: that reading
+                    // stands for it, and the recogniser is free for what comes next (Utterance.settled).
+                    val read = lastRead?.takeIf { u.final && u.settled > 0 && it.id == u.id && it.samples == u.settled }
                     val text = withContext(recognizer) {
                         // The phone's speech microphone is faint: at a normal level first (the bench
                         // does the same, Clarity.prepare).
@@ -123,14 +129,15 @@ class ReciteSession(
                             // Hardly anything above 1 kHz: a pocket, a hand over the microphone…
                             muffled = Clarity.isMuffled(u.pcm)
                             Diag.log(
-                                "recite.chunk", "n" to heardChunks, "id" to u.id, "seconds" to st.seconds, "muffled" to muffled,
+                                "recite.chunk", "n" to heardChunks, "id" to u.id, "seconds" to st.seconds, "muffled" to muffled, "reused" to (read != null),
                                 "gainDb" to (20 * kotlin.math.log10(gain.toDouble())).toFloat(),
                                 "peakDb" to st.peakDb, "loudDb" to st.loudDb, "quietDb" to st.quietDb, "dc" to st.dc, "clipped" to st.clipped,
                                 "zcr" to st.zcr, "bands" to st.bands.joinToString("/"),
                             )
                         }
-                        loadedWhisper()?.transcribe(pcm, expected)
+                        read?.text ?: loadedWhisper()?.transcribe(pcm, expected)
                     }
+                    if (!u.final && text != null) lastRead = Reading(u.id, u.pcm.size, text)
                     if (u.final) _ui.value = _ui.value.copy(pending = (_ui.value.pending - 1).coerceAtLeast(0))
                     val moved = if (text != null) onHeard(u.id, text, u.final) else 0
                     if (u.final) {
@@ -180,7 +187,7 @@ class ReciteSession(
                 // The recorder counts utterances from 0 each time it starts: they go on after this
                 // session's (the follower ignores ids it is done with).
                 val base = lastId + 1
-                recorder.utterances(capture, headset()).collect { offer(Utterance(base + it.id, it.pcm, it.final)) }
+                recorder.utterances(capture, headset()).collect { offer(Utterance(base + it.id, it.pcm, it.final, it.settled)) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
