@@ -36,7 +36,10 @@ class PlayingWord(
         val playing = if (basmala) item is PlanItem.Basmala && item.ref.sura == ref.sura else item is PlanItem.Ayah && item.ref == ref
         if (!playing) return null
         val t = timings.value?.takeIf { it.reciter == now.reciter.id } ?: return null
-        return t.wordAt(if (basmala) EveryAyah.BASMALA else ref, progress.value.positionMs)
+        // The position of this very item: at a change of āya (or repetition) the player's position
+        // can still be the previous item's end for a moment, which would light a word far in.
+        val p = progress.value.takeIf { it.mediaId == item?.mediaId } ?: return null
+        return t.wordAt(if (basmala) EveryAyah.BASMALA else ref, p.positionMs)
     }
 
     /** The word of [ref] being recited, or null when it isn't playing (or has no timings). */

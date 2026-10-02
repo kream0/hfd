@@ -18,7 +18,7 @@ the text's space-separated tokens that hold letters). A report lists the āyāt 
 were heard (their times are mostly estimates).
 Usage: words.py <reciter id> [sūra …]  (run from the repository root)
 """
-import json, os, re, sys, urllib.request
+import json, os, re, subprocess, sys, urllib.request
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "audio"))
@@ -86,6 +86,26 @@ def chunks(pcm):
             a = cut
         out.append((a, b))
     return out or [(0.0, len(pcm) / align.RATE)]
+
+
+def transcribe(paths):
+    """
+    align.transcribe with times, 40 files per whisper.cpp run; when a run crashes (its DTW aborts on
+    some stretches), each file of it alone, and one that still crashes is left unheard.
+    """
+    out = {}
+    for k in range(0, len(paths), 40):
+        batch = paths[k:k + 40]
+        try:
+            out.update(align.transcribe(batch, times=True))
+        except subprocess.CalledProcessError:
+            for p in batch:
+                try:
+                    out.update(align.transcribe([p], times=True))
+                except subprocess.CalledProcessError:
+                    print("whisper.cpp failed on", os.path.basename(p), flush=True)
+                    out[p] = []
+    return out
 
 
 def place(expected_letters, heard_at, speech):
@@ -169,7 +189,7 @@ def main():
     print(len(speech), "āyāt,", len(jobs), "stretches", flush=True)
 
     # 2. What was heard, and when.
-    heard = align.transcribe([w for _, w, _ in jobs], times=True)
+    heard = transcribe([w for _, w, _ in jobs])
 
     # 3–4. Aligned with each āya's words.
     out, report = {}, []
@@ -201,7 +221,7 @@ def main():
     data = {
         "schema": 1,
         "reciter": rid,
-        "note": "When each word starts, in centiseconds from the start of the āya's audio as the app plays it; tools/audio/words.py.",
+        "note": "When each word starts, in centiseconds from the start of the āya's audio as the app plays it; tools/words/words.py.",
         "words": out,
     }
     path = os.path.join(OUT, f"{rid}.json")

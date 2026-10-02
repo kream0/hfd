@@ -32,7 +32,8 @@ data class PlayerUiState(
     val error: String? = null,
 )
 
-data class PlayerProgress(val positionMs: Long = 0, val bufferedMs: Long = 0)
+/** Position in the item playing, [mediaId] (the controller hears of a new item a little after the service). */
+data class PlayerProgress(val positionMs: Long = 0, val bufferedMs: Long = 0, val mediaId: String? = null)
 
 /** UI-side handle on [PlaybackService] through a Media3 [MediaController]. */
 class PlayerConnection(private val context: Context) {
@@ -97,7 +98,7 @@ class PlayerConnection(private val context: Context) {
             durationMs = c.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0,
             error = c.playerError?.let { it.cause?.message ?: it.errorCodeName },
         )
-        _progress.value = PlayerProgress(c.currentPosition, c.bufferedPosition)
+        _progress.value = PlayerProgress(c.currentPosition, c.bufferedPosition, id)
         if (c.isPlaying) startTicker() else ticker?.cancel()
     }
 
@@ -105,7 +106,7 @@ class PlayerConnection(private val context: Context) {
         if (ticker?.isActive == true) return
         ticker = Graph.scope.launch {
             while (isActive) {
-                controller?.let { _progress.value = PlayerProgress(it.currentPosition, it.bufferedPosition) }
+                controller?.let { _progress.value = PlayerProgress(it.currentPosition, it.bufferedPosition, it.currentMediaItem?.mediaId) }
                 delay(100) // the word being recited is lit from this
             }
         }
