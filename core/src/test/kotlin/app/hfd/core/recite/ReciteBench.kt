@@ -59,7 +59,7 @@ class ReciteBench {
                 }
             }
         }
-        report.append('\n').append(totals.line()).append('\n')
+        report.append('\n').append(totals.line()).append('\n').append(totals.places()).append('\n')
         report.append("SUBSET steered: ").append(steeredTotals.line()).append('\n')
         report.append("SUBSET free:    ").append(freeTotals.line()).append('\n')
         for (line in owners) report.append(line).append('\n')
@@ -82,23 +82,28 @@ class Case(
     val recited: Map<AyahRef, IntRange>? = null,
     /** Where the app stood when the session began, āya and word (what is before was recited already). */
     val from: Pair<AyahRef, Int>? = null,
+    /** When each word of an āya starts in the recording (the reciter's word timings, prepare.py), if known. */
+    val wordStarts: Map<AyahRef, List<Double>> = emptyMap(),
 ) {
     /** One of the owner's own sessions: when each word was said isn't known (tools/recite/owner.py). */
     val owner: Boolean get() = spans.isEmpty()
 
     companion object {
-        /** `id  2:1-5  file.wav  2:1@0.52-2.10,2:2@2.40-8.01,…  [3:1,3:3#1-8 (owner: words recited)]` */
+        /** `id  2:1-5  file.wav  2:1@0.52-2.10~0.52;0.98,2:2@2.40-8.01,…  [3:1,3:3#1-8 (owner: words recited)]` */
         fun parse(line: String): Case {
             val p = line.split('\t')
             val (s, range) = p[1].split(':')
             val (a0, a1) = if ('-' in range) range.split('-').map(String::toInt) else listOf(range.toInt(), range.toInt())
             val refs = (a0..a1).map { AyahRef(s.toInt(), it) }
             val spans = LinkedHashMap<AyahRef, Pair<Double, Double>>()
+            val wordStarts = HashMap<AyahRef, List<Double>>()
             for (item in p.getOrElse(3) { "" }.split(',').filter { it.isNotBlank() }) {
                 val (ref, times) = item.split('@')
                 val (rs, ra) = ref.split(':').map(String::toInt)
-                val (t0, t1) = times.split('-').map(String::toDouble)
-                spans.putIfAbsent(AyahRef(rs, ra), t0 to t1)
+                val (t0, t1) = times.substringBefore('~').split('-').map(String::toDouble)
+                if (spans.putIfAbsent(AyahRef(rs, ra), t0 to t1) == null && '~' in times) {
+                    wordStarts[AyahRef(rs, ra)] = times.substringAfter('~').split(';').map(String::toDouble)
+                }
             }
             val recited = p.getOrNull(4)?.takeIf { it.isNotBlank() }?.split(',')?.associate { item ->
                 val (ref, words) = if ('#' in item) item.split('#').let { it[0] to it[1] } else item to null
@@ -111,7 +116,7 @@ class Case(
                 val (s, a) = ref.split(':').map(String::toInt)
                 AyahRef(s, a) to word
             }
-            return Case(p[0], refs, p[2], spans, recited, from)
+            return Case(p[0], refs, p[2], spans, recited, from, wordStarts)
         }
     }
 }
@@ -132,6 +137,9 @@ class Result(
     val msPerCall: Long = 0,
     /** Whole utterances after which the app pointed out a muffled microphone ([MuffledWarning]). */
     val warned: Int = 0,
+    /** Each lag's word: its āya's first (0), a middle one (1) or the last (2); and whether its end is timed (else guessed). */
+    val places: List<Int> = emptyList(),
+    val timed: Int = 0,
 ) {
     private val warning get() = if (warned > 0) "  MUFFLED WARNING $warned/$finals" else ""
 
@@ -160,12 +168,27 @@ class Totals {
     private var missed = 0
     private var pending = 0
     private val lags = ArrayList<Double>()
+    private val places = ArrayList<Int>()
+    private var timed = 0
     private var cases = 0
 
     operator fun plusAssign(r: Result) {
         said += r.said; ok += r.ok; wrong += r.wrong; missed += r.missed; pending += r.pending
         lags += r.lags
+        places += r.places
+        timed += r.timed
         cases++
+    }
+
+    /** Where the lag lies: by the word's place in its āya (an utterance usually is one). */
+    fun places(): String {
+        fun of(place: Int): String {
+            val l = lags.indices.filter { places.getOrNull(it) == place }.map { lags[it] }.sorted()
+            if (l.isEmpty()) return "none"
+            fun q(f: Double) = l[((l.size - 1) * f).toInt()]
+            return String.format(Locale.US, "p50 %.1f p90 %.1f s, %d of %d over 1 s", q(0.5), q(0.9), l.count { it > 1.0 }, l.size)
+        }
+        return "LAG BY PLACE ($timed of ${lags.size} words timed): āya's first word ${of(0)}; middle ${of(1)}; last ${of(2)}"
     }
 
     fun line(): String {
@@ -284,10 +307,14 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         }
         val lastSaid = recitedFlat.lastIndexOf(true)
         val lags = ArrayList<Double>()
+        val places = ArrayList<Int>()
+        var timed = 0
         val detail = StringBuilder()
         for ((a, t) in targets.withIndex()) {
             val span = case.spans[t.ref]
-            // Each word's end, spread over the āya by its letters.
+            // Each word's end: the next one's start (the āya's end for the last), from the reciter's
+            // word timings; without them, spread over the āya by its letters.
+            val starts = case.wordStarts[t.ref]?.takeIf { it.size == t.words.size }
             val weights = t.words.map { Arabic.skeleton(it).length + 1.0 }
             val total = weights.sum()
             var acc = 0.0
@@ -312,8 +339,16 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                         else -> pending++
                     }
                     if (span != null) {
-                        val end = span.first + (span.second - span.first) * acc / total
-                        if (!shownAt[flat + w].isNaN()) lags += shownAt[flat + w] - end
+                        val end = when {
+                            starts == null -> span.first + (span.second - span.first) * acc / total
+                            w + 1 < starts.size -> starts[w + 1]
+                            else -> span.second
+                        }
+                        if (!shownAt[flat + w].isNaN()) {
+                            lags += shownAt[flat + w] - end
+                            places += when (w) { t.words.lastIndex -> 2; 0 -> 0; else -> 1 }
+                            if (starts != null) timed++
+                        }
                     }
                 } else if (a > lastRecited) {
                     unreached++
@@ -343,6 +378,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             if (bad > 0 || case.owner) detail.toString() + readings else "",
             decodeNanos / 1_000_000 / maxOf(1, partials + finals),
             warned,
+            places,
+            timed,
         )
     }
 

@@ -7,6 +7,7 @@ reciting from memory, brought down to what the owner's phone microphone gives (v
 −38 dBFS at its loudest over low-pitched noise around −60 dBFS, from the diagnostics).
 Writes <out>/<case>.wav (16-bit mono 16 kHz) and <out>/cases.tsv. Usage: prepare.py <out>
 """
+import json
 import os
 import subprocess
 import sys
@@ -15,6 +16,9 @@ import urllib.request
 import numpy as np
 
 RATE = 16000
+# When each word starts in each reciter's āyāt (tools/words/words.py, the app's word highlighting):
+# the bench times how soon each word shows from when it was said, not from a guess.
+WORDS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "app", "src", "main", "assets", "audio", "words")
 UA = "Mozilla/5.0 (X11; Linux x86_64) HFD-recite-bench"
 RECITERS = {
     "maher": "MaherAlMuaiqly128kbps",
@@ -114,13 +118,21 @@ def frame_rms(x, hop=320):
 
 
 def trim(x):
-    """Without the silence before and after the voice (100 ms kept)."""
+    """Without the silence before and after the voice (100 ms kept); and the samples cut before it."""
     e = frame_rms(x)
     on = np.where(e > e.max() * 0.03)[0]
     if len(on) == 0:
-        return x
+        return x, 0
     a, b = max(0, on[0] - 5), min(len(e), on[-1] + 6)
-    return x[a * 320:b * 320]
+    return x[a * 320:b * 320], a * 320
+
+
+def word_starts(reciter):
+    """{"S:A": [centiseconds from the start of the āya's mp3, per word]}, or {} without timings."""
+    try:
+        return json.load(open(os.path.join(WORDS, reciter + ".json"), encoding="utf-8"))["words"]
+    except (OSError, ValueError, KeyError):
+        return {}
 
 
 def noise(n, rng, db, corner=150, floor=0.1):
@@ -161,6 +173,7 @@ def main():
     for passage, reciter, variant, script in CASES:
         sura, first, last = PASSAGES[passage]
         folder = RECITERS[reciter]
+        starts = word_starts(reciter)
         v = VARIANTS[variant]
         gap, tempo = v["gap"], v["tempo"]
         order = script or list(range(first, last + 1))
@@ -169,12 +182,15 @@ def main():
         t = 0.6
         # The basmala before a sūra's first āya (al-Fātiḥa's is its āya 1; at-Tawba has none).
         if order[0] == 1 and sura not in (1, 9):
-            b = trim(decode(fetch(folder, 1, 1, cache), tempo, v.get("af")))
+            b = trim(decode(fetch(folder, 1, 1, cache), tempo, v.get("af")))[0]
             parts += [b, np.zeros(int(gap * RATE), np.float32)]
             t += (len(b) + int(gap * RATE)) / RATE
         for aya in order:
-            x = trim(decode(fetch(folder, sura, aya, cache), tempo, v.get("af")))
-            spans.append(f"{sura}:{aya}@{t:.2f}-{t + len(x) / RATE:.2f}")
+            x, lead = trim(decode(fetch(folder, sura, aya, cache), tempo, v.get("af")))
+            end = t + len(x) / RATE
+            # Its words' starts here: the mp3's times, at the tempo, less what trim cut before.
+            words = [min(end, max(t, t + c / 100 / tempo - lead / RATE)) for c in starts.get(f"{sura}:{aya}", [])]
+            spans.append(f"{sura}:{aya}@{t:.2f}-{end:.2f}" + ("~" + ";".join(f"{w:.2f}" for w in words) if words else ""))
             parts += [x, np.zeros(int(gap * RATE), np.float32)]
             t += (len(x) + int(gap * RATE)) / RATE
         parts.append(np.zeros(int(0.3 * RATE), np.float32))
