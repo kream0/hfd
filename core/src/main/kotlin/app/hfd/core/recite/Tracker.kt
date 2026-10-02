@@ -267,7 +267,12 @@ class Tracker(val targets: List<ReciteTarget>) {
         if (passed >= 2 && (same < JUMP_MATCH_FRACTION * m || ahead < JUMP_MATCH_FRACTION * span || ahead < enough)) return 0
         // Words up to the last one the chunk reached (a word cut at the end counts whole).
         val lastWord = owner[best - 1]
-        for (w in position..lastWord) status[w] = statusOf(owner.indices.filter { owner[it] == w }, matched, touched, w)
+        val now = (position..lastWord).map { w -> statusOf(owner.indices.filter { owner[it] == w }, matched, touched, w) }
+        // Not one of them right: a breath or a scrap, not the reciter going on (أَهْ, a breath at
+        // 3:5's start, matched اللَّهَ's last letter and lit إِنَّ اللَّهَ two seconds early; the
+        // owner's session of 2 Oct).
+        if (WordStatus.OK !in now) return 0
+        for (w in position..lastWord) status[w] = now[w - position]
         val moved = lastWord + 1 - position
         position = lastWord + 1
         return moved

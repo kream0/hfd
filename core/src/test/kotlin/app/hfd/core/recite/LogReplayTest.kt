@@ -16,14 +16,18 @@ class LogReplayTest {
 
     private val fatiha = (1..7).map { ReciteTarget(AyahRef(1, it), Arabic.words(Assets.quran.text(AyahRef(1, it)).orEmpty())) }
 
-    /** Each session's follower after its readings, and the log lines of its readings. */
-    private fun replay(name: String, targets: List<ReciteTarget> = imran): List<Follower> {
+    /** Each session's follower after its readings (up to the first [until] reading, e.g. "final 6"). */
+    private fun replay(name: String, targets: List<ReciteTarget> = imran, until: String? = null): List<Follower> {
         val sessions = ArrayList<Follower>()
         var base = 0
         var last = -1
         for (line in javaClass.getResourceAsStream("/recite/$name")!!.bufferedReader().readLines()) {
             if (line.isBlank() || line.startsWith("#")) continue
             val parts = line.split(" ", limit = 4)
+            if (until != null && sessions.isNotEmpty() && "${parts[1]} ${parts.getOrNull(2)}" == until) {
+                sessions.last().heard(base + parts[2].toInt(), parts.getOrElse(3) { "" }, final = parts[1] == "final")
+                break
+            }
             when (parts[1]) {
                 "session" -> {
                     sessions += Follower(targets).also { f ->
@@ -82,6 +86,19 @@ class LogReplayTest {
         assertTrue("position ${t.position}, 3:3 starts at $start3", t.position >= start3 + 6)
         val right = (start3 until start3 + 8).count { t.status[it] == WordStatus.OK }
         assertTrue("3:3: $right of 8 right", right >= 5)
+    }
+
+    @Test
+    fun aBreathAtAnAyasStartDoesntLightItsWords() {
+        // 1.14.1, 2 Oct: after 3:4, an utterance of 1.3 s read أَنْ then أَهْ lit 3:5's إِنَّ اللَّهَ,
+        // said two seconds later. أَنْ may be إِنَّ begun; اللَّهَ wasn't heard.
+        val t = replay("owner-1.14.1-imran.log", until = "final 6")[0].tracker
+        val start5 = t.startOf(4)
+        assertTrue("position ${t.position}, 3:5 starts at $start5", t.position <= start5 + 1)
+        // Then 3:5 said whole is followed, right.
+        val f = replay("owner-1.14.1-imran.log")[0]
+        assertEquals(emptyList<Int>(), f.mistakes(5))
+        assertTrue(f.tracker.position >= f.tracker.startOf(5))
     }
 
     @Test
