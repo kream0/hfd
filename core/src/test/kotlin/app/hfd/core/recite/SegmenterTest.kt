@@ -43,30 +43,6 @@ class SegmenterTest {
     }
 
     @Test
-    fun whatWasSaidIsHandedOverWhenTheVoiceStopsAndStandsForTheWhole() {
-        val s = Segmenter()
-        s.feedAll(frames(1.0, 0f))
-        s.feedAll(frames(3.1, 0.01f))
-        val after = frames(1.0, 0f).map { s.feed(it) }
-        val settled = after.indexOfFirst { u -> u.any { !it.final } }
-        val final = after.indexOfFirst { u -> u.any { it.final } }
-        assertTrue("partial after ${settled * 20} ms of silence", settled in 0..Segmenter.SETTLE_FRAMES)
-        assertTrue("final after ${final * 20} ms", final > settled)
-        // It held all the voice: the whole utterance says so, and its reading stands for the final's.
-        assertEquals(after[settled].first().pcm.size, after[final].first().settled)
-    }
-
-    @Test
-    fun voiceAfterTheLastPartialIsReadWhole() {
-        // Cut by the end of the session mid-word: the last partial didn't hold it all.
-        val s = Segmenter()
-        s.feedAll(frames(1.0, 0f))
-        s.feedAll(frames(2.1, 0.01f))
-        val last = s.end()!!
-        assertEquals(0, last.settled)
-    }
-
-    @Test
     fun theNextUtteranceHasTheNextId() {
         val s = Segmenter()
         s.feedAll(frames(1.0, 0f))

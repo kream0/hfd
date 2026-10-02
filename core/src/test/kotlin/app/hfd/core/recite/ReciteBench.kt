@@ -217,8 +217,6 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private var warned = 0
     private val queue = ArrayDeque<Utterance>()
     private var inFlight: Triple<Utterance, String, Double>? = null
-    /** The last partial reading: utterance, samples, text. */
-    private var lastRead: Triple<Int, Int, String>? = null
     private var decodeNanos = 0L
     private val readings = StringBuilder()
 
@@ -232,10 +230,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                 last = tracker.status.copyOf()
             }
         }
-        val seg = Segmenter(
-            System.getenv("HFD_PARTIAL_FRAMES")?.toIntOrNull() ?: Segmenter.PARTIAL_FRAMES,
-            System.getenv("HFD_SETTLE_FRAMES")?.toIntOrNull() ?: Segmenter.SETTLE_FRAMES,
-        )
+        val seg = Segmenter(System.getenv("HFD_PARTIAL_FRAMES")?.toIntOrNull() ?: Segmenter.PARTIAL_FRAMES)
         val frame = Segmenter.FRAME
         var t = 0.0
         var i = 0
@@ -279,17 +274,10 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         if (inFlight == null) {
             val u = queue.removeFirstOrNull() ?: return
             if (u.final) finals++ else partials++
-            // As the app: a whole utterance the last partial read held all of takes that reading.
-            val read = lastRead?.takeIf { u.final && u.settled > 0 && it.first == u.id && it.second == u.settled }
-            if (read != null) {
-                inFlight = Triple(u, read.third, t)
-                return
-            }
             val started = System.nanoTime()
             val text = decoder.transcribe(Clarity.prepare(u.pcm), expected = if (steer) follower.expected(u.id) else "")
             decodeNanos += System.nanoTime() - started
             inFlight = Triple(u, text, t + (0.57 + 0.018 * u.seconds) * PHONE_FACTOR)
-            if (!u.final) lastRead = Triple(u.id, u.pcm.size, text)
         }
     }
 

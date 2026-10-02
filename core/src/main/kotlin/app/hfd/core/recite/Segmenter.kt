@@ -2,12 +2,8 @@ package app.hfd.core.recite
 
 import kotlin.math.sqrt
 
-/**
- * Speech for the recogniser: utterance [id] so far ([final] false), or whole ([final] true). A
- * whole one whose voice the last partial already held all of (only the pause after it is new)
- * says how long that partial was ([settled], samples; else 0): its reading can stand for this one's.
- */
-class Utterance(val id: Int, val pcm: FloatArray, val final: Boolean, val settled: Int = 0) {
+/** Speech for the recogniser: utterance [id] so far ([final] false), or whole ([final] true). */
+class Utterance(val id: Int, val pcm: FloatArray, val final: Boolean) {
     val seconds: Float get() = pcm.size / Segmenter.RATE.toFloat()
 }
 
@@ -20,7 +16,7 @@ class Utterance(val id: Int, val pcm: FloatArray, val final: Boolean, val settle
  * 10 s, or at its quietest moment of the last two seconds at [MAX_FRAMES] (the model reads 30 s
  * windows and slips beyond ~25 s).
  */
-class Segmenter(private val partialFrames: Int = PARTIAL_FRAMES, private val settleFrames: Int = SETTLE_FRAMES) {
+class Segmenter(private val partialFrames: Int = PARTIAL_FRAMES) {
     /**
      * The room's noise level (RMS): down at once to a quieter moment, up slowly — five times
      * slower during speech, or the soft sounds of a slow recitation (a ghunna, a madd) would
@@ -44,7 +40,6 @@ class Segmenter(private val partialFrames: Int = PARTIAL_FRAMES, private val set
     private var voicedFrames = 0
     private var sizeAtPartial = 0
     private var voicedAtPartial = 0
-    private var samplesAtPartial = 0
     private var id = 0
 
     /**
@@ -81,15 +76,10 @@ class Segmenter(private val partialFrames: Int = PARTIAL_FRAMES, private val set
             silentFrames >= PAUSE_FRAMES -> listOfNotNull(finish())
             n >= SOFT_MAX_FRAMES && silentFrames >= SHORT_PAUSE_FRAMES -> listOfNotNull(finish())
             n >= MAX_FRAMES -> listOfNotNull(split())
-            // Every [partialFrames] while the voice goes on, and once it stops ([settleFrames]): that
-            // one holds all that was said, so the whole utterance needn't be read again at the pause.
-            (n - sizeAtPartial >= partialFrames || (settleFrames > 0 && silentFrames == settleFrames)) &&
-                voicedFrames > voicedAtPartial && voicedFrames >= MIN_VOICED_FRAMES -> {
+            n - sizeAtPartial >= partialFrames && voicedFrames > voicedAtPartial && voicedFrames >= MIN_VOICED_FRAMES -> {
                 sizeAtPartial = n
                 voicedAtPartial = voicedFrames
-                val pcm = join(chunk)
-                samplesAtPartial = pcm.size
-                listOf(Utterance(id, pcm, final = false))
+                listOf(Utterance(id, join(chunk), final = false))
             }
             else -> emptyList()
         }
@@ -119,8 +109,7 @@ class Segmenter(private val partialFrames: Int = PARTIAL_FRAMES, private val set
     }
 
     private fun finish(): Utterance? {
-        val settled = if (sizeAtPartial > 0 && voicedFrames == voicedAtPartial) samplesAtPartial else 0
-        val u = if (voicedFrames >= MIN_VOICED_FRAMES) Utterance(id++, join(chunk), final = true, settled) else null
+        val u = if (voicedFrames >= MIN_VOICED_FRAMES) Utterance(id++, join(chunk), final = true) else null
         chunk.clear()
         chunkRms.clear()
         inSpeech = false
@@ -164,13 +153,6 @@ class Segmenter(private val partialFrames: Int = PARTIAL_FRAMES, private val set
          * means each reading starts with the voice up to 0.3 s before, not up to 1 s.
          */
         const val PARTIAL_FRAMES = 15
-        /**
-         * The voice stopped this long (100 ms): what was said is handed over at once, and its
-         * reading stands for the whole utterance's ([Utterance.settled]). The final reading
-         * otherwise held the recogniser ~0.7 s just as the next āya began: its first word showed
-         * last (bench, 2 Oct: p90 1.6 s, against 1.0 s for the others).
-         */
-        const val SETTLE_FRAMES = 5
         private const val SOFT_MAX_FRAMES = 500 // 10 s
         const val MAX_FRAMES = 1000 // 20 s
         private const val SPLIT_SEARCH_FRAMES = 100
