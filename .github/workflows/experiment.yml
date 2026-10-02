@@ -1,0 +1,81 @@
+name: Recognition experiment
+
+# tools/experiment: the app's model steered toward the passage recited (bias.h) against free
+# decoding and bigger models, on the owner's kept Recite sessions (Actions cache, from diag.yml)
+# and on EveryAyah recitations, clear and darkened like the owner's microphone. Read the "Run"
+# step's log.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'tools/experiment/**'
+      - '.github/workflows/experiment.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: experiment-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - name: ffmpeg, numpy, whisper.cpp, models
+        timeout-minutes: 20
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          pip install --quiet numpy
+          mkdir -p work && cd work
+          git clone -q --depth 1 --branch v1.7.6 https://github.com/ggml-org/whisper.cpp
+          cmake -S whisper.cpp -B whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF >/dev/null
+          cmake --build whisper.cpp/build -j"$(nproc)" --config Release --target whisper whisper-cli >/dev/null
+          gcc -O2 -o biascli ../tools/experiment/biascli.c -I../tools/experiment -Iwhisper.cpp/include -Iwhisper.cpp/ggml/include \
+            whisper.cpp/build/src/libwhisper.so -Wl,-rpath,$PWD/whisper.cpp/build/src:$PWD/whisper.cpp/build/ggml/src -lm
+          REL=https://github.com/kream0/hfd/releases/download/speech-model
+          curl -sSfL -o model.bin $REL/ggml-tiny-ar-quran-q8_0.bin
+          echo "ef01ab441b004f9e6f1ea98d397b43452b3a45efab7c3928ab37af655dde8b52  model.bin" | sha256sum -c
+          curl -sSfL -o base-quran.bin $REL/ggml-base-ar-quran-q8_0.bin
+          HF=https://huggingface.co/ggerganov/whisper.cpp/resolve/main
+          curl -sSfL -o base.bin $HF/ggml-base-q8_0.bin || curl -sSfL -o base.bin $HF/ggml-base.bin
+          curl -sSfL -o small.bin $HF/ggml-small-q8_0.bin || curl -sSfL -o small.bin $HF/ggml-small-q5_1.bin
+          ls -l *.bin
+          # Does the Qur'an base model load? (whisper.cpp's own message)
+          ffmpeg -loglevel error -f lavfi -i "sine=frequency=440:duration=1" -ar 16000 -ac 1 beep.wav
+          whisper.cpp/build/bin/whisper-cli -m base-quran.bin -f beep.wav -l ar 2>&1 | grep -iE "error|fail|mismatch|wrong|whisper_model_load" | head -20 || true
+      - name: The owner's Recite sessions (kept by diag.yml)
+        uses: actions/cache/restore@v5
+        with:
+          path: owner-rec
+          key: owner-rec-none
+          restore-keys: owner-rec-
+      - name: EveryAyah recitations, clear and darkened
+        run: |
+          mkdir -p work/clips && cd work/clips
+          for f in Husary_128kbps/003002 Husary_128kbps/003003 Alafasy_128kbps/067001 Alafasy_128kbps/067002; do
+            curl -sSfL -o x.mp3 "https://everyayah.com/data/$f.mp3"
+            ffmpeg -loglevel error -y -i x.mp3 -ar 16000 -ac 1 "$(basename $f)-$(dirname $f | cut -d_ -f1).wav"
+          done
+          rm -f x.mp3
+          python3 - <<'PY'
+          import glob, wave, numpy as np
+          rng = np.random.default_rng(1)
+          for path in sorted(glob.glob("*.wav")):
+              w = wave.open(path)
+              x = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float64) / 32768
+              X = np.fft.rfft(x); f = np.fft.rfftfreq(len(x), 1 / 16000)
+              # Like the owner's microphone: ~25 dB darker from 300 Hz up, faint, a little hiss.
+              g = np.where(f < 300, 0, np.minimum(25, 25 * np.log2(np.maximum(f, 300) / 300) / 2))
+              y = np.fft.irfft(X * 10 ** (-g / 20), len(x))
+              y = y / np.abs(y).max() * 10 ** (-30 / 20) + rng.normal(0, 10 ** (-62 / 20), len(x))
+              o = wave.open(path.replace(".wav", "-dark.wav"), "wb")
+              o.setnchannels(1); o.setsampwidth(2); o.setframerate(16000)
+              o.writeframes((np.clip(y, -1, 1) * 32767).astype("<i2").tobytes()); o.close()
+          PY
+          ls
+      - name: Run
+        run: python3 tools/experiment/run.py work owner-rec/*.wav work/clips/*.wav
