@@ -63,3 +63,8 @@ jobs:
               --output_dir out/ctx --config_file ext_v$v.json 2>&1 | tail -5
           done
           ls -la out/ctx || true
+      - name: Which Hexagon the Snapdragon 7 Gen 4 (SM7750) has, by Qualcomm's SDK
+        continue-on-error: true
+        run: |
+          grep -rIl -i "sm7750\|7 gen 4\|SM7750" $QNN_SDK_ROOT 2>/dev/null | head -10
+          grep -rIh -i -B2 -A6 "sm7750" $QNN_SDK_ROOT 2>/dev/null | head -60
