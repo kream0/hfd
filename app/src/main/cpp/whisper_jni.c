@@ -1,7 +1,10 @@
 // JNI bridge to whisper.cpp for app.hfd.recite.Whisper: load a model, transcribe a chunk of
 // 16 kHz mono audio (steered toward the text expected, bias.h), free the model. One context is
 // used from one thread at a time.
+#define _GNU_SOURCE
 #include <jni.h>
+#include <errno.h>
+#include <sched.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -36,6 +39,16 @@ Java_app_hfd_recite_Whisper_nativeBackends(JNIEnv *env, jclass clazz) {
     char info[1024];
     snprintf(info, sizeof(info), "%s %s", chosen, whisper_print_system_info());
     return (*env)->NewStringUTF(env, info);
+}
+
+// Keeps the calling thread, and the threads ggml starts from it for each computation (they inherit
+// it), on the cores in [mask] (bit i: core i). Returns 0, or the error.
+JNIEXPORT jint JNICALL
+Java_app_hfd_recite_Whisper_nativePin(JNIEnv *env, jclass clazz, jlong mask) {
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    for (int i = 0; i < 64; i++) if (((unsigned long long) mask >> i) & 1) CPU_SET(i, &set);
+    return sched_setaffinity(0, sizeof(set), &set) == 0 ? 0 : errno;
 }
 
 JNIEXPORT jlong JNICALL

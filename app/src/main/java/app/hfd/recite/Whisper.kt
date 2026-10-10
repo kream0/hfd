@@ -15,13 +15,23 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
      */
     fun transcribe(pcm: FloatArray, expected: String = "", threads: Int = THREADS): String? {
         check(ctx != 0L) { "closed" }
+        // Measured on the phone: every other reading on the big cores only (a thread each), the
+        // others where the system puts them (whisper.text: pinned, ms).
+        val pinned = BIG_CORES != 0L && readings++ % 2 == 0
+        val n = if (pinned) java.lang.Long.bitCount(BIG_CORES).coerceAtMost(8) else threads
+        val pin = nativePin(if (pinned) BIG_CORES else -1L)
         val started = System.currentTimeMillis()
         val bias = expected.takeIf { it.isNotEmpty() }?.toByteArray(Charsets.UTF_8)
-        val text = nativeTranscribe(ctx, pcm, threads, audioContext(pcm.size), bias)?.toString(Charsets.UTF_8)?.trim()
+        val text = nativeTranscribe(ctx, pcm, n, audioContext(pcm.size), bias)?.toString(Charsets.UTF_8)?.trim()
         // The text is in recite.partial / recite.heard (and whisper.selftest).
-        Diag.log("whisper.text", "seconds" to pcm.size / SAMPLE_RATE.toFloat(), "ms" to System.currentTimeMillis() - started, "threads" to threads)
+        Diag.log(
+            "whisper.text", "seconds" to pcm.size / SAMPLE_RATE.toFloat(), "ms" to System.currentTimeMillis() - started,
+            "threads" to n, "pinned" to pinned, "pinError" to pin.takeIf { it != 0 },
+        )
         return text
     }
+
+    private var readings = 0
 
     override fun close() {
         if (ctx != 0L) {
@@ -36,6 +46,20 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
 
         /** Big cores do the work; more threads than that only contend. */
         val THREADS: Int = Runtime.getRuntime().availableProcessors().coerceIn(2, 8).let { (it / 2).coerceAtLeast(2) }
+
+        /**
+         * The fast cores, as a mask (bit i: core i): those within 80 % of the top speed (a
+         * Snapdragon 7 Gen 4's five Cortex-A720s, not its three A520s). 0 if unknown or all alike.
+         */
+        private val BIG_CORES: Long by lazy {
+            val khz = (0 until 32).map { cpu ->
+                runCatching { java.io.File("/sys/devices/system/cpu/cpu$cpu/cpufreq/cpuinfo_max_freq").readText().trim().toLong() }.getOrNull()
+            }
+            val top = khz.filterNotNull().maxOrNull() ?: return@lazy 0L
+            var mask = 0L
+            khz.forEachIndexed { cpu, k -> if (k != null && k >= top * 0.8) mask = mask or (1L shl cpu) }
+            if (java.lang.Long.bitCount(mask) == khz.count { it != null }) 0L else mask
+        }
 
         private fun cpuFeatures(): Set<String> = runCatching {
             java.io.File("/proc/cpuinfo").readLines().firstOrNull { it.startsWith("Features") }
@@ -75,6 +99,7 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
         fun audioContext(samples: Int): Int = 0
 
         @JvmStatic private external fun nativeBackends(): String?
+        @JvmStatic private external fun nativePin(mask: Long): Int
         @JvmStatic private external fun nativeInit(path: String): Long
         @JvmStatic private external fun nativeFree(ctx: Long)
         @JvmStatic private external fun nativeTranscribe(ctx: Long, samples: FloatArray, threads: Int, audioCtx: Int, expected: ByteArray?): ByteArray?
