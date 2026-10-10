@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.14.3
+In Recite, the word to say next is in the same electric blue as while listening.
+- The next word is electric blue on a pill of the same blue, as the word being recited when you listen (it used to pulse from grey to white). With the text hidden, the blue pill alone shows where you are.
+
 ## 1.14.2
 The muffled-microphone warning only shows when the text stops following you.
 - Your phone's microphone always hears your voice a little muffled, and Recite now reads it well: the warning showed for nothing. It now shows only when the voice sounds muffled and the text hardly follows (under a word every 4 seconds of recitation), as with the phone in a pocket.
