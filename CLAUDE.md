@@ -138,9 +138,23 @@
   حيظهم). After a final reading that leaves WRONG/MISSED words, `Follower.toCheck` gives the text it
   covered; the recogniser reads the utterance again held to it letter for letter (`bias.h` hfd_check,
   expected "?\n<text>", costs per word after a tab) and a mistake costing ≤ `CHECK_TOLERANCE` nats is
-  right. Bench: "checks", and prepare.py's swapped-word cases ("SWAPPED WORDS CAUGHT": real
-  mistakes must stay caught). The bench varies run to run with the same code (other runners' CPUs:
-  93.5–93.7 %, pending 69–84): compare configs within one run, not across runs.
+  right; a reading that falls off the text (`CHECK_FAILED`, 99) rights nothing (a skipped āya's
+  short words cost 1–5 on any voice). The app logs each check (`recite.check`, with the costs).
+  Bench: "checks", and prepare.py's swapped-word cases ("SWAPPED WORDS CAUGHT": real mistakes must
+  stay caught; one measured, ينفقون said يؤمنون: 9.7 nats). Words stay white once a final
+  reading (after its check) finds them right (`ReciteSession.confirmed`/`wasRight`, the bench's
+  `everOk`): a partial reading steered to the text lit swapped words, and they stayed white.
+  The bench varies run to run with the same code (other runners' CPUs: 93.5–93.7 %, pending
+  69–84): compare configs within one run; its decoder is now built for AVX2 on every runner.
+- Speed (10 Oct, Nothing Phone (4a) Pro): a reading is ~560 ms + ~22 ms per second of audio
+  (1.14.3), the encoder most of it. Every other reading runs pinned to the big cores, a thread
+  each (`whisper.text` pinned / pinError): compare ms at equal seconds before keeping either.
+  The decoder costs ~4 ms a token on the phone against 0.9 on x86 at 4 threads (the encoder only
+  1.15× slower): watch whether pinning closes that. Parked: a forced prefix decoded in one batch
+  (`tools/speed`, ~15 % of a long reading now; worth it once the encoder is fast). NPU: Tarteel's
+  tiny encoder compiles for Hexagon v73 (`npu.yml`, 18 MB context binary); Qualcomm measures
+  Whisper-Tiny's encoder at ~24 ms on an 8 Gen 2-class NPU; not integrated (the owner decides:
+  ~+22 MB APK, Snapdragon only).
 - `LogReplayTest` replays the owner's logged readings (`core/src/test/resources/recite/*.log`,
   from `recite.partial` / `recite.heard`) through `Follower`: add a log there when a session goes
   wrong, to reproduce it without audio.

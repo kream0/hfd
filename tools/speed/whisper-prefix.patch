@@ -1,0 +1,37 @@
+--- a/include/whisper.h
++++ b/include/whisper.h
+@@ -585,6 +585,11 @@
+         const char * vad_model_path;              // Path to VAD model
+ 
+         whisper_vad_params vad_params;
++
++        // HFD (app.hfd, whisper-prefix.patch): tokens taken as already read after the task tokens,
++        // in one batch (the start of a reading known from the reading before); not in the result.
++        const whisper_token * hfd_prefix_tokens;
++        int                   hfd_prefix_n_tokens;
+     };
+ 
+     // NOTE: this function allocates memory, and it is the responsibility of the caller to free the pointer - see whisper_free_context_params & whisper_free_params()
+--- a/src/whisper.cpp
++++ b/src/whisper.cpp
+@@ -5996,6 +5996,9 @@
+         /*.vad_model_path              =*/ nullptr,
+ 
+         /* vad_params =*/ whisper_vad_default_params(),
++
++        /*.hfd_prefix_tokens   =*/ nullptr,
++        /*.hfd_prefix_n_tokens =*/ 0,
+     };
+ 
+     switch (strategy) {
+@@ -6964,6 +6967,10 @@
+         prompt_init.push_back(whisper_token_not(ctx));
+     }
+ 
++    if (params.hfd_prefix_tokens != nullptr && params.hfd_prefix_n_tokens > 0) {
++        prompt_init.insert(prompt_init.end(), params.hfd_prefix_tokens, params.hfd_prefix_tokens + params.hfd_prefix_n_tokens);
++    }
++
+     int seek = seek_start;
+ 
+     std::vector<whisper_token> prompt;
