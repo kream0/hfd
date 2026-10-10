@@ -5,11 +5,6 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,11 +38,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -127,7 +122,7 @@ fun ReciteScreen(onClose: () -> Unit) {
         LaunchedEffect(ui.next?.first) { ui.next?.first?.let { list.animateScrollToItem(it) } }
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list) {
             itemsIndexed(ui.targets) { a, t ->
-                AyahWords(t, ui.status.getOrNull(a).orEmpty(), current = ui.next?.takeIf { it.first == a }?.second, showText, settings.arabicSize, ui.listening)
+                AyahWords(t, ui.status.getOrNull(a).orEmpty(), current = ui.next?.takeIf { it.first == a }?.second, showText, settings.arabicSize)
             }
             if (ui.done && ui.results.isNotEmpty()) item { Summary(ui.results, onAgain = { f?.let { Graph.openRecite(it.id, ui.targets.map { t -> t.ref }) } }, onClose) }
         }
@@ -223,13 +218,11 @@ private fun ModelCard(model: ModelState) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, showText: Boolean, size: Int, listening: Boolean) {
+private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, showText: Boolean, size: Int) {
     val style = Type.quran(size)
-    val breath = if (current != null && listening) {
-        rememberInfiniteTransition(label = "next").animateFloat(
-            0.35f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "breath",
-        ).value
-    } else 0.6f
+    // The word to say next: electric blue on a pill of the same blue, as the word being recited
+    // while listening (QuranText); hidden text keeps the pill only.
+    val mark = P.wordMark
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         FlowRow(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -237,12 +230,12 @@ private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, 
         ) {
             t.words.forEachIndexed { w, word ->
                 val st = status.getOrElse(w) { WordStatus.PENDING }
-                val next = w == current
+                val next = w == current && st == WordStatus.PENDING
                 val hidden = st == WordStatus.PENDING && !showText
                 val color = when (st) {
                     WordStatus.PENDING -> when {
                         hidden -> Color.Transparent
-                        next -> lerp(P.textFaint, P.text, breath)
+                        next -> mark
                         else -> P.textFaint
                     }
                     WordStatus.OK -> P.text
@@ -255,8 +248,23 @@ private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, 
                     color = color,
                     modifier = Modifier
                         .then(
-                            if (hidden) Modifier.clip(RoundedCornerShape(8.dp)).background(if (next) lerp(P.surfaceHigh, P.outline, breath) else P.surfaceHigh)
-                            else Modifier,
+                            when {
+                                // Drawn as QuranText draws it: hugging the letters, a little wider
+                                // than the word, without moving the words around it.
+                                next -> Modifier.drawBehind {
+                                    val box = this.size
+                                    val inset = box.height * 0.12f
+                                    val pad = 2.dp.toPx()
+                                    drawRoundRect(
+                                        mark.copy(alpha = 0.16f),
+                                        topLeft = Offset(-pad, inset),
+                                        size = Size(box.width + 2 * pad, box.height - 2 * inset),
+                                        cornerRadius = CornerRadius(10.dp.toPx()),
+                                    )
+                                }
+                                hidden -> Modifier.clip(RoundedCornerShape(8.dp)).background(P.surfaceHigh)
+                                else -> Modifier
+                            },
                         )
                         .padding(horizontal = 2.dp),
                 )
