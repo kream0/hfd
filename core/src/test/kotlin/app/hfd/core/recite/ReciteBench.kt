@@ -371,9 +371,11 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                         if (st == WordStatus.MISSED) skippedMissed++
                     }
                 } else if (span != null && (t.ref to w) in case.mistakes) {
-                    // Said wrongly on purpose: caught if it ends a mistake (white would hide it).
+                    // Said wrongly on purpose: caught if it ends a mistake (white would hide it). As
+                    // it ends: a partial reading steered to the text may light it a moment first.
                     swapped++
-                    if (st != WordStatus.OK && st != WordStatus.PENDING) caught++
+                    val end = tracker.status[flat + w]
+                    if (end != WordStatus.OK && end != WordStatus.PENDING) caught++
                 } else if (span != null || case.owner) {
                     said++
                     when (st) {

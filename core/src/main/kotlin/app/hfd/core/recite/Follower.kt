@@ -158,10 +158,13 @@ class Follower(val targets: List<ReciteTarget>) {
 
     /**
      * [costs], each word's cost (nats) reading [check]'s text: its mistakes that cost [tolerance]
-     * or less are right (said, and misheard). Returns how many.
+     * or less are right (said, and misheard). Returns how many. None if the reading couldn't be
+     * held to the text to its end ([CHECK_FAILED]): the utterance isn't that text (an āya skipped,
+     * whose short words fit any voice: لا, إلا at 1–3 nats on the owner's 3:3, 10 Oct).
      */
     fun checked(check: Check, costs: List<Float>, tolerance: Float = CHECK_TOLERANCE): Int {
         if (costs.size != check.opening + check.to - check.from) return 0
+        if (costs.any { it >= CHECK_FAILED }) return 0
         val right = check.words.filter { costs[check.opening + it - check.from] <= tolerance }
         for (w in right) tracker.status[w] = WordStatus.OK
         return right.size
@@ -203,6 +206,8 @@ class Follower(val targets: List<ReciteTarget>) {
          * word 10 or more, or it can't be held to the text (bias.h, al-Ikhlās darkened, 10 Oct).
          */
         const val CHECK_TOLERANCE = 3f
+        /** A word's cost when the reading couldn't be held to the text there (bias.h HFD_CHECK_FAIL). */
+        const val CHECK_FAILED = 99f
         /** Words before the utterance's start it may begin with (said again). */
         private const val BACK_WORDS = 3
         /** An utterance holds at most 20 s of recitation: some forty words. */

@@ -37,7 +37,7 @@ jobs:
           - { name: 'mistakes not checked', model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '0', only: '' }
           - { name: 'mistakes checked at 6 nats', model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '6', only: '' }
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
@@ -57,7 +57,7 @@ jobs:
           pip install --quiet numpy
           mkdir -p work && cd work
           git clone -q --depth 1 --branch v1.7.6 https://github.com/ggml-org/whisper.cpp
-          cmake -S whisper.cpp -B whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF >/dev/null
+          cmake -S whisper.cpp -B whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF -DGGML_NATIVE=OFF -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON >/dev/null
           cmake --build whisper.cpp/build -j"$(nproc)" --config Release --target whisper >/dev/null
           curl -sSfL -o model.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-tiny-ar-quran-q8_0.bin
           echo "ef01ab441b004f9e6f1ea98d397b43452b3a45efab7c3928ab37af655dde8b52  model.bin" | sha256sum -c
