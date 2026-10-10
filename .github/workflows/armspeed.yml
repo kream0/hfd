@@ -1,9 +1,10 @@
 name: ARM speed
 
-# How long a Recite reading takes on an ARM CPU (GitHub's arm64 runner) depending on how
-# whisper.cpp is compiled: the app's generic armv8-a, armv8.2-a with dot products and half floats,
-# armv8.6-a with int8 matrix multiplies too; and with 4, 6 or 8 threads. The phone's own times
-# come from the diagnostics (whisper.text / whisper.threads).
+# How long a Recite reading takes on an ARM CPU (GitHub's arm64 runner, Neoverse N2: like the
+# owner's Snapdragon 7 Gen 4, dot products, half floats and int8 matrix multiplies) depending on
+# how whisper.cpp is compiled: the app's armv8.2-a with dot products and half floats (since 1.14.1),
+# armv8.6-a with int8 matrix multiplies (i8mm) too; 4 threads as the app. Each build reads the
+# reference clip five times (best and median). The phone's own times come from the diagnostics.
 on:
   push:
     branches: ['**']
@@ -26,26 +27,20 @@ jobs:
         run: |
           git clone -q --depth 1 --branch v1.7.6 https://github.com/ggml-org/whisper.cpp
           curl -sSfL -o model.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-tiny-ar-quran-q8_0.bin
-          python3 - <<'PY'
-          import math, struct, wave
-          # 6 s of a voice-like signal (the reading's cost hardly depends on the audio: 30 s window).
-          w = wave.open("clip.wav", "wb"); w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000)
-          w.writeframes(b"".join(struct.pack("<h", int(3000 * math.sin(2 * math.pi * 180 * i / 16000) * (1 + math.sin(i / 900)))) for i in range(16000 * 6)))
-          w.close()
-          PY
-          for arch in armv8-a armv8.2-a+dotprod+fp16 armv8.6-a+dotprod+fp16+i8mm; do
+          # The app's reference clip (al-Ikhlās 112:1), 2.9 s: the reading's cost hardly depends on the audio (30 s window).
+          cp app/src/main/assets/diag/112001.wav clip.wav
+          for arch in armv8.2-a+dotprod+fp16 armv8.6-a+dotprod+fp16+i8mm armv8.2-a+dotprod+fp16+i8mm; do
             dir="build-$(echo $arch | tr '+.' '__')"
             cmake -S whisper.cpp -B $dir -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_CPU_ARM_ARCH=$arch >/dev/null
             cmake --build $dir -j"$(nproc)" --config Release --target whisper-cli >/dev/null
-            for t in 4 6 8; do
-              $dir/bin/whisper-cli -m model.bin -l ar -nt -np -bs 1 -bo 1 -t $t -f clip.wav >/dev/null 2>err.txt
-              # Warm, then three timed runs.
-              best=999999
-              for i in 1 2 3; do
-                s=$(date +%s%N); $dir/bin/whisper-cli -m model.bin -l ar -nt -np -bs 1 -bo 1 -t $t -f clip.wav >/dev/null 2>&1; e=$(date +%s%N)
-                ms=$(( (e - s) / 1000000 )); [ $ms -lt $best ] && best=$ms
-              done
-              echo "$arch threads=$t: ${best} ms (whole run, model load included)"
-              grep -E "encode time|total time" err.txt | sed 's/^/    /'
+            for t in 4; do
+              $dir/bin/whisper-cli -m model.bin -l ar -nt -bs 1 -bo 1 -t $t -f clip.wav >/dev/null 2>&1
+              for i in 1 2 3 4 5; do
+                $dir/bin/whisper-cli -m model.bin -l ar -nt -bs 1 -bo 1 -t $t -f clip.wav 2>&1 >/dev/null | grep -E "encode time|decode time|batchd time|total time" | tr -s ' ' | tr '\n' ' '
+                echo
+              done > times.txt
+              echo "== $arch threads=$t"
+              cat times.txt
+              python3 -c "import re,statistics;r=[float(re.search(r'encode time = ([0-9.]+)',l).group(1)) for l in open('times.txt') if 'encode' in l];t=[float(re.search(r'total time = ([0-9.]+)',l).group(1)) for l in open('times.txt') if 'total' in l];print('   encode best %.0f median %.0f ms; total best %.0f median %.0f ms'%(min(r),statistics.median(r),min(t),statistics.median(t)))"
             done
           done
