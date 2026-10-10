@@ -90,6 +90,17 @@ CASES = [(p, r, "flow", None) for p in PASSAGES if p != "imran-opening" for r in
     ("baqara-opening", "husary", "sco", None),
     ("ikhlas", "dossary", "sco", None),
 ]
+# A word recited wrongly, as a learner does (another word of the passage in its place, cut from the
+# reciter's audio by its word timings): (passage, reciter, variant, None, (āya, word, the word said
+# instead), 0-based). The app must show it as a mistake: checking mistakes (Follower.Check) mustn't
+# read it back to the text.
+CASES += [
+    ("baqara-opening", "husary", "flow", None, (3, 7, 1)),   # 2:3 يُنفِقُونَ → يُؤْمِنُونَ
+    ("fatiha", "alafasy", "flow", None, (7, 8, 5)),          # 1:7 ٱلضَّآلِّينَ → ٱلْمَغْضُوبِ
+    ("ikhlas", "maher", "flow", None, (3, 3, 1)),            # 112:3 يُولَدْ → يَلِدْ
+    ("fatiha", "dossary", "flow", None, (5, 1, 3)),          # 1:5 نَعْبُدُ → نَسْتَعِينُ
+    ("baqara-opening", "alafasy", "noisy", None, (3, 7, 1)),
+]
 
 
 def fetch(folder, sura, aya, cache):
@@ -170,7 +181,9 @@ def main():
     os.makedirs(out, exist_ok=True)
     rng = np.random.default_rng(7)
     lines = []
-    for passage, reciter, variant, script in CASES:
+    for passage, reciter, variant, script, *swap in CASES:
+        swap = swap[0] if swap else None
+        mistakes = []
         sura, first, last = PASSAGES[passage]
         folder = RECITERS[reciter]
         starts = word_starts(reciter)
@@ -187,9 +200,18 @@ def main():
             t += (len(b) + int(gap * RATE)) / RATE
         for aya in order:
             x, lead = trim(decode(fetch(folder, sura, aya, cache), tempo, v.get("af")))
+            cs = starts.get(f"{sura}:{aya}", [])
+            if swap and aya == swap[0] and len(cs) > max(swap[1], swap[2]):
+                # Word swap[1] said as word swap[2]: its audio in its place.
+                def at(w):
+                    return len(x) if w >= len(cs) else int(min(len(x), max(0, cs[w] / 100 / tempo * RATE - lead)))
+                piece = x[at(swap[2]):at(swap[2] + 1)].copy()
+                x = np.concatenate([x[:at(swap[1])], piece, x[at(swap[1] + 1):]])
+                mistakes.append(f"{sura}:{aya}#{swap[1] + 1}")
+                cs = []  # its words' times no longer hold
             end = t + len(x) / RATE
             # Its words' starts here: the mp3's times, at the tempo, less what trim cut before.
-            words = [min(end, max(t, t + c / 100 / tempo - lead / RATE)) for c in starts.get(f"{sura}:{aya}", [])]
+            words = [min(end, max(t, t + c / 100 / tempo - lead / RATE)) for c in cs]
             spans.append(f"{sura}:{aya}@{t:.2f}-{end:.2f}" + ("~" + ";".join(f"{w:.2f}" for w in words) if words else ""))
             parts += [x, np.zeros(int(gap * RATE), np.float32)]
             t += (len(x) + int(gap * RATE)) / RATE
@@ -202,6 +224,8 @@ def main():
             pcm = pcm + rumble(len(voice), rng, v["rumble"])
         pcm = np.clip(pcm, -1, 1)
         tag = "" if script is None else "-" + ("skip" if len(set(order)) == len(order) else "again") + "".join(map(str, order))
+        if swap:
+            tag += f"-swap{swap[0]}w{swap[1] + 1}"
         name = f"{passage}-{reciter}-{variant}{tag}"
         with open(os.path.join(out, name + ".wav"), "wb") as f:
             data = (pcm * 32767).astype("<i2").tobytes()
@@ -209,7 +233,7 @@ def main():
             f.write(b"fmt " + (16).to_bytes(4, "little") + (1).to_bytes(2, "little") + (1).to_bytes(2, "little"))
             f.write(RATE.to_bytes(4, "little") + (RATE * 2).to_bytes(4, "little") + (2).to_bytes(2, "little") + (16).to_bytes(2, "little"))
             f.write(b"data" + len(data).to_bytes(4, "little") + data)
-        lines.append(f"{name}\t{sura}:{first}-{last}\t{name}.wav\t{','.join(spans)}")
+        lines.append(f"{name}\t{sura}:{first}-{last}\t{name}.wav\t{','.join(spans)}" + (f"\t\t\t{','.join(mistakes)}" if mistakes else ""))
         print(f"{name}: {len(pcm) / RATE:.1f} s, bands {bands(pcm)}", flush=True)
     with open(os.path.join(out, "cases.tsv"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")

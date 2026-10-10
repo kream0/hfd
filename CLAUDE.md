@@ -130,6 +130,13 @@
   (`Clarity.highShelf`), priming whisper with the text before (80 % → 38 %), equalising each
   utterance to a speaking voice (`Clarity.match`, "+match" lines: owner 1 → 4 words, others
   80.4 % → 79.3 %).
+- Checking mistakes (10 Oct): most of the owner's marked mistakes were the model's (الحي القيوم read
+  حيظهم). After a final reading that leaves WRONG/MISSED words, `Follower.toCheck` gives the text it
+  covered; the recogniser reads the utterance again held to it letter for letter (`bias.h` hfd_check,
+  expected "?\n<text>", costs per word after a tab) and a mistake costing ≤ `CHECK_TOLERANCE` nats is
+  right. Bench: "checks", and prepare.py's swapped-word cases ("SWAPPED WORDS CAUGHT": real
+  mistakes must stay caught). The bench varies run to run with the same code (other runners' CPUs:
+  93.5–93.7 %, pending 69–84): compare configs within one run, not across runs.
 - `LogReplayTest` replays the owner's logged readings (`core/src/test/resources/recite/*.log`,
   from `recite.partial` / `recite.heard`) through `Follower`: add a log there when a session goes
   wrong, to reproduce it without audio.

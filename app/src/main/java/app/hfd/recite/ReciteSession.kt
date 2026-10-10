@@ -132,7 +132,7 @@ class ReciteSession(
                         loadedWhisper()?.transcribe(pcm, expected)
                     }
                     if (u.final) _ui.value = _ui.value.copy(pending = (_ui.value.pending - 1).coerceAtLeast(0))
-                    val moved = if (text != null) onHeard(u.id, text, u.final) else 0
+                    val moved = if (text != null) onHeard(u.id, text, u.final, check = u.takeIf { it.final }) else 0
                     if (u.final) {
                         val warn = muffledWarning.heard(muffled, u.pcm.size / Segmenter.RATE.toFloat(), moved)
                         if (warn != _ui.value.muffled) _ui.value = _ui.value.copy(muffled = warn)
@@ -230,10 +230,35 @@ class ReciteSession(
 
     /** A reading of utterance [id]: partial ones move the text on, the final one stays. */
     private fun onHeard(id: Int, text: String, final: Boolean): Int {
+        val moved = follow(id, text, final)
+        afterProgress(text.ifBlank { null }, final)
+        return moved
+    }
+
+    /**
+     * The same, from the recogniser: the mistakes a whole utterance ([check]) leaves are checked
+     * first, by reading it again held to the text it covered (Follower.Check), before they show
+     * or count. The phone's model misreads words said quickly or darkly (الحي القيوم read حيظهم,
+     * 10 Oct): most of the owner's mistakes were the model's.
+     */
+    private suspend fun onHeard(id: Int, text: String, final: Boolean, check: Utterance?): Int {
+        val moved = follow(id, text, final)
+        if (check != null) follower.toCheck(id)?.let { c ->
+            val again = withContext(recognizer) { loadedWhisper()?.transcribe(Clarity.prepare(check.pcm), c.expected) }
+            val costs = again?.let(Follower.Check::costs)
+            if (costs != null) {
+                val right = follower.checked(c, costs)
+                Diag.log("recite.check", "id" to id, "words" to c.words.joinToString(","), "right" to right, "reading" to again)
+            }
+        }
+        afterProgress(text.ifBlank { null }, final)
+        return moved
+    }
+
+    private fun follow(id: Int, text: String, final: Boolean): Int {
         val before = tracker.position
         val moved = follower.heard(id, text, final)
         Diag.log(if (final) "recite.heard" else "recite.partial", "id" to id, "text" to text, "from" to before, "to" to tracker.position, "moved" to moved, "done" to tracker.done)
-        afterProgress(text.ifBlank { null }, final)
         return moved
     }
 

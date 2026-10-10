@@ -50,15 +50,18 @@ Java_app_hfd_recite_Whisper_nativeTranscribe(JNIEnv *env, jclass clazz, jlong ct
     params.audio_ctx = audioCtx;
 
     // What the reciter is expected to say (UTF-8, one continuation per line): the recogniser
-    // prefers it among what it nearly hears.
+    // prefers it among what it nearly hears. Or "?\n<text>": a mistake checked, the reading held
+    // to that text, with what each of its words cost after it (bias.h, hfd_check).
     hfd_bias *bias = NULL;
+    hfd_check *check = NULL;
     if (expected != NULL) {
         jsize len = (*env)->GetArrayLength(env, expected);
         char *text = malloc(len + 1);
         if (text != NULL) {
             (*env)->GetByteArrayRegion(env, expected, 0, len, (jbyte *) text);
             text[len] = 0;
-            bias = hfd_bias_new(text, HFD_BIAS_BONUS);
+            if (len >= 2 && text[0] == '?' && text[1] == '\n') check = hfd_check_new(text + 2);
+            else bias = hfd_bias_new(text, HFD_BIAS_BONUS);
             free(text);
         }
     }
@@ -66,11 +69,16 @@ Java_app_hfd_recite_Whisper_nativeTranscribe(JNIEnv *env, jclass clazz, jlong ct
         params.logits_filter_callback = hfd_bias_filter;
         params.logits_filter_callback_user_data = bias;
     }
+    if (check != NULL) {
+        params.logits_filter_callback = hfd_check_filter;
+        params.logits_filter_callback_user_data = check;
+    }
 
     int rc = whisper_full(ctx, params, pcm, n);
     (*env)->ReleaseFloatArrayElements(env, samples, pcm, JNI_ABORT);
     hfd_bias_free(bias);
     if (rc != 0) {
+        hfd_check_free(check);
         __android_log_print(ANDROID_LOG_ERROR, TAG, "whisper_full failed: %d", rc);
         return NULL;
     }
@@ -78,8 +86,9 @@ Java_app_hfd_recite_Whisper_nativeTranscribe(JNIEnv *env, jclass clazz, jlong ct
     size_t len = 0;
     int segments = whisper_full_n_segments(ctx);
     for (int i = 0; i < segments; i++) len += strlen(whisper_full_get_segment_text(ctx, i)) + 1;
-    char *text = malloc(len + 1);
-    if (text == NULL) return NULL;
+    size_t costs = check != NULL ? (size_t) check->words * 12 + 16 : 0;
+    char *text = malloc(len + costs + 1);
+    if (text == NULL) { hfd_check_free(check); return NULL; }
     size_t at = 0;
     for (int i = 0; i < segments; i++) {
         const char *s = whisper_full_get_segment_text(ctx, i);
@@ -87,6 +96,12 @@ Java_app_hfd_recite_Whisper_nativeTranscribe(JNIEnv *env, jclass clazz, jlong ct
         memcpy(text + at, s, l);
         at += l;
         text[at++] = ' ';
+    }
+    if (check != NULL) {
+        text[at++] = '\t';
+        hfd_check_costs(check, text + at, costs);
+        at += strlen(text + at);
+        hfd_check_free(check);
     }
     jbyteArray out = (*env)->NewByteArray(env, (jsize) at);
     if (out != NULL) (*env)->SetByteArrayRegion(env, out, 0, (jsize) at, (const jbyte *) text);

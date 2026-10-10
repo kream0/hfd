@@ -35,6 +35,10 @@ class Follower(val targets: List<ReciteTarget>) {
         }
         val from = before?.position ?: tracker.position
         val clean = withoutOpening(text)
+        if (final) {
+            val all = text.split(Regex("\\s+")).filter { it.isNotBlank() }
+            finalOpening = all.take(all.size - clean.split(Regex("\\s+")).count { it.isNotBlank() })
+        }
         tracker.feed(clean)
         if (tracker.position < from || tracker.status.indices.any { it < from && tracker.status[it] != before?.statusAt(it) }) {
             // Went back (a restart, a phrase said again): nothing of it is stable yet.
@@ -120,6 +124,50 @@ class Follower(val targets: List<ReciteTarget>) {
     }
 
     /**
+     * Mistakes a whole utterance left, to check before they count: words [from]–[to] of the text
+     * (what it covered) and those among them WRONG or MISSED ([words]). The recogniser reads the
+     * utterance again held to that text ([expected], after the isti'ādha or basmala the reciter
+     * began with: [opening] words), and says what each word cost it against its own guess
+     * (app/src/main/cpp/bias.h, hfd_check): [checked] takes a mistake that cost little as right.
+     */
+    class Check internal constructor(val id: Int, val from: Int, val to: Int, val text: String, val words: List<Int>, val opening: Int) {
+        /** For the recogniser. */
+        val expected: String get() = "?\n$text"
+
+        companion object {
+            /** The words' costs (nats) after the reading and a tab, or null. */
+            fun costs(reading: String): List<Float>? =
+                reading.substringAfterLast('\t', "").takeIf { it.isNotBlank() }?.split(',')?.map { it.trim().toFloatOrNull() ?: return null }
+        }
+    }
+
+    /** The isti'ādha / basmala words the last final reading began with. */
+    private var finalOpening: List<String> = emptyList()
+
+    /** The mistakes whole utterance [id] (just followed) left in what it covered, if any. */
+    fun toCheck(id: Int): Check? {
+        if (id != current) return null
+        val from = before?.position ?: return null
+        val to = tracker.position
+        if (to <= from) return null
+        val bad = (from until to).filter { tracker.status[it] == WordStatus.WRONG || tracker.status[it] == WordStatus.MISSED }
+        if (bad.isEmpty()) return null
+        val text = (finalOpening + tracker.text(from, to)).joinToString(" ")
+        return Check(id, from, to, text, bad, finalOpening.size)
+    }
+
+    /**
+     * [costs], each word's cost (nats) reading [check]'s text: its mistakes that cost [tolerance]
+     * or less are right (said, and misheard). Returns how many.
+     */
+    fun checked(check: Check, costs: List<Float>, tolerance: Float = CHECK_TOLERANCE): Int {
+        if (costs.size != check.opening + check.to - check.from) return 0
+        val right = check.words.filter { costs[check.opening + it - check.from] <= tolerance }
+        for (w in right) tracker.status[w] = WordStatus.OK
+        return right.size
+    }
+
+    /**
      * The next word shown: what has been followed so far stays, and readings of utterances up to
      * [through] are ignored from now on (the recorder starts a new one).
      */
@@ -149,6 +197,12 @@ class Follower(val targets: List<ReciteTarget>) {
     }
 
     companion object {
+        /**
+         * Nats: what a mistake may cost the recogniser held to the text ([Check]) and still be the
+         * text's (said, misheard). Read again, a word said right costs 0–5 on a dark voice, another
+         * word 10 or more, or it can't be held to the text (bias.h, al-Ikhlās darkened, 10 Oct).
+         */
+        const val CHECK_TOLERANCE = 3f
         /** Words before the utterance's start it may begin with (said again). */
         private const val BACK_WORDS = 3
         /** An utterance holds at most 20 s of recitation: some forty words. */

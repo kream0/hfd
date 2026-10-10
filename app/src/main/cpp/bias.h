@@ -12,6 +12,7 @@
 #define HFD_BIAS_H
 
 #include <math.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -286,6 +287,132 @@ static void hfd_bias_filter(struct whisper_context *ctx, struct whisper_state *s
     int after = best;
     for (int i = 0; i < k; i++) if (logits[top[i]] > logits[after]) after = top[i];
     if (after != best) b->steered++;
+}
+
+// Checking a mistake (app.hfd.core.recite.Follower.Check): the utterance read again held to one
+// text, letter for letter on the skeleton (the model still picks the vowel signs and alifs, its
+// own spelling). At each step the likeliest token that keeps to the text is taken; what it costs
+// against the model's own guess (nats) goes to the word of the text it reads. A word said but
+// misheard costs a little (the model nearly heard it); a word not said, or another word, costs a
+// lot, and where no likely token keeps to the text the reading stops: the words left cost
+// HFD_CHECK_FAIL. Expected text "?\n<text>" (Follower.Check.expected); costs, one per word of the
+// text, come after the reading and a tab (hfd_check_costs).
+#define HFD_CHECK_TOP 64
+#define HFD_CHECK_FAIL 99.0f
+
+typedef struct {
+    uint16_t *skel; // the text's skeleton
+    int m;
+    int *word_of;   // the word of each of its letters
+    int words;
+    float *cost;    // per word: the costliest step reading it
+    int stopped;
+    char *buf;
+    size_t buf_cap;
+} hfd_check;
+
+static hfd_check *hfd_check_new(const char *text) {
+    hfd_check *k = calloc(1, sizeof(hfd_check));
+    if (!k) return NULL;
+    size_t n = strlen(text);
+    k->skel = malloc(sizeof(uint16_t) * (n + 1));
+    k->word_of = malloc(sizeof(int) * (n + 1));
+    k->cost = calloc(n + 1, sizeof(float));
+    const char *p = text;
+    while (*p) {
+        while (*p == ' ') p++;
+        if (!*p) break;
+        const char *e = strchr(p, ' ');
+        size_t l = e ? (size_t) (e - p) : strlen(p);
+        int got = hfd_skeleton(p, l, k->skel + k->m, (int) (n - k->m));
+        for (int i = 0; i < got; i++) k->word_of[k->m + i] = k->words;
+        k->m += got;
+        k->words++;
+        p += l;
+    }
+    return k;
+}
+
+static void hfd_check_free(hfd_check *k) {
+    if (!k) return;
+    free(k->skel); free(k->word_of); free(k->cost); free(k->buf);
+    free(k);
+}
+
+static void hfd_check_force(float *logits, int n_vocab, int id) {
+    for (int i = 0; i < n_vocab; i++) if (i != id) logits[i] = -INFINITY;
+}
+
+static void hfd_check_filter(struct whisper_context *ctx, struct whisper_state *state, const whisper_token_data *tokens,
+                             int n_tokens, float *logits, void *user) {
+    (void) state;
+    hfd_check *k = (hfd_check *) user;
+    const whisper_token eot = whisper_token_eot(ctx);
+    const int n_vocab = whisper_n_vocab(ctx);
+    if (k->stopped) { hfd_check_force(logits, n_vocab, eot); return; }
+    // The reading so far.
+    size_t n = 0;
+    for (int i = 0; i < n_tokens; i++) if (tokens[i].id < eot) n += strlen(whisper_token_to_str(ctx, tokens[i].id));
+    if (n + 64 > k->buf_cap) { k->buf = realloc(k->buf, n + 256); k->buf_cap = n + 256; }
+    n = 0;
+    for (int i = 0; i < n_tokens; i++) {
+        if (tokens[i].id >= eot) continue;
+        const char *t = whisper_token_to_str(ctx, tokens[i].id);
+        size_t l = strlen(t);
+        memcpy(k->buf + n, t, l);
+        n += l;
+    }
+    uint16_t heard[HFD_MAX_LETTERS];
+    int h = hfd_skeleton(k->buf, n, heard, HFD_MAX_LETTERS);
+    if (h >= k->m) { hfd_check_force(logits, n_vocab, eot); return; } // the whole text read
+    int best = 0;
+    for (int id = 1; id < n_vocab; id++) if (logits[id] > logits[best]) best = id;
+    // Tokens without a letter in a row: a fourth one would only wander.
+    int bare = 0;
+    for (int i = n_tokens - 1; i >= 0 && tokens[i].id < eot; i--) {
+        const char *t = whisper_token_to_str(ctx, tokens[i].id);
+        uint16_t one[64];
+        if (hfd_skeleton(t, strlen(t), one, 64) > 0) break;
+        bare++;
+    }
+    // The likeliest text tokens; the first that keeps to the text is read.
+    int top[HFD_CHECK_TOP];
+    int kk = 0;
+    for (int id = 0; id < eot && id < n_vocab; id++) {
+        float v = logits[id];
+        if (!(v > -INFINITY)) continue;
+        if (kk < HFD_CHECK_TOP) kk++;
+        else if (v <= logits[top[kk - 1]]) continue;
+        int at = kk - 1;
+        while (at > 0 && logits[top[at - 1]] < v) { top[at] = top[at - 1]; at--; }
+        top[at] = id;
+    }
+    for (int i = 0; i < kk; i++) {
+        const char *t = whisper_token_to_str(ctx, top[i]);
+        size_t l = strlen(t);
+        if (n + l + 1 > k->buf_cap) { k->buf = realloc(k->buf, n + l + 256); k->buf_cap = n + l + 256; }
+        memcpy(k->buf + n, t, l);
+        uint16_t all[HFD_MAX_LETTERS];
+        int hl = hfd_skeleton(k->buf, n + l, all, HFD_MAX_LETTERS);
+        if (hl < h || hl > k->m || (hl == h && bare >= 3)) continue;
+        if (memcmp(all + h, k->skel + h, sizeof(uint16_t) * (hl - h)) != 0) continue;
+        float c = logits[best] - logits[top[i]];
+        int w = k->word_of[h];
+        if (c > k->cost[w]) k->cost[w] = c;
+        hfd_check_force(logits, n_vocab, top[i]);
+        return;
+    }
+    // Nothing likely keeps to the text: the words from here weren't heard.
+    for (int w = k->word_of[h]; w < k->words; w++) k->cost[w] = HFD_CHECK_FAIL;
+    k->stopped = 1;
+    hfd_check_force(logits, n_vocab, eot);
+}
+
+// The costs, "c1,c2,…" one per word of the text, into out (cap bytes).
+static void hfd_check_costs(const hfd_check *k, char *out, size_t cap) {
+    size_t at = 0;
+    out[0] = 0;
+    for (int w = 0; w < k->words && at + 16 < cap; w++) at += (size_t) snprintf(out + at, cap - at, w ? ",%.2f" : "%.2f", k->cost[w]);
 }
 
 #endif

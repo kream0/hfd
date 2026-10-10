@@ -2,8 +2,9 @@
 // Recite bench (core/src/test/.../ReciteBench.kt): loads the model once, then for each request on
 // stdin (int32 little-endian sample count, float32 samples at 16 kHz mono; then int32 byte count
 // and UTF-8 text of the prompt, the text before: 0 for none; then int32 byte count and UTF-8 text
-// of what the reciter is expected to say, one continuation per line: 0 to decode freely) writes
-// the text heard on one line of stdout. Usage: decoder <model> [threads]. Environment (to compare
+// of what the reciter is expected to say, one continuation per line: 0 to decode freely; or
+// "?\n<text>" to check a mistake) writes the text heard on one line of stdout (a check: then a tab
+// and each word's cost). Usage: decoder <model> [threads]. Environment (to compare
 // settings on the bench): HFD_BIAS_BONUS (nats), HFD_BEAM (beam size for steered decoding; greedy
 // by default, as the app).
 #include <stdint.h>
@@ -39,7 +40,9 @@ int main(int argc, char **argv) {
         if (fread(expected, 1, ne, stdin) != (size_t) ne) { free(pcm); free(prompt); free(expected); break; }
         expected[ne] = 0;
         const char *bonus = getenv("HFD_BIAS_BONUS");
-        hfd_bias *bias = ne > 0 ? hfd_bias_new(expected, bonus ? (float) atof(bonus) : HFD_BIAS_BONUS) : NULL;
+        // "?\n<text>": a mistake checked (bias.h, hfd_check), the words' costs after a tab.
+        hfd_check *check = ne >= 2 && expected[0] == '?' && expected[1] == '\n' ? hfd_check_new(expected + 2) : NULL;
+        hfd_bias *bias = ne > 0 && !check ? hfd_bias_new(expected, bonus ? (float) atof(bonus) : HFD_BIAS_BONUS) : NULL;
         const char *beam_env = getenv("HFD_BEAM");
         int beam = bias && beam_env ? atoi(beam_env) : 0;
 
@@ -62,12 +65,22 @@ int main(int argc, char **argv) {
             p.logits_filter_callback = hfd_bias_filter;
             p.logits_filter_callback_user_data = bias;
         }
+        if (check) {
+            p.logits_filter_callback = hfd_check_filter;
+            p.logits_filter_callback_user_data = check;
+        }
         if (whisper_full(ctx, p, pcm, n) == 0) {
             for (int i = 0; i < whisper_full_n_segments(ctx); i++) {
                 const char *s = whisper_full_get_segment_text(ctx, i);
                 for (; *s; s++) putchar(*s == '\n' || *s == '\r' ? ' ' : *s);
                 putchar(' ');
             }
+        }
+        if (check) {
+            char costs[8192];
+            hfd_check_costs(check, costs, sizeof costs);
+            printf("\t%s", costs);
+            hfd_check_free(check);
         }
         putchar('\n');
         fflush(stdout);

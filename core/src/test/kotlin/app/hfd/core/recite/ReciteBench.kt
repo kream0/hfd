@@ -84,6 +84,8 @@ class Case(
     val from: Pair<AyahRef, Int>? = null,
     /** When each word of an āya starts in the recording (the reciter's word timings, prepare.py), if known. */
     val wordStarts: Map<AyahRef, List<Double>> = emptyMap(),
+    /** Words recited wrongly on purpose (another word's audio in their place, prepare.py): āya and word. */
+    val mistakes: Set<Pair<AyahRef, Int>> = emptySet(),
 ) {
     /** One of the owner's own sessions: when each word was said isn't known (tools/recite/owner.py). */
     val owner: Boolean get() = spans.isEmpty()
@@ -116,7 +118,12 @@ class Case(
                 val (s, a) = ref.split(':').map(String::toInt)
                 AyahRef(s, a) to word
             }
-            return Case(p[0], refs, p[2], spans, recited, from, wordStarts)
+            val mistakes = p.getOrNull(6)?.split(',')?.filter { it.isNotBlank() }?.map { item ->
+                val (ref, word) = item.split('#')
+                val (s, a) = ref.split(':').map(String::toInt)
+                AyahRef(s, a) to word.toInt() - 1
+            }?.toSet().orEmpty()
+            return Case(p[0], refs, p[2], spans, recited, from, wordStarts, mistakes)
         }
     }
 }
@@ -140,8 +147,14 @@ class Result(
     /** Each lag's word: its āya's first (0), a middle one (1) or the last (2); and whether its end is timed (else guessed). */
     val places: List<Int> = emptyList(),
     val timed: Int = 0,
+    /** Whole utterances whose mistakes were read again (Follower.Check), and the words that came out right. */
+    val checks: Int = 0, val rescued: Int = 0,
+    /** Words recited wrongly on purpose, and how many of them ended a mistake (caught). */
+    val swapped: Int = 0, val caught: Int = 0,
 ) {
-    private val warning get() = if (warned > 0) "  MUFFLED WARNING $warned/$finals" else ""
+    private val warning get() = (if (warned > 0) "  MUFFLED WARNING $warned/$finals" else "") +
+        (if (checks > 0) "  checks $checks (+$rescued)" else "") +
+        (if (swapped > 0) "  SWAPPED WORDS CAUGHT $caught/$swapped" else "")
 
     fun line(): String {
         if (id.startsWith("owner-")) {
@@ -171,12 +184,18 @@ class Totals {
     private val places = ArrayList<Int>()
     private var timed = 0
     private var cases = 0
+    private var swapped = 0
+    private var caught = 0
+    private var checks = 0
+    private var rescued = 0
 
     operator fun plusAssign(r: Result) {
         said += r.said; ok += r.ok; wrong += r.wrong; missed += r.missed; pending += r.pending
         lags += r.lags
         places += r.places
         timed += r.timed
+        swapped += r.swapped; caught += r.caught
+        checks += r.checks; rescued += r.rescued
         cases++
     }
 
@@ -195,8 +214,8 @@ class Totals {
         val l = lags.sorted()
         fun q(f: Double) = if (l.isEmpty()) Double.NaN else l[((l.size - 1) * f).toInt()]
         return String.format(
-            Locale.US, "ALL %d cases: ok %d/%d (%.1f %%), wrong %d, missed %d, pending %d; lag p50 %.1f s, p90 %.1f s",
-            cases, ok, said, 100.0 * ok / maxOf(1, said), wrong, missed, pending, q(0.5), q(0.9),
+            Locale.US, "ALL %d cases: ok %d/%d (%.1f %%), wrong %d, missed %d, pending %d; lag p50 %.1f s, p90 %.1f s; mistakes caught %d/%d; checks %d (+%d)",
+            cases, ok, said, 100.0 * ok / maxOf(1, said), wrong, missed, pending, q(0.5), q(0.9), caught, swapped, checks, rescued,
         )
     }
 }
@@ -217,6 +236,10 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private var warned = 0
     private val queue = ArrayDeque<Utterance>()
     private var inFlight: Triple<Utterance, String, Double>? = null
+    /** A whole utterance's mistakes being read again (Follower.Check), and when that reading ends. */
+    private var checking: Triple<Follower.Check, String, Double>? = null
+    private var checks = 0
+    private var rescued = 0
     private var decodeNanos = 0L
     private val readings = StringBuilder()
 
@@ -248,8 +271,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             step(t)
         }
         seg.end()?.let(::offer)
-        while (inFlight != null || queue.isNotEmpty()) {
-            t = maxOf(t, inFlight?.third ?: t)
+        while (inFlight != null || checking != null || queue.isNotEmpty()) {
+            t = maxOf(t, checking?.third ?: inFlight?.third ?: t)
             step(t)
         }
         return result()
@@ -262,13 +285,29 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     }
 
     private fun step(t: Double) {
+        checking?.let { (c, text, at) ->
+            if (t < at) return
+            val right = Follower.Check.costs(text)?.let { follower.checked(c, it, CHECK_TOLERANCE) } ?: 0
+            checks++
+            rescued += right
+            readings.append(String.format(Locale.US, "      %6.1f s  #%d check   %d of %d right: %s\n", at, c.id, right, c.words.size, text.replace('\t', ' ')))
+            observe(at)
+            checking = null
+        }
         inFlight?.let { (u, text, at) ->
             if (t >= at) {
                 val moved = follower.heard(u.id, text, u.final)
                 if (u.final && muffledWarning.heard(Clarity.isMuffled(u.pcm), u.seconds, moved)) warned++
                 readings.append(String.format(Locale.US, "      %6.1f s  #%d %s %4.1f s: %s\n", at, u.id, if (u.final) "final  " else "partial", u.seconds, text))
-                observe(at)
                 inFlight = null
+                // As the app: a whole utterance's mistakes are read again held to the text, before they show.
+                val c = if (u.final && steer && CHECK_TOLERANCE > 0) follower.toCheck(u.id) else null
+                if (c != null) {
+                    val again = decoder.transcribe(Clarity.prepare(u.pcm), expected = c.expected)
+                    checking = Triple(c, again, at + (0.57 + 0.018 * u.seconds) * PHONE_FACTOR)
+                    return
+                }
+                observe(at)
             }
         }
         if (inFlight == null) {
@@ -296,6 +335,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         var said = 0; var ok = 0; var wrong = 0; var missed = 0; var pending = 0
         var skipped = 0; var skippedMissed = 0
         var unreached = 0; var unreachedMarked = 0
+        var swapped = 0; var caught = 0
         // The owner's sessions: the words recited in them (all, if not known).
         val lastRecited = if (case.owner) targets.lastIndex else targets.indexOfLast { it.ref in case.spans }
         val recitedFlat = BooleanArray(n).also { r ->
@@ -330,6 +370,10 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                         skipped++
                         if (st == WordStatus.MISSED) skippedMissed++
                     }
+                } else if (span != null && (t.ref to w) in case.mistakes) {
+                    // Said wrongly on purpose: caught if it ends a mistake (white would hide it).
+                    swapped++
+                    if (st != WordStatus.OK && st != WordStatus.PENDING) caught++
                 } else if (span != null || case.owner) {
                     said++
                     when (st) {
@@ -372,7 +416,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             flat += t.words.size
             detail.append("    ${t.ref}${if (span == null && !case.owner) (if (a > lastRecited) " (not reached)" else " (not recited)") else ""}: $marks\n")
         }
-        val bad = said - ok + (skipped - skippedMissed) + unreachedMarked
+        val bad = said - ok + (skipped - skippedMissed) + unreachedMarked + (swapped - caught)
         return Result(
             case.id, said, ok, wrong, missed, pending, skipped, skippedMissed, unreached, unreachedMarked, lags, flips, partials, finals,
             if (bad > 0 || case.owner) detail.toString() + readings else "",
@@ -380,11 +424,15 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             warned,
             places,
             timed,
+            checks, rescued,
+            swapped, caught,
         )
     }
 
     companion object {
         const val RATE = Segmenter.RATE.toDouble()
+        /** Checking mistakes (Follower.Check) with this tolerance (nats); 0: not (HFD_CHECK_TOLERANCE). */
+        val CHECK_TOLERANCE = System.getenv("HFD_CHECK_TOLERANCE")?.toFloatOrNull() ?: Follower.CHECK_TOLERANCE
         /** The phone's time per reading relative to the app's model (a bigger model: HFD_PHONE_FACTOR). */
         val PHONE_FACTOR = System.getenv("HFD_PHONE_FACTOR")?.toDoubleOrNull() ?: 1.0
     }
