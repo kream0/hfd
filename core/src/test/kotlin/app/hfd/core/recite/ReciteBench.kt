@@ -226,7 +226,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private val tracker = follower.tracker
     private val n = tracker.size
     private val shownAt = DoubleArray(n) { Double.NaN }
-    /** Words heard right in some reading: they stay so (ReciteSession.wasRight). */
+    /** Words right once a whole utterance was read: they stay so (ReciteSession.wasRight). */
     private val everOk = BooleanArray(n)
     private var last = Array(n) { WordStatus.PENDING }
     private var flips = 0
@@ -291,7 +291,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             checks++
             rescued += right
             readings.append(String.format(Locale.US, "      %6.1f s  #%d check   %d of %d right: %s\n", at, c.id, right, c.words.size, text.replace('\t', ' ')))
-            observe(at)
+            observe(at, final = true)
             checking = null
         }
         inFlight?.let { (u, text, at) ->
@@ -307,7 +307,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                     checking = Triple(c, again, at + (0.57 + 0.018 * u.seconds) * PHONE_FACTOR)
                     return
                 }
-                observe(at)
+                observe(at, u.final)
             }
         }
         if (inFlight == null) {
@@ -320,9 +320,9 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         }
     }
 
-    private fun observe(t: Double) {
+    private fun observe(t: Double, final: Boolean) {
         val now = tracker.status
-        for (w in 0 until n) if (now[w] == WordStatus.OK) everOk[w] = true
+        if (final) for (w in 0 until n) if (now[w] == WordStatus.OK) everOk[w] = true
         for (w in 0 until n) {
             if (now[w] != WordStatus.PENDING && shownAt[w].isNaN()) shownAt[w] = t
             else if (!shownAt[w].isNaN() && now[w] != last[w]) flips++
@@ -371,11 +371,9 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                         if (st == WordStatus.MISSED) skippedMissed++
                     }
                 } else if (span != null && (t.ref to w) in case.mistakes) {
-                    // Said wrongly on purpose: caught if it ends a mistake (white would hide it). As
-                    // it ends: a partial reading steered to the text may light it a moment first.
+                    // Said wrongly on purpose: caught if it ends a mistake (white would hide it).
                     swapped++
-                    val end = tracker.status[flat + w]
-                    if (end != WordStatus.OK && end != WordStatus.PENDING) caught++
+                    if (st != WordStatus.OK && st != WordStatus.PENDING) caught++
                 } else if (span != null || case.owner) {
                     said++
                     when (st) {
