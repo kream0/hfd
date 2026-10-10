@@ -53,6 +53,7 @@ object Diag {
             "device" to "${Build.MANUFACTURER} ${Build.MODEL}", "android" to Build.VERSION.SDK_INT,
             "abi" to Build.SUPPORTED_ABIS.joinToString(","), "cores" to Runtime.getRuntime().availableProcessors(),
         )
+        scope.launch(Dispatchers.IO) { logChip() }
         scope.launch(Dispatchers.IO) {
             while (isActive) {
                 delay(10_000) // ntfy.sh allows a request every few seconds
@@ -68,6 +69,25 @@ object Diag {
             }
             previous?.uncaughtException(thread, e)
         }
+    }
+
+    /**
+     * What the phone's chip offers Recite's recogniser, once a run: the SoC, each core's top speed
+     * (the big ones to run on), and whether the GPU (OpenCL) and the NPU (Hexagon, through FastRPC)
+     * libraries are there for an app to load (/vendor/etc/public.libraries.txt).
+     */
+    private fun logChip() {
+        val soc = if (Build.VERSION.SDK_INT >= 31) "${Build.SOC_MANUFACTURER} ${Build.SOC_MODEL}" else null
+        val khz = (0 until Runtime.getRuntime().availableProcessors()).map { cpu ->
+            runCatching { java.io.File("/sys/devices/system/cpu/cpu$cpu/cpufreq/cpuinfo_max_freq").readText().trim() }.getOrDefault("?")
+        }
+        val public = runCatching { java.io.File("/vendor/etc/public.libraries.txt").readLines() }.getOrDefault(emptyList())
+            .map { it.substringBefore('#').trim() }.filter { it.isNotEmpty() }
+        log(
+            "chip", "soc" to soc, "maxKHz" to khz.joinToString(","),
+            "openclFile" to java.io.File("/vendor/lib64/libOpenCL.so").exists(),
+            "public" to public.joinToString(" "),
+        )
     }
 
     fun log(event: String, vararg fields: Pair<String, Any?>) {
