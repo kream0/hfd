@@ -64,9 +64,13 @@
   SHA-256, so a re-converted file needs the new checksum there. Keep audio_ctx 0 (a shorter
   context wrecks this model) and chunks ≤ 20 s (it slips past ~25 s). Tarteel's base model doesn't
   load in whisper.cpp (its decoder positions are 448, whisper.cpp expects 1024). whisper.cpp's version is pinned in `app/src/main/cpp/CMakeLists.txt`
-  and in `convert.sh`: change both together. Native code is arm64-v8a only, built for
-  `armv8.2-a+dotprod+fp16` (2.2× faster than plain ARMv8, `armspeed.yml`); `Whisper.available`
-  checks `/proc/cpuinfo` for `asimddp`/`asimdhp` (logged as `whisper.cpu`): change both together.
+  and in `convert.sh`: change both together. Native code is arm64-v8a only. ggml's CPU code ships
+  as four builds (`GGML_CPU_ALL_VARIANTS`: ARMv8.0; 8.2 with dot products; + half floats; 8.6
+  with int8 matrix multiplies), and `whisper_jni.c` loads the best one the phone runs, by name
+  (logged in `whisper.library`; none loaded: `Whisper.available` is false). ARMv8.2 is 2.2× faster
+  than 8.0, i8mm 13 % faster again (`armspeed.yml`, GitHub's Neoverse N2). The Nothing Phone (4a)
+  Pro is a Snapdragon 7 Gen 4 (SM7750: 1+4 Cortex-A720, 3 A520; i8mm, no SVE; Adreno 722; Hexagon
+  v73 NPU, `npu.yml` compiles Tarteel's encoder for it).
   Partial readings every 0.3 s (`Segmenter.PARTIAL_FRAMES`). The bench times each word from the
   reciters' word timings (prepare.py, `audio/words`): lag p50 0.0 s, p90 1.0 s; by place in the āya
   ("LAG BY PLACE"): first word p90 1.6 s, middle 1.0 s, last 0.5 s (steering completes it early).

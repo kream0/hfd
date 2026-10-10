@@ -37,27 +37,24 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
         /** Big cores do the work; more threads than that only contend. */
         val THREADS: Int = Runtime.getRuntime().availableProcessors().coerceIn(2, 8).let { (it / 2).coerceAtLeast(2) }
 
-        /**
-         * The CPU features the native code is built for (CMakeLists.txt: ARMv8.2 with dot products
-         * and half floats): without them it would stop on an illegal instruction.
-         */
-        private val REQUIRED = listOf("asimddp", "asimdhp")
-
         private fun cpuFeatures(): Set<String> = runCatching {
             java.io.File("/proc/cpuinfo").readLines().firstOrNull { it.startsWith("Features") }
                 ?.substringAfter(':')?.trim()?.split(Regex("\\s+"))?.toSet()
         }.getOrNull().orEmpty()
 
-        /** False where the native library isn't there (not a 64-bit ARM phone, too old a CPU, or tests). */
+        /**
+         * False where the native library isn't there (not a 64-bit ARM phone, or tests), or where
+         * none of ggml's CPU builds loads: it loads the best one this phone's cores run (any 64-bit
+         * ARM; whisper_jni.c, CMakeLists.txt).
+         */
         val available: Boolean by lazy {
-            val features = cpuFeatures()
-            // Unreadable features (an empty set) don't stop it: only features known to be missing do.
-            val missing = if (features.isEmpty()) emptyList() else REQUIRED.filter { it !in features }
-            Diag.log("whisper.cpu", "features" to features.sorted().joinToString(" "), "missing" to missing.joinToString(" "))
-            if (missing.isNotEmpty()) return@lazy false
-            runCatching { System.loadLibrary("hfdwhisper") }
+            Diag.log("whisper.cpu", "features" to cpuFeatures().sorted().joinToString(" "))
+            runCatching {
+                System.loadLibrary("hfdwhisper")
+                checkNotNull(nativeBackends()) { "no CPU build of ggml loaded" }
+            }
                 .onFailure { Log.w(TAG, "whisper.cpp unavailable", it); Diag.error("whisper.library", it) }
-                .onSuccess { Diag.log("whisper.library", "ok" to true) }
+                .onSuccess { Diag.log("whisper.library", "ok" to true, "system" to it) }
                 .isSuccess
         }
 
@@ -77,6 +74,7 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
         @Suppress("UNUSED_PARAMETER")
         fun audioContext(samples: Int): Int = 0
 
+        @JvmStatic private external fun nativeBackends(): String?
         @JvmStatic private external fun nativeInit(path: String): Long
         @JvmStatic private external fun nativeFree(ctx: Long)
         @JvmStatic private external fun nativeTranscribe(ctx: Long, samples: FloatArray, threads: Int, audioCtx: Int, expected: ByteArray?): ByteArray?

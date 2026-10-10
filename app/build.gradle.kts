@@ -38,7 +38,8 @@ android {
         externalNativeBuild {
             cmake {
                 // Always optimised: a debug build of whisper.cpp is far too slow to use.
-                arguments += listOf("-DCMAKE_BUILD_TYPE=Release", "-DANDROID_STL=c++_static")
+                // Shared C++ runtime: ggml is several libraries (its CPU builds are loaded at start).
+                arguments += listOf("-DCMAKE_BUILD_TYPE=Release", "-DANDROID_STL=c++_shared")
             }
         }
     }

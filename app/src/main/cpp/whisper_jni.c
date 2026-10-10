@@ -3,12 +3,40 @@
 // used from one thread at a time.
 #include <jni.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <android/log.h>
 #include "whisper.h"
+#include "ggml-backend.h"
 #include "bias.h"
 
 #define TAG "hfd-whisper"
+
+// ggml's CPU code, in one build per family of ARM cores (CMakeLists.txt), best first: ggml loads
+// a build only if this CPU runs its instructions (ggml_backend_score). By name, so from the APK.
+static const char *CPU_BUILDS[] = {
+    "libggml-cpu-android_armv8.6_1.so",  // + int8 matrix multiplies
+    "libggml-cpu-android_armv8.2_2.so",  // + dot products and half floats
+    "libggml-cpu-android_armv8.2_1.so",  // + dot products
+    "libggml-cpu-android_armv8.0_1.so",  // any 64-bit ARM
+};
+
+// Loads the best CPU build once; returns which one and what it uses (NEON, DOTPROD, MATMUL_INT8…),
+// or null if none loaded (recognition can't run then).
+JNIEXPORT jstring JNICALL
+Java_app_hfd_recite_Whisper_nativeBackends(JNIEnv *env, jclass clazz) {
+    static const char *chosen = NULL;
+    for (size_t i = 0; chosen == NULL && i < sizeof(CPU_BUILDS) / sizeof(CPU_BUILDS[0]); i++) {
+        if (ggml_backend_load(CPU_BUILDS[i]) != NULL) chosen = CPU_BUILDS[i];
+    }
+    if (chosen == NULL || ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU) == NULL) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG, "no CPU build of ggml loaded");
+        return NULL;
+    }
+    char info[1024];
+    snprintf(info, sizeof(info), "%s %s", chosen, whisper_print_system_info());
+    return (*env)->NewStringUTF(env, info);
+}
 
 JNIEXPORT jlong JNICALL
 Java_app_hfd_recite_Whisper_nativeInit(JNIEnv *env, jclass clazz, jstring path) {

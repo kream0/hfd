@@ -137,6 +137,7 @@ jobs:
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk dist/hfd.apk
           ls -la dist
+          unzip -l dist/hfd.apk 'lib/*'
 
       - uses: actions/upload-artifact@v7
         with:

@@ -3,15 +3,18 @@ cmake_minimum_required(VERSION 3.22.1)
 project(hfdwhisper C CXX)
 
 include(FetchContent)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_SERVER OFF CACHE BOOL "" FORCE)
-# Portable build (no -march=native when cross-compiling), and ggml's own thread pool. ARMv8.2 with
-# dot products and half floats (phones since ~2019; Whisper.kt checks the CPU before loading):
-# a reading takes 2.2 times less than with plain ARMv8 (armspeed.yml, 2 Oct: 539 vs 1178 ms).
+# ggml's CPU code in several builds, one per family of ARM cores (plain ARMv8; ARMv8.2 with dot
+# products and half floats; ARMv8.6 with int8 matrix multiplies too), the phone's best loaded at
+# start (whisper_jni.c): the right instructions on any 64-bit ARM phone. Against plain ARMv8 a
+# reading takes 2.2 times less with ARMv8.2 (539 vs 1178 ms), and 13 % less again with ARMv8.6's
+# int8 matrix multiplies (461 vs 530 ms; armspeed.yml, GitHub's Neoverse N2, 2 and 10 Oct).
+set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
+set(GGML_BACKEND_DL ON CACHE BOOL "" FORCE)
+set(GGML_CPU_ALL_VARIANTS ON CACHE BOOL "" FORCE)
 set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
-set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16" CACHE STRING "" FORCE)
 set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
     whisper
