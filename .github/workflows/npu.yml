@@ -1,0 +1,62 @@
+name: NPU
+
+# Could Recite's recogniser run on the owner's phone's NPU (Snapdragon 7 Gen 4's Hexagon, through
+# Qualcomm's QNN)? Exports Tarteel's tiny encoder to ONNX (tools/npu/export.py: checked against
+# PyTorch, timed on this CPU), then tries Qualcomm's AI Runtime SDK (QAIRT, public download) to
+# convert it and compile it ahead of time for the Hexagon versions a Snapdragon may have (v73,
+# v75, v79): whether that works here, and the sizes. No phone involved yet.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - '.github/workflows/npu.yml'
+      - 'tools/npu/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  explore:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+      - name: Export the encoder to ONNX
+        run: |
+          pip install --quiet --index-url https://download.pytorch.org/whl/cpu torch
+          pip install --quiet "transformers<5" onnx onnxruntime numpy
+          python3 tools/npu/export.py out
+      - name: Qualcomm AI Runtime SDK
+        continue-on-error: true
+        run: |
+          V=2.42.0.251225
+          curl -sSfL -o qairt.zip "https://softwarecenter.qualcomm.com/api/download/software/sdks/Qualcomm_AI_Runtime_Community/All/$V/v$V.zip" || { echo "QAIRT download refused"; exit 1; }
+          ls -la qairt.zip
+          unzip -q qairt.zip -d qairt
+          root=$(ls -d qairt/qairt/* | head -1); echo "SDK at $root"
+          echo "QNN_SDK_ROOT=$PWD/$root" >> $GITHUB_ENV
+          ls $root/lib/hexagon-* -d 2>/dev/null; ls $root/bin/x86_64-linux-clang | head -40
+      - name: Convert and compile for the Hexagon NPU
+        continue-on-error: true
+        run: |
+          export PYTHONPATH=$QNN_SDK_ROOT/lib/python:$PYTHONPATH
+          export LD_LIBRARY_PATH=$QNN_SDK_ROOT/lib/x86_64-linux-clang:$LD_LIBRARY_PATH
+          B=$QNN_SDK_ROOT/bin/x86_64-linux-clang
+          python3 -m pip install --quiet pyyaml pandas packaging
+          # Float model, run in half precision on the NPU (no calibration needed).
+          python3 $B/qnn-onnx-converter --input_network out/encoder.onnx --output_path out/qnn/encoder.cpp --float_bitwidth 16 2>&1 | tail -20
+          ls -la out/qnn || exit 1
+          $B/qnn-model-lib-generator -c out/qnn/encoder.cpp -b out/qnn/encoder.bin -o out/qnn/lib -t x86_64-linux-clang 2>&1 | tail -5
+          ls -laR out/qnn/lib | head
+          for v in 73 75 79; do
+            printf '{"graphs":[{"graph_names":["encoder"],"vtcm_mb":0}],"devices":[{"htp_arch":"v%s"}]}\n' $v > htp_v$v.json
+            printf '{"backend_extensions":{"shared_library_path":"%s","config_file_path":"htp_v%s.json"}}\n' "$QNN_SDK_ROOT/lib/x86_64-linux-clang/libQnnHtpNetRunExtensions.so" $v > ext_v$v.json
+            $B/qnn-context-binary-generator --backend $QNN_SDK_ROOT/lib/x86_64-linux-clang/libQnnHtp.so \
+              --model out/qnn/lib/x86_64-linux-clang/libencoder.so --binary_file encoder_v$v \
+              --output_dir out/ctx --config_file ext_v$v.json 2>&1 | tail -5
+          done
+          ls -la out/ctx || true
