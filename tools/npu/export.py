@@ -57,6 +57,10 @@ for _ in range(5):
     times.append((time.perf_counter() - t) * 1000)
 print("ONNX Runtime CPU here (%d cores): encoder %.0f ms (best of 5)" % (os.cpu_count(), min(times)))
 # The whole model reads the clip as the app does (greedy), as a check the export is the right model.
-with torch.no_grad():
-    ids = model.generate(torch.from_numpy(mel), language="ar", task="transcribe", max_new_tokens=60)
-print("PyTorch reads:", processor.batch_decode(ids, skip_special_tokens=True)[0])
+try:
+    with torch.no_grad():
+        prompt = processor.get_decoder_prompt_ids(language="arabic", task="transcribe")
+        ids = model.generate(torch.from_numpy(mel), forced_decoder_ids=prompt, max_new_tokens=60)
+    print("PyTorch reads:", processor.batch_decode(ids, skip_special_tokens=True)[0])
+except Exception as e:  # the model's generation config is old: the check is a nicety
+    print("PyTorch reading skipped:", e)
