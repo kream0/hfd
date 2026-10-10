@@ -46,9 +46,12 @@ jobs:
           export PYTHONPATH=$QNN_SDK_ROOT/lib/python:$PYTHONPATH
           export LD_LIBRARY_PATH=$QNN_SDK_ROOT/lib/x86_64-linux-clang:$LD_LIBRARY_PATH
           B=$QNN_SDK_ROOT/bin/x86_64-linux-clang
-          python3 -m pip install --quiet pyyaml pandas packaging
+          # The converter's own Python dependencies (its check script, else the usual pins).
+          if [ -x $QNN_SDK_ROOT/bin/check-python-dependency ]; then yes | python3 $QNN_SDK_ROOT/bin/check-python-dependency 2>&1 | tail -15; fi
+          python3 -m pip install --quiet "onnx==1.16.1" "numpy<2" "protobuf<5" pyyaml pandas packaging 2>&1 | tail -3
+          python3 -c "import onnx, numpy; print('onnx', onnx.__version__, 'numpy', numpy.__version__)"
           # Float model, run in half precision on the NPU (no calibration needed).
-          python3 $B/qnn-onnx-converter --input_network out/encoder.onnx --output_path out/qnn/encoder.cpp --float_bitwidth 16 2>&1 | tail -20
+          python3 $B/qnn-onnx-converter --input_network out/encoder.onnx --output_path out/qnn/encoder.cpp --float_bitwidth 16 2>&1 | tail -30
           ls -la out/qnn || exit 1
           $B/qnn-model-lib-generator -c out/qnn/encoder.cpp -b out/qnn/encoder.bin -o out/qnn/lib -t x86_64-linux-clang 2>&1 | tail -5
           ls -laR out/qnn/lib | head
