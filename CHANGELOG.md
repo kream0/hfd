@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.15.3
+Recite reads your voice a little faster again.
+- Your first sessions with the AI chip: a short phrase is now read in about 130 ms (540 ms before), 6 to 9 seconds of recitation in about 290 ms (650 ms before), and every āya of al-Fātiḥa and 3:18–19 was followed without a false mistake.
+- While the AI chip does the heavy part, readings no longer keep to the processor's fast cores: that was 7 to 15 % slower.
+
 ## 1.15.2
 Recite now really reads your voice on your phone's AI chip.
 - In 1.15.1 the AI chip (NPU) gave wrong readings: your phone's chip doesn't compute with the half-precision numbers it was given, so Recite checked itself, saw it, and stayed on the processor. Recite now uses a version of the speech engine built for your chip's whole numbers, checked beforehand to read test recitations word for word as before. It downloads 11 MB in the background the first time; if its check on the reference recitation fails, the processor keeps reading as before.

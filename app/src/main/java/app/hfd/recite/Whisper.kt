@@ -15,9 +15,10 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
      */
     fun transcribe(pcm: FloatArray, expected: String = "", threads: Int = THREADS, onNpu: Boolean = npu): String? {
         check(ctx != 0L) { "closed" }
-        // Measured on the phone: every other reading on the big cores only (a thread each), the
-        // others where the system puts them (whisper.text: pinned, ms).
-        val pinned = BIG_CORES != 0L && readings++ % 2 == 0
+        // Measured on the phone: on the CPU, the big cores only (a thread each) read faster (1.15.0:
+        // 476 vs 544 ms at 0-3 s); with the encoder on the NPU, where the system puts 4 threads does
+        // (1.15.2: 127 vs 136 ms at 0-3 s, 285 vs 335 at 6-9 s). whisper.text: pinned, ms.
+        val pinned = BIG_CORES != 0L && !onNpu
         val n = if (pinned) java.lang.Long.bitCount(BIG_CORES).coerceAtMost(8) else threads
         val pin = nativePin(if (pinned) BIG_CORES else -1L)
         val started = System.currentTimeMillis()
@@ -57,8 +58,6 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
      * audio on both first): cosine, sizes, NaN / infinite values. Null if either is missing.
      */
     fun npuCompare(): String? = if (ctx == 0L) null else runCatching { nativeNpuCompare(ctx) }.getOrNull()
-
-    private var readings = 0
 
     override fun close() {
         if (ctx != 0L) {

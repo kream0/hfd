@@ -152,7 +152,11 @@
   The decoder costs ~4 ms a token on the phone against 0.9 on x86 at 4 threads (the encoder only
   1.15× slower): watch whether pinning closes that. Parked: a forced prefix decoded in one batch
   (`tools/speed`, ~15 % of a long reading now; worth it once the encoder is fast). 1.15.0 on the
-  phone (11 Oct, 32 readings): pinned 0–3 s 476 ms vs 544 unpinned (1.14.3: 582).
+  phone (11 Oct, 32 readings): pinned 0–3 s 476 ms vs 544 unpinned (1.14.3: 582). 1.15.2 with the
+  encoder on the NPU (11 Oct, 240 readings, phone mic): the encoder 23.5 ms (p max 32), a reading
+  0–3 s 127 ms, 3–6 s 195, 6–9 s 285, 9–12 s 365 unpinned; pinned 7–15 % slower, so since 1.15.3
+  only CPU readings are pinned. The decoder is now most of a reading (~25 ms per second of audio):
+  the forced prefix in one batch (`tools/speed`) is the next lever.
 - NPU (11 Oct, the owner: go): the encoder runs on the Snapdragon's Hexagon (v73) through QNN's C
   API (`npu.c`), the CPU's state kept as the fallback. whisper.cpp is patched for an external
   encoder (`whisper-encoder.patch`: `whisper_hfd_init_state`, a second state of the same model;
@@ -169,8 +173,10 @@
   clip and two held-out āyāt read as with the float encoder (`check.py`). 1.15.2 uses it (10.6 MB,
   u16 in and out, SHA-256 in `NpuEncoder`): on the emulator cosine 0.998 against the float encoder
   (whisper.cpp's q8_0 on the CPU: 0.9996), the three clips word for word. `…-qnn242-v73.bin` on the
-  pre-release is 1.15.1's (unused since; `NpuEncoder.fetch` deletes it from the phone). Not yet
-  measured: the NPU's speed on the phone, and the quantized encoder on the owner's dark voice
+  pre-release is 1.15.1's (unused since; `NpuEncoder.fetch` deletes it from the phone). On the
+  phone (1.15.2, 11 Oct): npu.init 136 ms, self-test right, `npu.compare` cosine 0.99793 against the
+  CPU, no npuError in 240 readings; the owner's al-Fātiḥa and 3:18–19 (phone mic) all GOOD, no
+  marked mistake. Not yet measured: the quantized encoder on the owner's dark earbud voice
   (`npu.compare` only reads the reference clip; next: once a session, one live utterance on both). The name
   `encoder-tiny-ar-quran-qnn242-sm7750.bin` is burnt (a fp16 build a gating bug uploaded; the
   workflow deletes it). Under `bash -e`, `test a && test b` only stops on the last: one test a line.
