@@ -51,19 +51,39 @@ jobs:
           if [ -x $QNN_SDK_ROOT/bin/check-python-dependency ]; then yes | python3 $QNN_SDK_ROOT/bin/check-python-dependency 2>&1 | tail -15; fi
           python3 -m pip install --quiet "onnx==1.16.1" "numpy<2" "protobuf<5" pyyaml pandas packaging 2>&1 | tail -3
           python3 -c "import onnx, numpy; print('onnx', onnx.__version__, 'numpy', numpy.__version__)"
-          # Float model, run in half precision on the NPU (no calibration needed).
-          python3 $B/qnn-onnx-converter --input_network out/encoder.onnx --output_path out/qnn/encoder.cpp --float_bitwidth 16 2>&1 | tail -30
-          ls -la out/qnn || exit 1
-          $B/qnn-model-lib-generator -c out/qnn/encoder.cpp -b out/qnn/encoder.bin -o out/qnn/lib -t x86_64-linux-clang 2>&1 | tail -5
-          ls -laR out/qnn/lib | head
+          # The model three ways: half precision (no calibration needed), half precision keeping the
+          # input as ONNX has it (80 rows of 3000 frames, whisper.cpp's), and single precision (the
+          # NPU then picks half where the SoC runs it).
+          convert() {
+            python3 $B/qnn-onnx-converter --input_network out/encoder.onnx --output_path out/$1/encoder.cpp "${@:2}" 2>&1 | grep -E "ERROR|Conversion complete" | head -5
+            $B/qnn-model-lib-generator -c out/$1/encoder.cpp -b out/$1/encoder.bin -o out/$1/lib -t x86_64-linux-clang 2>&1 | tail -1
+          }
+          convert qnn --float_bitwidth 16
+          convert qnn_io --float_bitwidth 16 --preserve_io layout input_features
+          convert qnn32
+          grep -n -A25 'input_features_ncf' out/qnn/encoder.cpp | head -40
           # The phone's SoC by Qualcomm's number (QnnTypes.h, Qnn_SocModel_t: SM7750 = 86) and its
           # Hexagon. Without them the compiler targets a v68 ("htp_arch" isn't a key): 1.15.1's
-          # binary, which the phone's v73 loaded and ran into garbage.
-          printf '{"graphs":[{"graph_names":["encoder"],"vtcm_mb":0,"O":3}],"devices":[{"soc_model":86,"dsp_arch":"v73"}]}\n' > htp_sm7750.json
-          printf '{"backend_extensions":{"shared_library_path":"%s","config_file_path":"htp_sm7750.json"}}\n' "$QNN_SDK_ROOT/lib/x86_64-linux-clang/libQnnHtpNetRunExtensions.so" > ext_sm7750.json
-          $B/qnn-context-binary-generator --backend $QNN_SDK_ROOT/lib/x86_64-linux-clang/libQnnHtp.so \
-            --model out/qnn/lib/x86_64-linux-clang/libencoder.so --binary_file encoder_sm7750 \
-            --output_dir out/ctx --config_file ext_sm7750.json 2>&1 | tail -5
+          # binary, which the phone's v73 loaded and ran into garbage. The first that compiles goes on.
+          compile() {
+            printf '{"graphs":[{"graph_names":["encoder"],"vtcm_mb":0,"O":3}],"devices":[%s]}\n' "$3" > htp_$1.json
+            printf '{"backend_extensions":{"shared_library_path":"%s","config_file_path":"htp_%s.json"}}\n' "$QNN_SDK_ROOT/lib/x86_64-linux-clang/libQnnHtpNetRunExtensions.so" $1 > ext_$1.json
+            $B/qnn-context-binary-generator --backend $QNN_SDK_ROOT/lib/x86_64-linux-clang/libQnnHtp.so --log_level verbose \
+              --model out/$2/lib/x86_64-linux-clang/libencoder.so --binary_file encoder_$1 --output_dir out/ctx --config_file ext_$1.json > gen_$1.log 2>&1
+            if [ -s out/ctx/encoder_$1.bin ]; then
+              echo "== $1: compiled, $(stat -c %s out/ctx/encoder_$1.bin) bytes"
+              [ -e out/ctx/encoder_sm7750.bin ] || { cp out/ctx/encoder_$1.bin out/ctx/encoder_sm7750.bin; echo "$1" > out/ctx/variant; }
+            else
+              echo "== $1: failed"; grep -i -E "error|valid|unsupported|not supported|ncf" gen_$1.log | grep -v "^\s*$" | head -25
+            fi
+          }
+          SOC='{"soc_model":86,"dsp_arch":"v73"}'
+          compile f16 qnn "$SOC"
+          compile f16_io qnn_io "$SOC"
+          compile f32 qnn32 "$SOC"
+          compile f16_arch qnn '{"dsp_arch":"v73"}'
+          compile f16_soc qnn '{"soc_model":86}'
+          echo "chosen: $(cat out/ctx/variant 2>/dev/null || echo none)"
           ls -la out/ctx || true
       - name: The compiled encoder's inputs and outputs (names, ids, shapes, types)
         continue-on-error: true
@@ -97,8 +117,6 @@ jobs:
           B=$QNN_SDK_ROOT/bin/x86_64-linux-clang
           L=$QNN_SDK_ROOT/lib/x86_64-linux-clang
           export LD_LIBRARY_PATH=$L:$LD_LIBRARY_PATH
-          # The graph's input is frame by frame ([1, 3000, 80]: the converter's layout).
-          echo "$PWD/out/mel_t.raw" > list.txt
           compare() {
             python3 - "$1" <<'PY'
           import glob, sys, numpy as np
@@ -114,18 +132,15 @@ jobs:
               print(f"{f}: max abs diff {same:.3e} (as is), {np.abs(t - ref).max():.3e} (transposed); scale {np.abs(ref).max():.2f}; cosine {float(got @ ref / np.linalg.norm(got) / np.linalg.norm(ref)):.6f}")
           PY
           }
-          # The converted graph (prepared here), and the compiled binary through the app's npu.c (the
-          # emulator as the phone's SoC) on the mel in whisper.cpp's layout: side by side, ~6 min each.
+          # The compiled binary through the app's npu.c (the emulator as the phone's SoC) on the mel in
+          # whisper.cpp's layout (some 8 minutes).
           CC=$(command -v gcc-13 || command -v gcc-12 || echo gcc)   # _Float16 on x86 needs GCC 12+
           $CC -O2 -Wall -DHFD_QNN -DHFD_NPU_EMULATE_SOC=86 -Itools/npu -Iapp/src/main/cpp -I$QNN_SDK_ROOT/include/QNN \
             tools/npu/npurun.c app/src/main/cpp/npu.c -ldl -lm -o npurun
           t=$(date +%s)
-          $B/qnn-net-run --backend $L/libQnnHtp.so --model out/qnn/lib/x86_64-linux-clang/libencoder.so --input_list list.txt --output_dir out/run_htp --config_file ext_sm7750.json > net-run.log 2>&1 &
           mkdir -p out/run_npu
           ./npurun out/ctx/encoder_sm7750.bin out/mel.raw out/run_npu/npu_c.raw 2>&1 | grep -v "^\s*$" | tail -12
-          wait
-          tail -5 net-run.log; echo "HTP emulator: $(( $(date +%s) - t )) s"
-          compare out/run_htp
+          echo "HTP emulator: $(( $(date +%s) - t )) s"
           compare out/run_npu
           python3 - <<'PY'
           import numpy as np, os
