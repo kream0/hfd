@@ -1,6 +1,6 @@
 --- a/include/whisper.h
 +++ b/include/whisper.h
-@@ -238,6 +238,13 @@
+@@ -238,6 +238,17 @@
  
      WHISPER_API struct whisper_state * whisper_init_state(struct whisper_context * ctx);
  
@@ -10,6 +10,10 @@
 +    // decoder stay here.
 +    typedef bool (*whisper_hfd_encoder_callback)(const float * mel, int n_mel, int n_frames, float * out, int n_ctx, int n_state, void * user_data);
 +    WHISPER_API struct whisper_state * whisper_hfd_init_state(struct whisper_context * ctx, whisper_hfd_encoder_callback encoder, void * user_data);
++
++    // HFD: the encoder's output from [state]'s last reading (n_ctx rows of n_state), or NULL: what
++    // the NPU gave against the CPU's, for the app's diagnostics.
++    WHISPER_API const float * whisper_hfd_encoder_output(struct whisper_state * state, int * n_ctx, int * n_state);
 +
      // Given a context, enable use of OpenVINO for encode inference.
      // model_path: Optional path to OpenVINO encoder IR model. If set to nullptr,
@@ -49,7 +53,7 @@
          } else {
  #if defined(WHISPER_USE_COREML)
              whisper_coreml_encode(wstate.ctx_coreml, mel->ne[0], mel->ne[1], (float *) mel->data, (float *) wstate.embd_enc->data);
-@@ -3387,8 +3397,22 @@
+@@ -3387,8 +3397,32 @@
  }
  #endif
  
@@ -63,6 +67,16 @@
 +    hfd_pending_encoder = nullptr;
 +    hfd_pending_user = nullptr;
 +    return state;
++}
++
++const float * whisper_hfd_encoder_output(struct whisper_state * state, int * n_ctx, int * n_state) {
++    const ggml_tensor * t = state != nullptr ? state->embd_enc : nullptr;
++    if (t == nullptr || t->data == nullptr || t->buffer == nullptr || !ggml_backend_buffer_is_host(t->buffer)) {
++        return nullptr;
++    }
++    *n_ctx = (int) t->ne[1];
++    *n_state = (int) t->ne[0];
++    return (const float *) t->data;
 +}
 +
  struct whisper_state * whisper_init_state(whisper_context * ctx) {

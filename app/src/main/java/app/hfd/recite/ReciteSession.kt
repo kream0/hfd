@@ -377,6 +377,12 @@ class ReciteSession(
             val right = text != null && Arabic.skeleton(text) == Arabic.skeleton(REFERENCE_TEXT)
             w.npu = right
             Diag.log("npu.selftest", "text" to text, "right" to right, "ms" to System.currentTimeMillis() - started)
+            // Read wrong: its encoder output against the CPU's on the same clip tells a layout, a
+            // scale or a precision fault apart (the CPU reading takes some 500 ms, once).
+            if (!right) {
+                w.transcribe(pcm, onNpu = false)
+                Diag.log("npu.compare", "when" to "selftest", "result" to w.npuCompare())
+            }
         } finally {
             encoder.tried()
         }
@@ -395,6 +401,11 @@ class ReciteSession(
         val started = System.currentTimeMillis()
         val text = w.transcribe(pcm, onNpu = false)
         Diag.log("whisper.selftest", "expected" to REFERENCE_TEXT, "text" to text, "ms" to System.currentTimeMillis() - started)
+        // The NPU's reading of the same clip against the CPU's, how close its encoder comes.
+        if (w.npu) {
+            val npuText = w.transcribe(pcm, onNpu = true)
+            Diag.log("npu.compare", "when" to "close", "text" to npuText, "result" to w.npuCompare())
+        }
     }
 
     companion object {

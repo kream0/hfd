@@ -24,4 +24,11 @@ bool hfd_npu_encode(const float *mel, int n_mel, int n_frames, float *out, int n
 int64_t hfd_npu_last_us(const hfd_npu *n);
 uint64_t hfd_npu_last_error(const hfd_npu *n);
 
+// The NPU (its Hexagon, SoC, VTCM), what the binary was compiled for, and the graph's input and output.
+const char *hfd_npu_info(const hfd_npu *n);
+
+// The NPU's encoder output against the CPU's for the same audio (both n_ctx rows of n_state), for
+// the diagnostics: their cosine (and the NPU's read transposed), sizes, and NaN / infinite / zero values.
+void hfd_npu_compare(const float *cpu, const float *npu, int n_ctx, int n_state, char *out, size_t cap);
+
 #endif

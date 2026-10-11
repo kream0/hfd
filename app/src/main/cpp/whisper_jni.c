@@ -117,6 +117,28 @@ Java_app_hfd_recite_Whisper_nativeNpuLast(JNIEnv *env, jclass clazz, jlong handl
     return out;
 }
 
+// The NPU and the compiled encoder (npu.c), or null if it isn't set up.
+JNIEXPORT jstring JNICALL
+Java_app_hfd_recite_Whisper_nativeNpuInfo(JNIEnv *env, jclass clazz, jlong handle) {
+    hfd_model *m = (hfd_model *) (intptr_t) handle;
+    return m != NULL && m->npu != NULL ? (*env)->NewStringUTF(env, hfd_npu_info(m->npu)) : NULL;
+}
+
+// The NPU's encoder output from its last reading against the CPU's from its own (of the same
+// audio, for this to mean anything), or null if either is missing.
+JNIEXPORT jstring JNICALL
+Java_app_hfd_recite_Whisper_nativeNpuCompare(JNIEnv *env, jclass clazz, jlong handle) {
+    hfd_model *m = (hfd_model *) (intptr_t) handle;
+    if (m == NULL || m->npu_state == NULL) return NULL;
+    int c1 = 0, s1 = 0, c2 = 0, s2 = 0;
+    const float *cpu = whisper_hfd_encoder_output(m->cpu, &c1, &s1);
+    const float *npu = whisper_hfd_encoder_output(m->npu_state, &c2, &s2);
+    if (cpu == NULL || npu == NULL || c1 != c2 || s1 != s2) return NULL;
+    char out[256];
+    hfd_npu_compare(cpu, npu, c1, s1, out, sizeof(out));
+    return (*env)->NewStringUTF(env, out);
+}
+
 JNIEXPORT void JNICALL
 Java_app_hfd_recite_Whisper_nativeFree(JNIEnv *env, jclass clazz, jlong handle) {
     hfd_model *m = (hfd_model *) (intptr_t) handle;

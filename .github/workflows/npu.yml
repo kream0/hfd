@@ -1,16 +1,17 @@
 name: NPU
 
-# Could Recite's recogniser run on the owner's phone's NPU (Snapdragon 7 Gen 4's Hexagon, through
-# Qualcomm's QNN)? Exports Tarteel's tiny encoder to ONNX (tools/npu/export.py: checked against
-# PyTorch, timed on this CPU), then tries Qualcomm's AI Runtime SDK (QAIRT, public download) to
-# convert it and compile it ahead of time for the Hexagon versions a Snapdragon may have (v73,
-# v75, v79): whether that works here, and the sizes. No phone involved yet.
+# Recite's encoder on the owner's phone's NPU (Snapdragon 7 Gen 4's Hexagon, through Qualcomm's
+# QNN): exports Tarteel's tiny encoder to ONNX (tools/npu/export.py: checked against PyTorch), then
+# Qualcomm's AI Runtime SDK (QAIRT, public download) converts it and compiles it ahead of time for
+# that SoC. The compiled encoder then runs on QNN's HTP emulator through the app's own npu.c
+# (tools/npu/npurun.c), as the phone runs it, against ONNX Runtime; only then is it published.
 on:
   push:
     branches: ['**']
     paths:
       - '.github/workflows/npu.yml'
       - 'tools/npu/**'
+      - 'app/src/main/cpp/npu.*'
   workflow_dispatch:
 
 permissions:
@@ -55,24 +56,30 @@ jobs:
           ls -la out/qnn || exit 1
           $B/qnn-model-lib-generator -c out/qnn/encoder.cpp -b out/qnn/encoder.bin -o out/qnn/lib -t x86_64-linux-clang 2>&1 | tail -5
           ls -laR out/qnn/lib | head
-          for v in 73 75 79; do
-            printf '{"graphs":[{"graph_names":["encoder"],"vtcm_mb":0}],"devices":[{"htp_arch":"v%s"}]}\n' $v > htp_v$v.json
-            printf '{"backend_extensions":{"shared_library_path":"%s","config_file_path":"htp_v%s.json"}}\n' "$QNN_SDK_ROOT/lib/x86_64-linux-clang/libQnnHtpNetRunExtensions.so" $v > ext_v$v.json
-            $B/qnn-context-binary-generator --backend $QNN_SDK_ROOT/lib/x86_64-linux-clang/libQnnHtp.so \
-              --model out/qnn/lib/x86_64-linux-clang/libencoder.so --binary_file encoder_v$v \
-              --output_dir out/ctx --config_file ext_v$v.json 2>&1 | tail -5
-          done
+          # The phone's SoC by Qualcomm's number (QnnTypes.h, Qnn_SocModel_t: SM7750 = 86) and its
+          # Hexagon. Without them the compiler targets a v68 ("htp_arch" isn't a key): 1.15.1's
+          # binary, which the phone's v73 loaded and ran into garbage.
+          printf '{"graphs":[{"graph_names":["encoder"],"vtcm_mb":0,"O":3}],"devices":[{"soc_model":86,"dsp_arch":"v73"}]}\n' > htp_sm7750.json
+          printf '{"backend_extensions":{"shared_library_path":"%s","config_file_path":"htp_sm7750.json"}}\n' "$QNN_SDK_ROOT/lib/x86_64-linux-clang/libQnnHtpNetRunExtensions.so" > ext_sm7750.json
+          $B/qnn-context-binary-generator --backend $QNN_SDK_ROOT/lib/x86_64-linux-clang/libQnnHtp.so \
+            --model out/qnn/lib/x86_64-linux-clang/libencoder.so --binary_file encoder_sm7750 \
+            --output_dir out/ctx --config_file ext_sm7750.json 2>&1 | tail -5
           ls -la out/ctx || true
-          python3 $B/qnn-onnx-converter --help 2>&1 | grep -iE -A2 "float_bitwidth|bw|layout|io_|dtype|preserve" | head -60
       - name: The compiled encoder's inputs and outputs (names, ids, shapes, types)
         continue-on-error: true
         run: |
           B=$QNN_SDK_ROOT/bin/x86_64-linux-clang
           export LD_LIBRARY_PATH=$QNN_SDK_ROOT/lib/x86_64-linux-clang:$LD_LIBRARY_PATH
-          $B/qnn-context-binary-utility --context_binary out/ctx/encoder_v73.bin --json_file out/ctx/info_v73.json 2>&1 | tail -3
+          $B/qnn-context-binary-utility --context_binary out/ctx/encoder_sm7750.bin --json_file out/ctx/info.json 2>&1 | tail -3
           python3 - <<'PY'
           import json
-          info = json.load(open("out/ctx/info_v73.json"))
+          info = json.load(open("out/ctx/info.json"))
+          meta = info["info"]
+          arch = meta.get("contextMetadata", {}).get("info", {}).get("dspArch")
+          blob = meta["graphs"][0]["info"].get("graphBlobInfo", {}).get("info", {})
+          print("compiled for: Hexagon v%s, SoC %s, VTCM %s MB, optimisation %s" % (arch, meta.get("socModel"), blob.get("vtcmSize"), blob.get("optimizationLevel")))
+          if arch == 73 and meta.get("socModel") == 86:
+              open("out/ctx/arch-ok", "w").write("73")
           def walk(x, path=""):
               if isinstance(x, dict):
                   if "dimensions" in x or "dims" in x:
@@ -83,7 +90,7 @@ jobs:
           print(json.dumps({k: v for k, v in info.items() if not isinstance(v, (dict, list))}, indent=1)[:2000])
           walk(info)
           PY
-      - name: The converted encoder on Qualcomm's HTP emulator (as v73) against ONNX Runtime
+      - name: The encoder on Qualcomm's HTP emulator (as the SM7750) against ONNX Runtime
         continue-on-error: true
         timeout-minutes: 40
         run: |
@@ -107,21 +114,42 @@ jobs:
               print(f"{f}: max abs diff {same:.3e} (as is), {np.abs(t - ref).max():.3e} (transposed); scale {np.abs(ref).max():.2f}; cosine {float(got @ ref / np.linalg.norm(got) / np.linalg.norm(ref)):.6f}")
           PY
           }
-          t=$(date +%s); $B/qnn-net-run --backend $L/libQnnHtp.so --model out/qnn/lib/x86_64-linux-clang/libencoder.so --input_list list.txt --output_dir out/run_htp --config_file ext_v73.json 2>&1 | tail -5; echo "HTP emulator: $(( $(date +%s) - t )) s"
+          # The converted graph (prepared here), and the compiled binary through the app's npu.c (the
+          # emulator as the phone's SoC) on the mel in whisper.cpp's layout: side by side, ~6 min each.
+          CC=$(command -v gcc-13 || command -v gcc-12 || echo gcc)   # _Float16 on x86 needs GCC 12+
+          $CC -O2 -Wall -DHFD_QNN -DHFD_NPU_EMULATE_SOC=86 -Itools/npu -Iapp/src/main/cpp -I$QNN_SDK_ROOT/include/QNN \
+            tools/npu/npurun.c app/src/main/cpp/npu.c -ldl -lm -o npurun
+          t=$(date +%s)
+          $B/qnn-net-run --backend $L/libQnnHtp.so --model out/qnn/lib/x86_64-linux-clang/libencoder.so --input_list list.txt --output_dir out/run_htp --config_file ext_sm7750.json > net-run.log 2>&1 &
+          mkdir -p out/run_npu
+          ./npurun out/ctx/encoder_sm7750.bin out/mel.raw out/run_npu/npu_c.raw 2>&1 | grep -v "^\s*$" | tail -12
+          wait
+          tail -5 net-run.log; echo "HTP emulator: $(( $(date +%s) - t )) s"
           compare out/run_htp
-      - name: The context binary for the phone (v73) in the speech-model pre-release
+          compare out/run_npu
+          python3 - <<'PY'
+          import numpy as np, os
+          ref = np.fromfile("out/encoder_out.raw", dtype=np.float32)
+          got = np.fromfile("out/run_npu/npu_c.raw", dtype=np.float32) if os.path.exists("out/run_npu/npu_c.raw") else np.zeros(1)
+          cos = float(got @ ref / (np.linalg.norm(got) * np.linalg.norm(ref) + 1e-9)) if got.size == ref.size else 0.0
+          print(f"npu.c on the emulated SM7750: cosine {cos:.6f} against ONNX Runtime")
+          if cos > 0.999:
+              open("out/ctx/npu-ok", "w").write(str(cos))
+          PY
+      - name: The context binary for the phone (SM7750) in the speech-model pre-release
         if: github.ref_name == 'claude/hfd-quran-learning-app-n48y3d'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          test -s out/ctx/encoder_v73.bin
-          cp out/ctx/encoder_v73.bin encoder-tiny-ar-quran-qnn242-v73.bin
-          sha256sum encoder-tiny-ar-quran-qnn242-v73.bin
+          # Only a binary compiled for the phone's Hexagon that reads right through npu.c.
+          test -s out/ctx/encoder_sm7750.bin && test -e out/ctx/arch-ok && test -e out/ctx/npu-ok
+          cp out/ctx/encoder_sm7750.bin encoder-tiny-ar-quran-qnn242-sm7750.bin
+          sha256sum encoder-tiny-ar-quran-qnn242-sm7750.bin
           # Once: the app pins the published file's SHA-256 (NpuEncoder). A new one takes a new name.
-          if gh release view speech-model --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx encoder-tiny-ar-quran-qnn242-v73.bin; then
+          if gh release view speech-model --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx encoder-tiny-ar-quran-qnn242-sm7750.bin; then
             echo "already published"
           else
-            gh release upload speech-model encoder-tiny-ar-quran-qnn242-v73.bin --repo "$GITHUB_REPOSITORY"
+            gh release upload speech-model encoder-tiny-ar-quran-qnn242-sm7750.bin --repo "$GITHUB_REPOSITORY"
           fi
       - name: Which Hexagon the Snapdragon 7 Gen 4 (SM7750) has, by Qualcomm's SDK
         continue-on-error: true

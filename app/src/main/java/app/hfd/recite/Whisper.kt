@@ -45,9 +45,18 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
         check(ctx != 0L) { "closed" }
         val started = System.currentTimeMillis()
         val error = runCatching { nativeNpu(ctx, binary.path, libraryDir.orEmpty()) }.getOrElse { it.toString() }
-        Diag.log("npu.init", "ok" to (error == null), "error" to error, "ms" to System.currentTimeMillis() - started)
+        Diag.log(
+            "npu.init", "ok" to (error == null), "error" to error, "ms" to System.currentTimeMillis() - started,
+            "info" to runCatching { nativeNpuInfo(ctx) }.getOrNull(),
+        )
         return error
     }
+
+    /**
+     * The NPU's encoder output from its last reading against the CPU's from its own (read the same
+     * audio on both first): cosine, sizes, NaN / infinite values. Null if either is missing.
+     */
+    fun npuCompare(): String? = if (ctx == 0L) null else runCatching { nativeNpuCompare(ctx) }.getOrNull()
 
     private var readings = 0
 
@@ -126,5 +135,7 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
         @JvmStatic private external fun nativeTranscribe(ctx: Long, samples: FloatArray, threads: Int, audioCtx: Int, expected: ByteArray?, npu: Boolean): ByteArray?
         @JvmStatic private external fun nativeNpu(ctx: Long, binary: String, libDir: String): String?
         @JvmStatic private external fun nativeNpuLast(ctx: Long): LongArray
+        @JvmStatic private external fun nativeNpuInfo(ctx: Long): String?
+        @JvmStatic private external fun nativeNpuCompare(ctx: Long): String?
     }
 }

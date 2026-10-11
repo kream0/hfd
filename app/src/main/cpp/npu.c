@@ -4,8 +4,33 @@
 // "skel") is loaded by the DSP from a file: ADSP_LIBRARY_PATH names the app's library folder.
 #include "npu.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
+
+void hfd_npu_compare(const float *cpu, const float *npu, int n_ctx, int n_state, char *out, size_t cap) {
+    double dot = 0, dot_t = 0, cc = 0, nn = 0, cpu_abs = 0, npu_abs = 0, top = 0;
+    size_t nan = 0, inf = 0, zero = 0;
+    for (int c = 0; c < n_ctx; c++) {
+        for (int s = 0; s < n_state; s++) {
+            double x = cpu[(size_t) c * n_state + s], y = npu[(size_t) c * n_state + s], t = npu[(size_t) s * n_ctx + c];
+            if (isnan(y)) { nan++; continue; }
+            if (isinf(y)) { inf++; continue; }
+            if (y == 0) zero++;
+            if (!isfinite(t)) t = 0;
+            dot += x * y;
+            dot_t += x * t;
+            cc += x * x;
+            nn += y * y;
+            cpu_abs += fabs(x);
+            npu_abs += fabs(y);
+            if (fabs(y) > top) top = fabs(y);
+        }
+    }
+    double n = (double) n_ctx * n_state, norm = sqrt(cc) * sqrt(nn);
+    snprintf(out, cap, "cosine %.5f (read transposed %.5f), mean |x| npu %.4f cpu %.4f, max %.2f, nan %zu, inf %zu, zero %zu",
+             norm > 0 ? dot / norm : 0, norm > 0 ? dot_t / norm : 0, npu_abs / n, cpu_abs / n, top, nan, inf, zero);
+}
 
 #ifndef HFD_QNN
 
@@ -23,6 +48,7 @@ bool hfd_npu_encode(const float *mel, int n_mel, int n_frames, float *out, int n
 }
 int64_t hfd_npu_last_us(const hfd_npu *n) { (void) n; return 0; }
 uint64_t hfd_npu_last_error(const hfd_npu *n) { (void) n; return 0; }
+const char *hfd_npu_info(const hfd_npu *n) { (void) n; return ""; }
 
 #else
 
@@ -38,6 +64,7 @@ uint64_t hfd_npu_last_error(const hfd_npu *n) { (void) n; return 0; }
 #include "HTP/QnnHtpPerfInfrastructure.h"
 #include "System/QnnSystemInterface.h"
 #include "System/QnnSystemContext.h"
+#include "HTP/QnnHtpSystemContext.h"
 
 #define TAG "hfd-npu"
 
@@ -64,6 +91,8 @@ struct hfd_npu {
     int in_f16, out_f16;
     int64_t last_us;
     uint64_t last_error;
+    // The NPU (0s if QNN doesn't say) and what the binary was compiled for, for the diagnostics.
+    char info[256];
 };
 
 static void qnn_log(const char *fmt, QnnLog_Level_t level, uint64_t timestamp, va_list args) {
@@ -131,6 +160,32 @@ static void burst(hfd_npu *n) {
     const QnnHtpPerfInfrastructure_PowerConfig_t *configs[] = { &dcvs, &rpc, &poll, NULL };
     Qnn_ErrorHandle_t e = n->perf.setPowerConfig(n->power_id, configs);
     if (e != QNN_SUCCESS) __android_log_print(ANDROID_LOG_WARN, TAG, "setPowerConfig: %llu", (unsigned long long) e);
+}
+
+// The NPU's Hexagon version, SoC (Qnn_SocModel_t) and VTCM (MB), as QNN reports it; 0s if it doesn't.
+static void platform(hfd_npu *n, uint32_t *arch, uint32_t *soc, size_t *vtcm) {
+    *arch = *soc = 0;
+    *vtcm = 0;
+    const QnnDevice_PlatformInfo_t *info = NULL;
+    if (n->qnn.deviceGetPlatformInfo == NULL || n->qnn.deviceGetPlatformInfo(n->log, &info) != QNN_SUCCESS || info == NULL) return;
+    if (info->version == QNN_DEVICE_PLATFORM_INFO_VERSION_1 && info->v1.numHwDevices > 0 && info->v1.hwDevices != NULL) {
+        const QnnDevice_HardwareDeviceInfo_t *hw = &info->v1.hwDevices[0];
+        const QnnHtpDevice_DeviceInfoExtension_t *ext = hw->version == QNN_DEVICE_HARDWARE_DEVICE_INFO_VERSION_1 ? hw->v1.deviceInfoExtension : NULL;
+        if (ext != NULL && ext->devType == QNN_HTP_DEVICE_TYPE_ON_CHIP) {
+            *arch = (uint32_t) ext->onChipDevice.arch;
+            *soc = ext->onChipDevice.socModel;
+            *vtcm = ext->onChipDevice.vtcmSize;
+        }
+    }
+    if (n->qnn.deviceFreePlatformInfo != NULL) n->qnn.deviceFreePlatformInfo(n->log, info);
+}
+
+// The Hexagon version a binary was compiled for (QNN System's version 3 of its info), or 0.
+static uint32_t binary_arch(const QnnSystemContext_BinaryInfo_t *info) {
+    if (info->version != QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_3) return 0;
+    const QnnHtpSystemContext_ContextBlobInfo_t *meta = info->contextBinaryInfoV3.contextMetadata;
+    if (meta == NULL || info->contextBinaryInfoV3.contextMetadataSize < sizeof(QnnHtpSystemContext_ContextBlobInfo_t)) return 0;
+    return meta->version == QNN_SYSTEM_CONTEXT_HTP_CONTEXT_INFO_BLOB_VERSION_V1 ? meta->contextBinaryContextBlobInfoV1.dspArch : 0;
 }
 
 static void *read_file(const char *path, size_t *size) {
@@ -217,8 +272,24 @@ hfd_npu *hfd_npu_new(const char *binary, const char *lib_dir, char *err, size_t 
     Qnn_ErrorHandle_t e;
     if (n->qnn.logCreate != NULL) n->qnn.logCreate(qnn_log, QNN_LOG_LEVEL_WARN, &n->log);
     if ((e = n->qnn.backendCreate(n->log, NULL, &n->backend)) != QNN_SUCCESS) FAIL("backendCreate %llu", (unsigned long long) e);
-    if (n->qnn.deviceCreate != NULL && (e = n->qnn.deviceCreate(n->log, NULL, &n->device)) != QNN_SUCCESS) FAIL("deviceCreate %llu", (unsigned long long) e);
+    const QnnDevice_Config_t **device_config = NULL;
+#ifdef HFD_NPU_EMULATE_SOC
+    // tools/npu/npurun.c: QNN's emulator on a PC, as the phone's SoC (a v68 otherwise).
+    QnnHtpDevice_CustomConfig_t soc_config;
+    memset(&soc_config, 0, sizeof(soc_config));
+    soc_config.option = QNN_HTP_DEVICE_CONFIG_OPTION_SOC;
+    soc_config.socModel = HFD_NPU_EMULATE_SOC;
+    QnnDevice_Config_t soc_device;
+    soc_device.option = QNN_DEVICE_CONFIG_OPTION_CUSTOM;
+    soc_device.customConfig = &soc_config;
+    const QnnDevice_Config_t *emulated[] = { &soc_device, NULL };
+    device_config = emulated;
+#endif
+    if (n->qnn.deviceCreate != NULL && (e = n->qnn.deviceCreate(n->log, device_config, &n->device)) != QNN_SUCCESS) FAIL("deviceCreate %llu", (unsigned long long) e);
     burst(n);
+    uint32_t arch, soc;
+    size_t vtcm;
+    platform(n, &arch, &soc, &vtcm);
 
     size_t size = 0;
     n->binary = read_file(binary, &size);
@@ -233,6 +304,10 @@ hfd_npu *hfd_npu_new(const char *binary, const char *lib_dir, char *err, size_t 
     uint32_t n_in = 0, n_out = 0;
     if (!graph_info(info, &name, &ins, &n_in, &outs, &n_out) || n_in != 1 || n_out != 1)
         FAIL("graph info (version %d): %u inputs, %u outputs", (int) info->version, n_in, n_out);
+    // A binary compiled for another Hexagon may load and run, and give garbage (1.15.1: one for a
+    // v68 on the phone's v73).
+    uint32_t compiled = binary_arch(info);
+    if (arch != 0 && compiled != 0 && arch != compiled) FAIL("compiled for a v%u, this NPU is a v%u (SoC %u)", compiled, arch, soc);
 
     if ((e = n->qnn.contextCreateFromBinary(n->backend, n->device, NULL, n->binary, size, &n->context, NULL)) != QNN_SUCCESS)
         FAIL("contextCreateFromBinary %llu", (unsigned long long) e);
@@ -257,8 +332,13 @@ hfd_npu *hfd_npu_new(const char *binary, const char *lib_dir, char *err, size_t 
     n->out.v1.memType = QNN_TENSORMEMTYPE_RAW;
     n->out.v1.clientBuf.data = n->out_buf;
     n->out.v1.clientBuf.dataSize = (uint32_t) out_bytes;
-    __android_log_print(ANDROID_LOG_INFO, TAG, "graph %s: in %s %zu (f16 %d), out %s %zu (f16 %d)", name,
-                        n->in.v1.name, n->in_count, n->in_f16, n->out.v1.name, n->out_count, n->out_f16);
+    uint32_t a, b, c, d;
+    last_two(&n->in, &a, &b);
+    last_two(&n->out, &c, &d);
+    snprintf(n->info, sizeof(n->info), "npu v%u soc %u vtcm %zu MB; binary v%u soc %u; %s %ux%u %s, %s %ux%u %s", arch, soc, vtcm, compiled,
+             info->version == QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_3 ? info->contextBinaryInfoV3.socModel : 0,
+             n->in.v1.name, a, b, n->in_f16 ? "f16" : "f32", n->out.v1.name, c, d, n->out_f16 ? "f16" : "f32");
+    __android_log_print(ANDROID_LOG_INFO, TAG, "graph %s: %s", name, n->info);
     return n;
 }
 
@@ -319,5 +399,6 @@ bool hfd_npu_encode(const float *mel, int n_mel, int n_frames, float *out, int n
 
 int64_t hfd_npu_last_us(const hfd_npu *n) { return n != NULL ? n->last_us : 0; }
 uint64_t hfd_npu_last_error(const hfd_npu *n) { return n != NULL ? n->last_error : 0; }
+const char *hfd_npu_info(const hfd_npu *n) { return n != NULL ? n->info : ""; }
 
 #endif
