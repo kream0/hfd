@@ -51,7 +51,8 @@ class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean 
             // Went back (a restart, a phrase said again): nothing of it is stable yet.
             previous = tracker.status.copyOf()
             stable = BooleanArray(tracker.size)
-            if (final) closed = id
+            // Saying a word still (a partial reading ends inside it): the marker is on it.
+            if (final) closed = id else voice = tracker.cut
             return tracker.position - from
         }
         // Nothing of this reading followed, where the one before did (a skipped āya accepted on a

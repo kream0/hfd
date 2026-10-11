@@ -81,6 +81,9 @@ class Tracker(val targets: List<ReciteTarget>) {
         return AyahResult(t.ref, t.words.size, mistakes)
     }
 
+    /** Letters the last chunk that went on matched (align). */
+    private var aligned = 0
+
     /** Where the recitation stands, to come back to ([reset]). */
     class Mark internal constructor(internal val position: Int, internal val status: Array<WordStatus>) {
         internal fun statusAt(w: Int): WordStatus = status[w]
@@ -107,9 +110,20 @@ class Tracker(val targets: List<ReciteTarget>) {
      */
     fun feed(heard: String): Int {
         val hWords = heard.split(Regex("\\s+")).map { Arabic.skeleton(it) }.filter { it.isNotEmpty() }
+        cut = null
         if (hWords.isEmpty()) return 0
         if (!done) {
+            // The chunk's best match anywhere in the text so far: an āya said again further back than
+            // align looks may also scrape a forward match (بسم الل read as 1:4's مالك, the owner's
+            // al-Fātiḥa of 11 Oct): a clearly better match among the words recited holds it back.
+            val anywhere = if (position > 0) stretch(hWords) else null
+            val kept = mark()
             val moved = align(hWords)
+            if (moved > 0 && anywhere != null && anywhere.lastWord < kept.position - 1 && anywhere.same >= aligned + AGAIN_MARGIN &&
+                anywhere.same >= JUMP_MATCH_FRACTION * anywhere.letters) {
+                reset(kept)
+                return back(hWords)
+            }
             if (moved > 0) return moved
             // The disconnected letters (الٓمٓ, حمٓ…) are recited as long held notes, which the model
             // doesn't hear as words (it makes up منذر, فرق…): whatever is heard while they're next
@@ -131,6 +145,7 @@ class Tracker(val targets: List<ReciteTarget>) {
     private fun back(hWords: List<String>): Int {
         if (position == 0) return 0
         val s = stretch(hWords) ?: return 0
+        cut = s.cut
         // Starting at the position or after is going on, not back (align's to judge).
         if (s.first >= position) return 0
         // The last words said again (a correction) take less than going far back.
@@ -156,14 +171,26 @@ class Tracker(val targets: List<ReciteTarget>) {
         val s = stretch(hWords) ?: return null
         // Ending at the last word recited or after: the voice is at the position.
         if (s.lastWord >= position - 1) return null
-        if (s.same < VOICE_MIN_LETTERS || s.same < JUMP_MATCH_FRACTION * s.letters || s.same < JUMP_MATCH_FRACTION * s.span) return null
-        return s.lastWord + 1
+        // An āya said again from its start shows from its first word (a phrase anywhere: three words).
+        val least = if (starts.contains(s.first)) VOICE_START_LETTERS else VOICE_MIN_LETTERS
+        if (s.same < least || s.same < JUMP_MATCH_FRACTION * s.letters || s.same < JUMP_MATCH_FRACTION * s.span) return null
+        // A word still being said (the chunk ends inside it) is where the voice is.
+        return s.cut ?: (s.lastWord + 1)
     }
+
+    /**
+     * The word the last chunk ended inside, still being said, when it took the recitation back
+     * (going back counts it, as going on does): for the next-word marker. Null otherwise.
+     */
+    var cut: Int? = null
+        private set
 
     /** A stretch of the text a chunk matches: its words, and its letters matched or not. */
     private class Stretch(
         val first: Int, val lastWord: Int, val same: Int, val span: Int, val letters: Int,
         val owner: List<Int>, val matched: BooleanArray, val touched: BooleanArray,
+        /** The last word, if the chunk ends inside it (its last letters not reached). */
+        val cut: Int?,
     )
 
     /**
@@ -212,7 +239,8 @@ class Tracker(val targets: List<ReciteTarget>) {
         }
         val span = best - i
         if (span <= 0) return null
-        return Stretch(owner[i], owner[best - 1], same, span, m, owner, matched, touched)
+        val cut = owner[best - 1].takeIf { best < n && owner[best] == it }
+        return Stretch(owner[i], owner[best - 1], same, span, m, owner, matched, touched, cut)
     }
 
     private fun statusOf(idx: List<Int>, matched: BooleanArray, touched: BooleanArray, w: Int): WordStatus {
@@ -299,6 +327,7 @@ class Tracker(val targets: List<ReciteTarget>) {
         // 3:5's start, matched اللَّهَ's last letter and lit إِنَّ اللَّهَ two seconds early; the
         // owner's session of 2 Oct).
         if (WordStatus.OK !in now) return 0
+        aligned = same
         for (w in position..lastWord) status[w] = now[w - position]
         val moved = lastWord + 1 - position
         position = lastWord + 1
@@ -322,6 +351,10 @@ class Tracker(val targets: List<ReciteTarget>) {
         const val BACK_MIN_LETTERS = 8
         /** Letters a chunk saying words already recited must match for the next-word marker to go there ([voiceAt]). */
         const val VOICE_MIN_LETTERS = 6
+        /** The same from an āya's first word (an āya said again from its start): its first word. */
+        const val VOICE_START_LETTERS = 3
+        /** Letters a match among the words recited must have over the forward one for the chunk not to go on ([feed]). */
+        const val AGAIN_MARGIN = 1
         /** Share of the chunk's letters, and of the text's letters it spans, that must match for it to be followed. */
         const val MIN_MATCH_FRACTION = 0.6
         /**
