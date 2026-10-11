@@ -40,6 +40,8 @@ android {
                 // Always optimised: a debug build of whisper.cpp is far too slow to use.
                 // Shared C++ runtime: ggml is several libraries (its CPU builds are loaded at start).
                 arguments += listOf("-DCMAKE_BUILD_TYPE=Release", "-DANDROID_STL=c++_shared")
+                // QNN's headers for the NPU (build.yml fetches them; without them it is left out).
+                System.getenv("QNN_INCLUDE")?.let { arguments += "-DHFD_QNN_INCLUDE=$it" }
             }
         }
     }
@@ -95,6 +97,17 @@ android {
     }
 
     packaging {
+        jniLibs {
+            // Unpacked on install: the NPU's own part of QNN (libQnnHtpV73Skel.so) is read from a
+            // file by the DSP (npu.c, ADSP_LIBRARY_PATH).
+            useLegacyPackaging = true
+            // QNN for the Snapdragon 7 Gen 4's Hexagon (v73) only: not its on-phone compiler (the
+            // encoder is compiled ahead of time), nor its GPU, DSP and other Hexagons' parts.
+            excludes += setOf(
+                "**/libQnnHtpPrepare.so", "**/libQnnGpu.so", "**/libQnnDsp*.so",
+                "**/libQnnHtpV68*.so", "**/libQnnHtpV69*.so", "**/libQnnHtpV75*.so", "**/libQnnHtpV79*.so", "**/libQnnHtpV81*.so",
+            )
+        }
         resources {
             excludes += setOf(
                 "/META-INF/{AL2.0,LGPL2.1}",
@@ -149,6 +162,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
     implementation(libs.work.runtime)
+    // QNN's runtime (Qualcomm, Maven Central): the encoder on the NPU. The same version as the
+    // SDK that compiles it (npu.yml) and whose headers build.yml fetches.
+    implementation(libs.qnn.runtime)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

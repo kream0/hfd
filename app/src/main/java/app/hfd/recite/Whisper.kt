@@ -13,7 +13,7 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
      * What was heard in [pcm] (16 kHz mono, −1…1), or null if recognition failed; steered toward
      * [expected] (what the reciter may be saying, [app.hfd.core.recite.Follower.expected]) if given.
      */
-    fun transcribe(pcm: FloatArray, expected: String = "", threads: Int = THREADS): String? {
+    fun transcribe(pcm: FloatArray, expected: String = "", threads: Int = THREADS, onNpu: Boolean = npu): String? {
         check(ctx != 0L) { "closed" }
         // Measured on the phone: every other reading on the big cores only (a thread each), the
         // others where the system puts them (whisper.text: pinned, ms).
@@ -22,13 +22,31 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
         val pin = nativePin(if (pinned) BIG_CORES else -1L)
         val started = System.currentTimeMillis()
         val bias = expected.takeIf { it.isNotEmpty() }?.toByteArray(Charsets.UTF_8)
-        val text = nativeTranscribe(ctx, pcm, n, audioContext(pcm.size), bias)?.toString(Charsets.UTF_8)?.trim()
+        val text = nativeTranscribe(ctx, pcm, n, audioContext(pcm.size), bias, onNpu)?.toString(Charsets.UTF_8)?.trim()
+        // Whether the encoder ran on the NPU, its time there, and its error if it failed (then the CPU read it).
+        val last = if (onNpu) nativeNpuLast(ctx) else null
         // The text is in recite.partial / recite.heard (and whisper.selftest).
         Diag.log(
             "whisper.text", "seconds" to pcm.size / SAMPLE_RATE.toFloat(), "ms" to System.currentTimeMillis() - started,
             "threads" to n, "pinned" to pinned, "pinError" to pin.takeIf { it != 0 },
+            "npu" to (last?.get(0) == 1L), "npuMs" to last?.let { it[1] / 1000f }, "npuError" to last?.get(2)?.takeIf { it != 0L },
         )
         return text
+    }
+
+    /** Readings run their encoder on the NPU (once [setUpNpu] worked and its reading checked out). */
+    @Volatile var npu = false
+
+    /**
+     * The encoder on the NPU: QNN with Tarteel's encoder compiled for this phone's Hexagon
+     * ([NpuEncoder]), as a second state of the model (the CPU's stays). Null if it is set up, else why.
+     */
+    fun setUpNpu(binary: java.io.File): String? {
+        check(ctx != 0L) { "closed" }
+        val started = System.currentTimeMillis()
+        val error = runCatching { nativeNpu(ctx, binary.path, libraryDir.orEmpty()) }.getOrElse { it.toString() }
+        Diag.log("npu.init", "ok" to (error == null), "error" to error, "ms" to System.currentTimeMillis() - started)
+        return error
     }
 
     private var readings = 0
@@ -43,6 +61,9 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
     companion object {
         private const val TAG = "Whisper"
         const val SAMPLE_RATE = 16_000
+
+        /** The app's native library folder (QNN's, read by the NPU's DSP too); set at start. */
+        @Volatile var libraryDir: String? = null
 
         /** Big cores do the work; more threads than that only contend. */
         val THREADS: Int = Runtime.getRuntime().availableProcessors().coerceIn(2, 8).let { (it / 2).coerceAtLeast(2) }
@@ -102,6 +123,8 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
         @JvmStatic private external fun nativePin(mask: Long): Int
         @JvmStatic private external fun nativeInit(path: String): Long
         @JvmStatic private external fun nativeFree(ctx: Long)
-        @JvmStatic private external fun nativeTranscribe(ctx: Long, samples: FloatArray, threads: Int, audioCtx: Int, expected: ByteArray?): ByteArray?
+        @JvmStatic private external fun nativeTranscribe(ctx: Long, samples: FloatArray, threads: Int, audioCtx: Int, expected: ByteArray?, npu: Boolean): ByteArray?
+        @JvmStatic private external fun nativeNpu(ctx: Long, binary: String, libDir: String): String?
+        @JvmStatic private external fun nativeNpuLast(ctx: Long): LongArray
     }
 }

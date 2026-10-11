@@ -105,6 +105,21 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      # QNN's headers for the NPU (npu.c): Qualcomm's, fetched here and never committed. The same
+      # QAIRT version as npu.yml's compiler and the qnn-runtime dependency (libs.versions.toml).
+      - uses: actions/cache@v5
+        id: qnn-headers
+        with:
+          path: qnn-include
+          key: qnn-include-2.42.0.251225
+      - name: QNN headers
+        run: |
+          if [ ! -f qnn-include/QnnInterface.h ]; then
+            python3 -m pip install --quiet remotezip
+            python3 tools/npu/headers.py 2.42.0.251225 qnn-include
+          fi
+          echo "QNN_INCLUDE=$PWD/qnn-include" >> "$GITHUB_ENV"
+
       - name: Decode private signing key (optional)
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}

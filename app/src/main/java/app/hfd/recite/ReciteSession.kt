@@ -1,6 +1,7 @@
 package app.hfd.recite
 
 import android.media.AudioManager
+import app.hfd.BuildConfig
 import app.hfd.core.progress.Event
 import app.hfd.core.quran.AyahRef
 import app.hfd.core.recite.Arabic
@@ -357,7 +358,28 @@ class ReciteSession(
     private fun loadedWhisper(): Whisper? {
         whisper?.let { return it }
         val file = model() ?: return null
-        return Whisper.load(file.path).also { whisper = it }
+        return Whisper.load(file.path)?.also { whisper = it; npuOn(it) }
+    }
+
+    /**
+     * The encoder on the NPU if this phone has a build of it ([NpuEncoder]), used once it reads the
+     * reference clip (al-Ikhlāṣ 112:1) as it is: QNN set up, then one reading (some 150 ms).
+     */
+    private fun npuOn(w: Whisper) {
+        val encoder = npuEncoder() ?: return
+        val binary = encoder.file ?: return
+        val pcm = referenceClip() ?: return
+        if (!encoder.trying(BuildConfig.VERSION_CODE)) return
+        try {
+            if (w.setUpNpu(binary) != null) return
+            val started = System.currentTimeMillis()
+            val text = w.transcribe(pcm, onNpu = true)
+            val right = text != null && Arabic.skeleton(text) == Arabic.skeleton(REFERENCE_TEXT)
+            w.npu = right
+            Diag.log("npu.selftest", "text" to text, "right" to right, "ms" to System.currentTimeMillis() - started)
+        } finally {
+            encoder.tried()
+        }
     }
 
     /**
@@ -371,8 +393,8 @@ class ReciteSession(
         selfTested = true
         val pcm = referenceClip() ?: return
         val started = System.currentTimeMillis()
-        val text = w.transcribe(pcm)
-        Diag.log("whisper.selftest", "expected" to "قُلْ هُوَ ٱللَّهُ أَحَدٌ", "text" to text, "ms" to System.currentTimeMillis() - started)
+        val text = w.transcribe(pcm, onNpu = false)
+        Diag.log("whisper.selftest", "expected" to REFERENCE_TEXT, "text" to text, "ms" to System.currentTimeMillis() - started)
     }
 
     companion object {
@@ -384,6 +406,10 @@ class ReciteSession(
         /** The phone's audio (for connected earbuds' microphone), and whether to use earbuds when connected. */
         @Volatile var audioManager: () -> AudioManager? = { null }
         @Volatile var headset: () -> Boolean = { true }
+        /** The encoder compiled for this phone's NPU ([NpuEncoder]), if there is a build of it. */
+        @Volatile var npuEncoder: () -> NpuEncoder? = { null }
+        /** What the reference clip says (al-Ikhlāṣ 112:1). */
+        private const val REFERENCE_TEXT = "قُلْ هُوَ ٱللَّهُ أَحَدٌ"
         const val ERROR_MODEL = "model"
         const val ERROR_MIC = "mic"
         /** A reading's new words are shown over about this long. */

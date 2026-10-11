@@ -25,6 +25,7 @@ import app.hfd.update.Updater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,6 +69,8 @@ object Graph {
     val sessions: SessionStore by lazy { SessionStore(app) }
     /** Speech model for the Recite mode (downloaded once). */
     val speech: ModelStore by lazy { ModelStore(app, http, scope) }
+    /** Recite's encoder compiled for this phone's NPU, if there is a build for it. */
+    val npu: app.hfd.recite.NpuEncoder by lazy { app.hfd.recite.NpuEncoder(app, http) }
 
     private val _recite = MutableStateFlow<ReciteSession?>(null)
     /** The recitation in progress (Recite mode), if any. */
@@ -120,10 +123,14 @@ object Graph {
 
     fun init(application: Application) {
         app = application
+        app.hfd.recite.Whisper.libraryDir = application.applicationInfo.nativeLibraryDir
         Diag.start(http, scope) { settings.current.sendDiagnostics }
         ReciteSession.recordings = { settings.current.sendRecordings }
         ReciteSession.audioManager = { application.getSystemService(AudioManager::class.java) }
         ReciteSession.headset = { settings.current.reciteHeadset }
+        ReciteSession.npuEncoder = { npu.takeIf { it.compiled != null } }
+        // Downloaded once in the background (18 MB) on a phone it was compiled for.
+        if (npu.compiled != null) scope.launch { npu.fetch() }
         ReciteSession.referenceClip = {
             runCatching {
                 application.assets.open("diag/112001.wav").use { input ->

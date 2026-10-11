@@ -19,8 +19,19 @@ set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
     whisper
     URL https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v1.7.6.tar.gz
+    # Its encoder may run elsewhere (the NPU, npu.c): whisper_hfd_init_state.
+    PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/whisper-encoder.patch
 )
 FetchContent_MakeAvailable(whisper)
 
-add_library(hfdwhisper SHARED whisper_jni.c)
+add_library(hfdwhisper SHARED whisper_jni.c npu.c)
 target_link_libraries(hfdwhisper PRIVATE whisper log m)
+# QNN's headers (Qualcomm's AI Runtime SDK; build.yml fetches them, they aren't in the repository):
+# without them the NPU is left out and npu.c says so.
+if (DEFINED HFD_QNN_INCLUDE AND EXISTS "${HFD_QNN_INCLUDE}/QnnInterface.h")
+    target_include_directories(hfdwhisper PRIVATE ${HFD_QNN_INCLUDE})
+    target_compile_definitions(hfdwhisper PRIVATE HFD_QNN)
+    message(STATUS "NPU: QNN headers in ${HFD_QNN_INCLUDE}")
+else()
+    message(WARNING "NPU left out: no QNN headers (HFD_QNN_INCLUDE)")
+endif()

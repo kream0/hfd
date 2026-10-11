@@ -25,6 +25,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Hfd">
 
+        <!-- The NPU (Recite's encoder, npu.c): QNN reaches a Snapdragon's DSP through this vendor
+             library, which an app must name to load (Android 12+). Optional: elsewhere, the CPU. -->
+        <uses-native-library android:name="libcdsprpc.so" android:required="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

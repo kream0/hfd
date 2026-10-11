@@ -1,0 +1,74 @@
+--- a/include/whisper.h
++++ b/include/whisper.h
+@@ -238,6 +238,13 @@
+ 
+     WHISPER_API struct whisper_state * whisper_init_state(struct whisper_context * ctx);
+ 
++    // HFD (app.hfd, whisper-encoder.patch): a state whose encoder runs elsewhere (the phone's
++    // NPU). [encoder] gets the log-mel input (n_mel rows of n_frames) and writes the encoder's
++    // output (n_ctx rows of n_state); false fails the reading. The cross-attention and the
++    // decoder stay here.
++    typedef bool (*whisper_hfd_encoder_callback)(const float * mel, int n_mel, int n_frames, float * out, int n_ctx, int n_state, void * user_data);
++    WHISPER_API struct whisper_state * whisper_hfd_init_state(struct whisper_context * ctx, whisper_hfd_encoder_callback encoder, void * user_data);
++
+     // Given a context, enable use of OpenVINO for encode inference.
+     // model_path: Optional path to OpenVINO encoder IR model. If set to nullptr,
+     //                      the path will be generated from the ggml model path that was passed
+--- a/src/whisper.cpp
++++ b/src/whisper.cpp
+@@ -865,6 +865,10 @@
+ };
+ 
+ struct whisper_state {
++    // HFD: the encoder run elsewhere (whisper_hfd_init_state)
++    whisper_hfd_encoder_callback hfd_encoder = nullptr;
++    void * hfd_encoder_user = nullptr;
++
+     int64_t t_sample_us = 0;
+     int64_t t_encode_us = 0;
+     int64_t t_decode_us = 0;
+@@ -1988,7 +1992,7 @@
+     const bool use_openvino = wstate.ctx_openvino != nullptr;
+ #endif
+ 
+-    return use_coreml || use_openvino;
++    return use_coreml || use_openvino || wstate.hfd_encoder != nullptr;
+ }
+ 
+ static struct ggml_cgraph * whisper_build_graph_conv(
+@@ -2424,6 +2428,12 @@
+             if (!ggml_graph_compute_helper(sched, gf, n_threads)) {
+                 return false;
+             }
++        } else if (wstate.hfd_encoder != nullptr) {
++            if (!wstate.hfd_encoder((const float *) mel->data, (int) mel->ne[1], (int) mel->ne[0],
++                                    (float *) wstate.embd_enc->data, (int) wstate.embd_enc->ne[1], (int) wstate.embd_enc->ne[0],
++                                    wstate.hfd_encoder_user)) {
++                return false;
++            }
+         } else {
+ #if defined(WHISPER_USE_COREML)
+             whisper_coreml_encode(wstate.ctx_coreml, mel->ne[0], mel->ne[1], (float *) mel->data, (float *) wstate.embd_enc->data);
+@@ -3387,8 +3397,22 @@
+ }
+ #endif
+ 
++static thread_local whisper_hfd_encoder_callback hfd_pending_encoder = nullptr;
++static thread_local void * hfd_pending_user = nullptr;
++
++struct whisper_state * whisper_hfd_init_state(struct whisper_context * ctx, whisper_hfd_encoder_callback encoder, void * user_data) {
++    hfd_pending_encoder = encoder;
++    hfd_pending_user = user_data;
++    whisper_state * state = whisper_init_state(ctx);
++    hfd_pending_encoder = nullptr;
++    hfd_pending_user = nullptr;
++    return state;
++}
++
+ struct whisper_state * whisper_init_state(whisper_context * ctx) {
+     whisper_state * state = new whisper_state;
++    state->hfd_encoder = hfd_pending_encoder;
++    state->hfd_encoder_user = hfd_pending_user;
+ 
+     state->backends = whisper_backend_init(ctx->params);
+     if (state->backends.empty()) {
