@@ -151,10 +151,27 @@
   each (`whisper.text` pinned / pinError): compare ms at equal seconds before keeping either.
   The decoder costs ~4 ms a token on the phone against 0.9 on x86 at 4 threads (the encoder only
   1.15× slower): watch whether pinning closes that. Parked: a forced prefix decoded in one batch
-  (`tools/speed`, ~15 % of a long reading now; worth it once the encoder is fast). NPU: Tarteel's
-  tiny encoder compiles for Hexagon v73 (`npu.yml`, 18 MB context binary); Qualcomm measures
-  Whisper-Tiny's encoder at ~24 ms on an 8 Gen 2-class NPU; not integrated (the owner decides:
-  ~+22 MB APK, Snapdragon only).
+  (`tools/speed`, ~15 % of a long reading now; worth it once the encoder is fast). 1.15.0 on the
+  phone (11 Oct, 32 readings): pinned 0–3 s 476 ms vs 544 unpinned (1.14.3: 582).
+- NPU (11 Oct, the owner: go): the encoder runs on the Snapdragon's Hexagon (v73) through QNN's C
+  API (`npu.c`), the CPU's state kept as the fallback. whisper.cpp is patched for an external
+  encoder (`whisper-encoder.patch`: `whisper_hfd_init_state`, a second state of the same model).
+  `npu.yml` exports Tarteel's tiny encoder (ONNX), converts it (float16) and compiles it per
+  Hexagon; the graph takes [1, 3000, 80] float16 (frame by frame: the converter's layout, npu.c
+  transposes) and gives [1, 1500, 384] float16; on Qualcomm's HTP emulator it matches ONNX Runtime
+  at cosine 0.99999. The v73 binary is on the speech-model pre-release once
+  (`encoder-tiny-ar-quran-qnn242-v73.bin`, SHA-256 pinned in `NpuEncoder`, downloaded on SM7750
+  only). Checked here end to end with ONNX Runtime standing in through the hook: same text.
+  QNN 2.42 in three places that must agree: npu.yml's QAIRT, build.yml's headers (fetched by HTTP
+  ranges from the public SDK zip, `tools/npu/headers.py`, never committed: Qualcomm marks them
+  confidential) and the `qnn-runtime` AAR (Maven Central; packaging keeps the v73 parts only,
+  unpacked so the DSP reads its skel: `ADSP_LIBRARY_PATH`). The manifest names `libcdsprpc.so`
+  (Android 12+). At the model's load the app sets QNN up and reads the reference clip on the NPU
+  (`npu.selftest`); it is used if that reading is right. A crash while setting it up leaves it off
+  for that version (`npu.skipped`). Diagnostics: `npu.download`, `npu.init`, `whisper.text` npu /
+  npuMs / npuError. The cross-attention K/V still run on the CPU (~10 % of the old encoder).
+- The next-word marker follows a phrase or an āya said again from three words
+  (`Tracker.voiceAt`, `Follower.voice`, display only); going back takes some five words.
 - `LogReplayTest` replays the owner's logged readings (`core/src/test/resources/recite/*.log`,
   from `recite.partial` / `recite.heard`) through `Follower`: add a log there when a session goes
   wrong, to reproduce it without audio.
