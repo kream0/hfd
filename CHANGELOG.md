@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.15.0
+A word you say wrongly now stays marked, and a word the app only misheard is checked first.
+- A word said differently (يؤمنون for ينفقون) could turn white for a moment as you went on, and then stayed white: the mistake never showed nor counted. A word now stays white once your whole phrase has been read and found it right. On the test recitations with a word swapped on purpose, 4 swaps out of 5 are caught (1 before).
+- Before a word counts as a mistake, Recite reads your phrase again held to the text, letter by letter: if your voice fits the right word closely, the app had only misheard it, and it turns white. A skipped āya stays missed. Replayed on your recordings, this clears words like هو, في, نزل, لينذر, به.
+- Recite reads your voice faster on recent phones: the speech engine uses your processor's int8 matrix instructions where it has them (13 % faster on an ARM test machine), and it now runs on any 64-bit ARM phone (ARMv8.2 is no longer needed).
+- To measure what is fastest on your phone, every other reading runs on the processor's fast cores only (diagnostics).
+
 ## 1.14.3
 In Recite, the word to say next is in the same electric blue as while listening.
 - The next word is electric blue on a pill of the same blue, as the word being recited when you listen (it used to pulse from grey to white). With the text hidden, the blue pill alone shows where you are.
