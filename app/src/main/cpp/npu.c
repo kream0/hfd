@@ -69,6 +69,59 @@ const char *hfd_npu_info(const hfd_npu *n) { (void) n; return ""; }
 #define TAG "hfd-npu"
 
 typedef Qnn_ErrorHandle_t (*GetProvidersFn)(const QnnInterface_t ***, uint32_t *);
+
+// How a tensor holds its values: floats of 32 or 16 bits, or unsigned integers of 8 or 16 bits
+// with a scale and offset (a quantized graph's: value = scale · (q + offset)). The SM7750's NPU
+// runs no half floats: its encoder is quantized.
+enum { IO_F32, IO_F16, IO_U8, IO_U16 };
+typedef struct { int kind; float scale; int32_t offset; } hfd_io;
+
+static int io_of(const Qnn_Tensor_t *t, hfd_io *io) {
+    io->scale = 1;
+    io->offset = 0;
+    switch (t->v1.dataType) {
+        case QNN_DATATYPE_FLOAT_32: io->kind = IO_F32; return 1;
+        case QNN_DATATYPE_FLOAT_16: io->kind = IO_F16; return 1;
+        case QNN_DATATYPE_UFIXED_POINT_8: io->kind = IO_U8; break;
+        case QNN_DATATYPE_UFIXED_POINT_16: io->kind = IO_U16; break;
+        default: return 0;
+    }
+    const Qnn_QuantizeParams_t *q = &t->v1.quantizeParams;
+    if (q->encodingDefinition != QNN_DEFINITION_DEFINED || q->quantizationEncoding != QNN_QUANTIZATION_ENCODING_SCALE_OFFSET ||
+        !(q->scaleOffsetEncoding.scale > 0)) return 0;
+    io->scale = q->scaleOffsetEncoding.scale;
+    io->offset = q->scaleOffsetEncoding.offset;
+    return 1;
+}
+
+static size_t io_size(const hfd_io *io) { return io->kind == IO_F32 ? 4 : io->kind == IO_U8 ? 1 : 2; }
+
+static const char *io_name(const hfd_io *io) {
+    static const char *names[] = { "f32", "f16", "u8", "u16" };
+    return names[io->kind];
+}
+
+static void io_put(const hfd_io *io, void *buf, size_t i, float x) {
+    switch (io->kind) {
+        case IO_F32: ((float *) buf)[i] = x; break;
+        case IO_F16: ((_Float16 *) buf)[i] = (_Float16) x; break;
+        default: {
+            float top = io->kind == IO_U8 ? 255.f : 65535.f, q = roundf(x / io->scale) - (float) io->offset;
+            q = q > top ? top : q >= 0 ? q : 0;
+            if (io->kind == IO_U8) ((uint8_t *) buf)[i] = (uint8_t) q;
+            else ((uint16_t *) buf)[i] = (uint16_t) q;
+        }
+    }
+}
+
+static float io_get(const hfd_io *io, const void *buf, size_t i) {
+    switch (io->kind) {
+        case IO_F32: return ((const float *) buf)[i];
+        case IO_F16: return (float) ((const _Float16 *) buf)[i];
+        case IO_U8: return io->scale * ((float) ((const uint8_t *) buf)[i] + (float) io->offset);
+        default: return io->scale * ((float) ((const uint16_t *) buf)[i] + (float) io->offset);
+    }
+}
 typedef Qnn_ErrorHandle_t (*GetSystemProvidersFn)(const QnnSystemInterface_t ***, uint32_t *);
 
 struct hfd_npu {
@@ -88,7 +141,7 @@ struct hfd_npu {
     Qnn_Tensor_t in, out;
     void *in_buf, *out_buf;
     size_t in_count, out_count;
-    int in_f16, out_f16;
+    hfd_io in_io, out_io;
     int64_t last_us;
     uint64_t last_error;
     // The NPU (0s if QNN doesn't say) and what the binary was compiled for, for the diagnostics.
@@ -166,6 +219,9 @@ static void burst(hfd_npu *n) {
 static void platform(hfd_npu *n, uint32_t *arch, uint32_t *soc, size_t *vtcm) {
     *arch = *soc = 0;
     *vtcm = 0;
+#ifdef HFD_NPU_EMULATE_SOC
+    return;  // the emulator says v68 whatever SoC it plays
+#endif
     const QnnDevice_PlatformInfo_t *info = NULL;
     if (n->qnn.deviceGetPlatformInfo == NULL || n->qnn.deviceGetPlatformInfo(n->log, &info) != QNN_SUCCESS || info == NULL) return;
     if (info->version == QNN_DEVICE_PLATFORM_INFO_VERSION_1 && info->v1.numHwDevices > 0 && info->v1.hwDevices != NULL) {
@@ -316,13 +372,11 @@ hfd_npu *hfd_npu_new(const char *binary, const char *lib_dir, char *err, size_t 
     // The tensors as described, with the app's buffers (the descriptions stay with QNN System's context).
     n->in = ins[0];
     n->out = outs[0];
-    n->in_f16 = n->in.v1.dataType == QNN_DATATYPE_FLOAT_16;
-    n->out_f16 = n->out.v1.dataType == QNN_DATATYPE_FLOAT_16;
-    if ((!n->in_f16 && n->in.v1.dataType != QNN_DATATYPE_FLOAT_32) || (!n->out_f16 && n->out.v1.dataType != QNN_DATATYPE_FLOAT_32))
+    if (!io_of(&n->in, &n->in_io) || !io_of(&n->out, &n->out_io))
         FAIL("tensor types 0x%x 0x%x", (unsigned) n->in.v1.dataType, (unsigned) n->out.v1.dataType);
     n->in_count = elements(&n->in);
     n->out_count = elements(&n->out);
-    size_t in_bytes = n->in_count * (n->in_f16 ? 2 : 4), out_bytes = n->out_count * (n->out_f16 ? 2 : 4);
+    size_t in_bytes = n->in_count * io_size(&n->in_io), out_bytes = n->out_count * io_size(&n->out_io);
     n->in_buf = malloc(in_bytes);
     n->out_buf = malloc(out_bytes);
     if (n->in_buf == NULL || n->out_buf == NULL) FAIL("memory");
@@ -337,7 +391,7 @@ hfd_npu *hfd_npu_new(const char *binary, const char *lib_dir, char *err, size_t 
     last_two(&n->out, &c, &d);
     snprintf(n->info, sizeof(n->info), "npu v%u soc %u vtcm %zu MB; binary v%u soc %u; %s %ux%u %s, %s %ux%u %s", arch, soc, vtcm, compiled,
              info->version == QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_3 ? info->contextBinaryInfoV3.socModel : 0,
-             n->in.v1.name, a, b, n->in_f16 ? "f16" : "f32", n->out.v1.name, c, d, n->out_f16 ? "f16" : "f32");
+             n->in.v1.name, a, b, io_name(&n->in_io), n->out.v1.name, c, d, io_name(&n->out_io));
     __android_log_print(ANDROID_LOG_INFO, TAG, "graph %s: %s", name, n->info);
     return n;
 }
@@ -372,9 +426,7 @@ bool hfd_npu_encode(const float *mel, int n_mel, int n_frames, float *out, int n
     for (int j = 0; j < n_mel; j++) {
         for (int i = 0; i < n_frames; i++) {
             size_t at = in_t ? (size_t) i * n_mel + j : (size_t) j * n_frames + i;
-            float v = mel[(size_t) j * n_frames + i];
-            if (n->in_f16) ((_Float16 *) n->in_buf)[at] = (_Float16) v;
-            else ((float *) n->in_buf)[at] = v;
+            io_put(&n->in_io, n->in_buf, at, mel[(size_t) j * n_frames + i]);
         }
     }
     int64_t t = now_us();
@@ -391,7 +443,7 @@ bool hfd_npu_encode(const float *mel, int n_mel, int n_frames, float *out, int n
     for (int c = 0; c < n_ctx; c++) {
         for (int s = 0; s < n_state; s++) {
             size_t at = out_t ? (size_t) s * n_ctx + c : (size_t) c * n_state + s;
-            out[(size_t) c * n_state + s] = n->out_f16 ? (float) ((const _Float16 *) n->out_buf)[at] : ((const float *) n->out_buf)[at];
+            out[(size_t) c * n_state + s] = io_get(&n->out_io, n->out_buf, at);
         }
     }
     return true;

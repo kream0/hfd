@@ -55,6 +55,8 @@ mel.tofile(os.path.join(out, "mel.raw"))
 # The compiled graph takes it frame by frame ([1, 3000, 80], the converter's layout; npu.c too).
 np.ascontiguousarray(mel.transpose(0, 2, 1)).tofile(os.path.join(out, "mel_t.raw"))
 got.astype(np.float32).tofile(os.path.join(out, "encoder_out.raw"))
+# The clip's audio for whisper.cpp (tools/npu/decode.c reads it with an encoder output).
+pcm.astype(np.float32).tofile(os.path.join(out, "ref.f32"))
 times = []
 for _ in range(5):
     t = time.perf_counter()

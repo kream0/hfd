@@ -155,21 +155,33 @@
   phone (11 Oct, 32 readings): pinned 0–3 s 476 ms vs 544 unpinned (1.14.3: 582).
 - NPU (11 Oct, the owner: go): the encoder runs on the Snapdragon's Hexagon (v73) through QNN's C
   API (`npu.c`), the CPU's state kept as the fallback. whisper.cpp is patched for an external
-  encoder (`whisper-encoder.patch`: `whisper_hfd_init_state`, a second state of the same model).
-  `npu.yml` exports Tarteel's tiny encoder (ONNX), converts it (float16) and compiles it per
-  Hexagon; the graph takes [1, 3000, 80] float16 (frame by frame: the converter's layout, npu.c
-  transposes) and gives [1, 1500, 384] float16; on Qualcomm's HTP emulator it matches ONNX Runtime
-  at cosine 0.99999. The v73 binary is on the speech-model pre-release once
-  (`encoder-tiny-ar-quran-qnn242-v73.bin`, SHA-256 pinned in `NpuEncoder`, downloaded on SM7750
-  only). Checked here end to end with ONNX Runtime standing in through the hook: same text.
+  encoder (`whisper-encoder.patch`: `whisper_hfd_init_state`, a second state of the same model;
+  `whisper_hfd_encoder_output` for the diagnostics). **The SM7750's NPU runs no half floats**
+  (Qualcomm's compiler with soc_model 86: "The SocModel doesn't support FP16"): 1.15.1's float16
+  encoder (`…-qnn242-v73.bin`, compiled for a v68 as "htp_arch" isn't a config key) loaded, ran in
+  42 ms and read garbage; the self-test caught it. The keys are `"devices":[{"soc_model":86,
+  "dsp_arch":"v73"}]`. QNN's HTP emulator doesn't model a SoC's missing fp16 (it read that binary
+  right as an SM7750), but integer graphs are exact there. So `npu.yml` quantizes (16-bit
+  activations, 8-bit weights, per channel) on EveryAyah calibration inputs (`calibrate.py`, never
+  the owner's recordings), compiles for the SM7750, runs it through the app's own `npu.c` on the
+  emulator (`tools/npu/npurun.c`, `HFD_NPU_EMULATE_SOC`; ~8 min a reading) and reads it with
+  whisper.cpp (`tools/npu/decode.c`); it publishes `…-sm7750-w8a16.bin` only if the reference
+  clip and two held-out āyāt read as with the float encoder (`check.py`). The name
+  `encoder-tiny-ar-quran-qnn242-sm7750.bin` is burnt (a fp16 build a gating bug uploaded; the
+  workflow deletes it). Under `bash -e`, `test a && test b` only stops on the last: one test a line.
+  npu.c reads float32/16 and unsigned 8/16-bit tensors (scale, offset), transposes the mel when
+  the graph wants it frame by frame, and refuses a binary compiled for another Hexagon than the
+  phone's (QNN's platform info).
   QNN 2.42 in three places that must agree: npu.yml's QAIRT, build.yml's headers (fetched by HTTP
   ranges from the public SDK zip, `tools/npu/headers.py`, never committed: Qualcomm marks them
   confidential) and the `qnn-runtime` AAR (Maven Central; packaging keeps the v73 parts only,
   unpacked so the DSP reads its skel: `ADSP_LIBRARY_PATH`). The manifest names `libcdsprpc.so`
   (Android 12+). At the model's load the app sets QNN up and reads the reference clip on the NPU
-  (`npu.selftest`); it is used if that reading is right. A crash while setting it up leaves it off
-  for that version (`npu.skipped`). Diagnostics: `npu.download`, `npu.init`, `whisper.text` npu /
-  npuMs / npuError. The cross-attention K/V still run on the CPU (~10 % of the old encoder).
+  (`npu.selftest`); it is used if that reading is right, else `npu.compare` logs its encoder output
+  against the CPU's (cosine, sizes, NaN; also once a run at close when in use). A crash while
+  setting it up leaves it off for that version (`npu.skipped`). Diagnostics: `npu.download`,
+  `npu.init` (with the NPU's arch / SoC / VTCM and the tensors), `whisper.text` npu / npuMs /
+  npuError. The cross-attention K/V still run on the CPU (~10 % of the old encoder).
 - The next-word marker follows a phrase or an āya said again from three words
   (`Tracker.voiceAt`, `Follower.voice`, display only); going back takes some five words.
 - `LogReplayTest` replays the owner's logged readings (`core/src/test/resources/recite/*.log`,
