@@ -61,7 +61,6 @@ jobs:
           convert qnn --float_bitwidth 16
           convert qnn_io --float_bitwidth 16 --preserve_io layout input_features
           convert qnn32
-          grep -n -A25 'input_features_ncf' out/qnn/encoder.cpp | head -40
           # The phone's SoC by Qualcomm's number (QnnTypes.h, Qnn_SocModel_t: SM7750 = 86) and its
           # Hexagon. Without them the compiler targets a v68 ("htp_arch" isn't a key): 1.15.1's
           # binary, which the phone's v73 loaded and ran into garbage. The first that compiles goes on.
@@ -69,7 +68,7 @@ jobs:
             printf '{"graphs":[{"graph_names":["encoder"],"vtcm_mb":0,"O":3}],"devices":[%s]}\n' "$3" > htp_$1.json
             printf '{"backend_extensions":{"shared_library_path":"%s","config_file_path":"htp_%s.json"}}\n' "$QNN_SDK_ROOT/lib/x86_64-linux-clang/libQnnHtpNetRunExtensions.so" $1 > ext_$1.json
             $B/qnn-context-binary-generator --backend $QNN_SDK_ROOT/lib/x86_64-linux-clang/libQnnHtp.so --log_level verbose \
-              --model out/$2/lib/x86_64-linux-clang/libencoder.so --binary_file encoder_$1 --output_dir out/ctx --config_file ext_$1.json > gen_$1.log 2>&1
+              --model out/$2/lib/x86_64-linux-clang/libencoder.so --binary_file encoder_$1 --output_dir out/ctx --config_file ext_$1.json > gen_$1.log 2>&1 || true
             if [ -s out/ctx/encoder_$1.bin ]; then
               echo "== $1: compiled, $(stat -c %s out/ctx/encoder_$1.bin) bytes"
               [ -e out/ctx/encoder_sm7750.bin ] || { cp out/ctx/encoder_$1.bin out/ctx/encoder_sm7750.bin; echo "$1" > out/ctx/variant; }
