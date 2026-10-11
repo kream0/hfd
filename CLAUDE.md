@@ -168,7 +168,10 @@
   whisper.cpp (`tools/npu/decode.c`); it publishes `…-sm7750-w8a16.bin` only if the reference
   clip and two held-out āyāt read as with the float encoder (`check.py`). 1.15.2 uses it (10.6 MB,
   u16 in and out, SHA-256 in `NpuEncoder`): on the emulator cosine 0.998 against the float encoder
-  (whisper.cpp's q8_0 on the CPU: 0.9996), the three clips word for word. The name
+  (whisper.cpp's q8_0 on the CPU: 0.9996), the three clips word for word. `…-qnn242-v73.bin` on the
+  pre-release is 1.15.1's (unused since; `NpuEncoder.fetch` deletes it from the phone). Not yet
+  measured: the NPU's speed on the phone, and the quantized encoder on the owner's dark voice
+  (`npu.compare` only reads the reference clip; next: once a session, one live utterance on both). The name
   `encoder-tiny-ar-quran-qnn242-sm7750.bin` is burnt (a fp16 build a gating bug uploaded; the
   workflow deletes it). Under `bash -e`, `test a && test b` only stops on the last: one test a line.
   npu.c reads float32/16 and unsigned 8/16-bit tensors (scale, offset), transposes the mel when
