@@ -95,11 +95,13 @@ class NpuEncoder(context: Context, private val http: OkHttpClient) {
 
     companion object {
         /**
-         * By SoC (Build.SOC_MODEL), the build for its Hexagon: the Snapdragon 7 Gen 4 (SM7750, the
-         * owner's phone) has a v73 (Qualcomm's SDK). QNN 2.42, as the app's runtime (qnn-runtime).
+         * By SoC (Build.SOC_MODEL), the build for its NPU: the Snapdragon 7 Gen 4 (SM7750, the
+         * owner's phone) has a Hexagon v73 that runs no half floats, so its encoder is quantized
+         * (16-bit activations, 8-bit weights; npu.yml checks it reads as the float one). QNN 2.42,
+         * as the app's runtime (qnn-runtime).
          */
         private val BUILDS = mapOf(
-            "SM7750" to Compiled("encoder-tiny-ar-quran-qnn242-v73.bin", "24eefdd069d3fbb94fd2f1312d6cf4ad290158c4c25bef0d6e62ac3eca64625b"),
+            "SM7750" to Compiled("encoder-tiny-ar-quran-qnn242-sm7750-w8a16.bin", "77c4acf86719f1aac23234736bc2f0458389e695e10b64180a8915022cc4f491"),
         )
     }
 }

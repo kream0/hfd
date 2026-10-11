@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.15.2
+Recite now really reads your voice on your phone's AI chip.
+- In 1.15.1 the AI chip (NPU) gave wrong readings: your phone's chip doesn't compute with the half-precision numbers it was given, so Recite checked itself, saw it, and stayed on the processor. Recite now uses a version of the speech engine built for your chip's whole numbers, checked beforehand to read test recitations word for word as before. It downloads 11 MB in the background the first time; if its check on the reference recitation fails, the processor keeps reading as before.
+- More diagnostics when the AI chip misreads (how far its result is from the processor's).
+
 ## 1.15.1
 The blue marker follows you when you say part of an āya again, and Recite can read your voice on your phone's AI chip.
 - Saying a phrase or an āya again, the blue marker goes back with you from the third word, and shows on words already recited too. It used to stay where you had got furthest.
