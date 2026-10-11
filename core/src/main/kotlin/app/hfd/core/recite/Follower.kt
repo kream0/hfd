@@ -20,6 +20,12 @@ class Follower(val targets: List<ReciteTarget>) {
     private var stable = BooleanArray(tracker.size)
     /** Where the utterance's last reading that followed something left the recitation. */
     private var followed: Tracker.Mark? = null
+    /**
+     * Where the reciter's voice is, if it says words already recited before the recitation goes
+     * back there (Tracker.voiceAt): for the next-word marker. Null: at the position.
+     */
+    var voice: Int? = null
+        private set
 
     /** A reading of utterance [id]; returns how far the recitation moved from before it. */
     fun heard(id: Int, text: String, final: Boolean): Int {
@@ -40,6 +46,7 @@ class Follower(val targets: List<ReciteTarget>) {
             finalOpening = all.take(all.size - clean.split(Regex("\\s+")).count { it.isNotBlank() })
         }
         tracker.feed(clean)
+        voice = null
         if (tracker.position < from || tracker.status.indices.any { it < from && tracker.status[it] != before?.statusAt(it) }) {
             // Went back (a restart, a phrase said again): nothing of it is stable yet.
             previous = tracker.status.copyOf()
@@ -68,6 +75,8 @@ class Follower(val targets: List<ReciteTarget>) {
         stable = BooleanArray(now.size) { it >= from && prev != null && prev[it] == WordStatus.OK && now[it] == WordStatus.OK }
         previous = now.copyOf()
         if (tracker.position > from) followed = tracker.mark()
+        // Nothing followed: maybe words already recited, said again.
+        if (tracker.position == from) voice = tracker.voiceAt(clean)
         if (final) closed = id
         return tracker.position - from
     }
@@ -176,6 +185,7 @@ class Follower(val targets: List<ReciteTarget>) {
      */
     fun hint(through: Int): String? {
         closed = maxOf(closed, through, current)
+        voice = null
         return tracker.hint()
     }
 

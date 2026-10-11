@@ -130,6 +130,47 @@ class Tracker(val targets: List<ReciteTarget>) {
      */
     private fun back(hWords: List<String>): Int {
         if (position == 0) return 0
+        val s = stretch(hWords) ?: return 0
+        // Starting at the position or after is going on, not back (align's to judge).
+        if (s.first >= position) return 0
+        // The last words said again (a correction) take less than going far back.
+        val least = if (s.lastWord >= position - BACK_WORDS) JUMP_MIN_LETTERS else BACK_MIN_LETTERS
+        if (s.same < least || s.same < JUMP_MATCH_FRACTION * s.letters || s.same < JUMP_MATCH_FRACTION * s.span) return 0
+        for (w in s.first..s.lastWord) status[w] = statusOf(s.owner.indices.filter { s.owner[it] == w }, s.matched, s.touched, w)
+        for (w in s.lastWord + 1 until flat.size) status[w] = WordStatus.PENDING
+        val moved = s.lastWord + 1 - position
+        position = s.lastWord + 1
+        return moved
+    }
+
+    /**
+     * Where the reciter's voice is when [heard] says words already recited without the recitation
+     * going back (yet): the word after the last one it says. Going back takes a clear match (an
+     * āya said again: some five words); the next-word marker follows the voice sooner, from
+     * [VOICE_MIN_LETTERS] letters. Null when [heard] doesn't clearly say words before the position.
+     */
+    fun voiceAt(heard: String): Int? {
+        if (position == 0) return null
+        val hWords = heard.split(Regex("\\s+")).map { Arabic.skeleton(it) }.filter { it.isNotEmpty() }
+        if (hWords.isEmpty()) return null
+        val s = stretch(hWords) ?: return null
+        // Ending at the last word recited or after: the voice is at the position.
+        if (s.lastWord >= position - 1) return null
+        if (s.same < VOICE_MIN_LETTERS || s.same < JUMP_MATCH_FRACTION * s.letters || s.same < JUMP_MATCH_FRACTION * s.span) return null
+        return s.lastWord + 1
+    }
+
+    /** A stretch of the text a chunk matches: its words, and its letters matched or not. */
+    private class Stretch(
+        val first: Int, val lastWord: Int, val same: Int, val span: Int, val letters: Int,
+        val owner: List<Int>, val matched: BooleanArray, val touched: BooleanArray,
+    )
+
+    /**
+     * The whole chunk against any stretch of the text up to a little past the position (starting
+     * anywhere for free); on a tie the latest end (the nearest place to go back to).
+     */
+    private fun stretch(hWords: List<String>): Stretch? {
         val h = hWords.joinToString("")
         val e = StringBuilder()
         val owner = ArrayList<Int>()
@@ -140,8 +181,7 @@ class Tracker(val targets: List<ReciteTarget>) {
         }
         val n = e.length
         val m = h.length
-        if (n == 0 || m == 0) return 0
-        // The whole chunk against any stretch of what was recited (starting anywhere for free).
+        if (n == 0 || m == 0) return null
         val d = Array(n + 1) { IntArray(m + 1) }
         for (j in 0..m) d[0][j] = -j * GAP
         for (i in 1..n) {
@@ -151,7 +191,6 @@ class Tracker(val targets: List<ReciteTarget>) {
                 d[i][j] = maxOf(diag, d[i - 1][j] - GAP, d[i][j - 1] - GAP)
             }
         }
-        // The best end; on a tie the latest (the nearest place to go back to).
         var best = 1
         for (i in 1..n) if (d[i][m] >= d[best][m]) best = i
         val matched = BooleanArray(n)
@@ -171,21 +210,9 @@ class Tracker(val targets: List<ReciteTarget>) {
                 else -> j--
             }
         }
-        val start = i
-        val span = best - start
-        if (span <= 0) return 0
-        val first = owner[start]
-        val lastWord = owner[best - 1]
-        // Starting at the position or after is going on, not back (align's to judge).
-        if (first >= position) return 0
-        // The last words said again (a correction) take less than going far back.
-        val least = if (lastWord >= position - BACK_WORDS) JUMP_MIN_LETTERS else BACK_MIN_LETTERS
-        if (same < least || same < JUMP_MATCH_FRACTION * m || same < JUMP_MATCH_FRACTION * span) return 0
-        for (w in first..lastWord) status[w] = statusOf(owner.indices.filter { owner[it] == w }, matched, touched, w)
-        for (w in lastWord + 1 until flat.size) status[w] = WordStatus.PENDING
-        val moved = lastWord + 1 - position
-        position = lastWord + 1
-        return moved
+        val span = best - i
+        if (span <= 0) return null
+        return Stretch(owner[i], owner[best - 1], same, span, m, owner, matched, touched)
     }
 
     private fun statusOf(idx: List<Int>, matched: BooleanArray, touched: BooleanArray, w: Int): WordStatus {
@@ -293,6 +320,8 @@ class Tracker(val targets: List<ReciteTarget>) {
         const val BACK_WORDS = 8
         /** Letters a chunk must match to take the recitation further back than [BACK_WORDS]. */
         const val BACK_MIN_LETTERS = 8
+        /** Letters a chunk saying words already recited must match for the next-word marker to go there ([voiceAt]). */
+        const val VOICE_MIN_LETTERS = 6
         /** Share of the chunk's letters, and of the text's letters it spans, that must match for it to be followed. */
         const val MIN_MATCH_FRACTION = 0.6
         /**

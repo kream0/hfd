@@ -348,7 +348,9 @@ class ReciteSession(
                 if (wasRight[flat + w]) WordStatus.OK else st
             }.also { flat += targets[a].words.size }
         }
-        return base.copy(status = status, next = if (shown >= tracker.size) null else tracker.locate(shown))
+        // The marker follows the voice through words said again (Follower.voice), else the text.
+        val next = follower.voice ?: shown
+        return base.copy(status = status, next = if (next >= tracker.size) null else tracker.locate(next))
     }
 
     /** On the recognition thread only. */

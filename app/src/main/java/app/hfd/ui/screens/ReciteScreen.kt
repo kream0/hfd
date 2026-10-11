@@ -230,17 +230,18 @@ private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, 
         ) {
             t.words.forEachIndexed { w, word ->
                 val st = status.getOrElse(w) { WordStatus.PENDING }
-                val next = w == current && st == WordStatus.PENDING
+                // Also on a word recited before: the reciter is saying it again.
+                val next = w == current
                 val hidden = st == WordStatus.PENDING && !showText
-                val color = when (st) {
-                    WordStatus.PENDING -> when {
-                        hidden -> Color.Transparent
-                        next -> mark
-                        else -> P.textFaint
+                val color = when {
+                    hidden -> Color.Transparent
+                    next -> mark
+                    else -> when (st) {
+                        WordStatus.PENDING -> P.textFaint
+                        WordStatus.OK -> P.text
+                        WordStatus.WRONG, WordStatus.MISSED -> P.accent
+                        WordStatus.HINTED -> P.saveYellow
                     }
-                    WordStatus.OK -> P.text
-                    WordStatus.WRONG, WordStatus.MISSED -> P.accent
-                    WordStatus.HINTED -> P.saveYellow
                 }
                 Text(
                     word,
