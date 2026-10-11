@@ -8,7 +8,7 @@ package app.hfd.core.recite
  * an āya), and a later reading can't take them back. And a reading that follows nothing, after
  * one of the same utterance that did, leaves that one standing (the longer stretch misread).
  */
-class Follower(val targets: List<ReciteTarget>) {
+class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean = true) {
     val tracker = Tracker(targets)
     /** The utterance being followed, and the tracker before it. */
     private var current = -1
@@ -77,8 +77,23 @@ class Follower(val targets: List<ReciteTarget>) {
         if (tracker.position > from) followed = tracker.mark()
         // Nothing followed: maybe words already recited, said again.
         if (tracker.position == from) voice = tracker.voiceAt(clean)
-        if (final) closed = id
+        if (final) closed = id else if (holdsEdges) holdEdge(from)
         return tracker.position - from
+    }
+
+    /**
+     * A partial reading ends where the reciter is still speaking: the words it ends on, unless
+     * right, may be one not said whole yet (a madd held: الرحمـــن read الرحار, then right; 1.15.2's
+     * readings every 0.3 s turned such words red, then white, the owner, 11 Oct). They wait, not
+     * yet recited, for a reading that goes past them or the utterance's end.
+     */
+    private fun holdEdge(from: Int) {
+        var edge = tracker.position
+        while (edge > from && tracker.status[edge - 1] != WordStatus.OK) edge--
+        if (edge == tracker.position) return
+        val status = tracker.status.copyOf()
+        for (w in edge until tracker.position) status[w] = WordStatus.PENDING
+        tracker.reset(Tracker.Mark(edge, status))
     }
 
     /** Words stable over the readings before stay right; the words among them keep what they were. */

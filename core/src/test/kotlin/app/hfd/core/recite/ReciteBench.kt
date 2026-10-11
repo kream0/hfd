@@ -16,9 +16,8 @@ import kotlin.random.Random
  * EveryAyah recordings of a passage, brought down to the level and noise of the owner's phone
  * microphone) is fed to [Segmenter] frame by frame on a simulated clock; each utterance goes
  * through [Level] to the app's decoding (tools/recite/decoder.c: the JNI's parameters, the same
- * model) and takes the phone's recognition time (0.57 s + 0.018 s per second of audio: 1.25 s +
- * 0.04 s in the diagnostics with the plain ARMv8 build, ×0.46 with ARMv8.2's dot products); the
- * text is followed by [Follower]. A word heard right once stays right, as on the phone's screen. As in the app, the recogniser is steered toward
+ * model) and takes the phone's recognition time ([readingTime]: the owner's phone with the
+ * encoder on its NPU); the text is followed by [Follower]. A word heard right once stays right, as on the phone's screen. As in the app, the recogniser is steered toward
  * what the reciter is expected to say ([Follower.expected], app/src/main/cpp/bias.h). Reports how
  * many words end right and how long after being said each word shows. Runs only in
  * .github/workflows/recite.yml (HFD_BENCH set; HFD_BENCH_ONLY, a regular expression, picks cases).
@@ -151,8 +150,14 @@ class Result(
     val checks: Int = 0, val rescued: Int = 0,
     /** Words recited wrongly on purpose, and how many of them ended a mistake (caught). */
     val swapped: Int = 0, val caught: Int = 0,
+    /**
+     * Words that ended right after being marked wrong or missed on the way (red, then white): in
+     * the tracker, and as the app shows them (a partial reading's mistakes wait for the utterance's end).
+     */
+    val redRight: Int = 0, val redRightShown: Int = 0,
 ) {
     private val warning get() = (if (warned > 0) "  MUFFLED WARNING $warned/$finals" else "") +
+        (if (redRight > 0) "  red then right $redRight (shown $redRightShown)" else "") +
         (if (checks > 0) "  checks $checks (+$rescued)" else "") +
         (if (swapped > 0) "  SWAPPED WORDS CAUGHT $caught/$swapped" else "")
 
@@ -188,6 +193,8 @@ class Totals {
     private var caught = 0
     private var checks = 0
     private var rescued = 0
+    private var redRight = 0
+    private var redRightShown = 0
 
     operator fun plusAssign(r: Result) {
         said += r.said; ok += r.ok; wrong += r.wrong; missed += r.missed; pending += r.pending
@@ -196,6 +203,7 @@ class Totals {
         timed += r.timed
         swapped += r.swapped; caught += r.caught
         checks += r.checks; rescued += r.rescued
+        redRight += r.redRight; redRightShown += r.redRightShown
         cases++
     }
 
@@ -214,20 +222,24 @@ class Totals {
         val l = lags.sorted()
         fun q(f: Double) = if (l.isEmpty()) Double.NaN else l[((l.size - 1) * f).toInt()]
         return String.format(
-            Locale.US, "ALL %d cases: ok %d/%d (%.1f %%), wrong %d, missed %d, pending %d; lag p50 %.1f s, p90 %.1f s; mistakes caught %d/%d; checks %d (+%d)",
-            cases, ok, said, 100.0 * ok / maxOf(1, said), wrong, missed, pending, q(0.5), q(0.9), caught, swapped, checks, rescued,
+            Locale.US, "ALL %d cases: ok %d/%d (%.1f %%), wrong %d, missed %d, pending %d; lag p50 %.1f s, p90 %.1f s; mistakes caught %d/%d; checks %d (+%d); red then right %d (shown %d)",
+            cases, ok, said, 100.0 * ok / maxOf(1, said), wrong, missed, pending, q(0.5), q(0.9), caught, swapped, checks, rescued, redRight, redRightShown,
         )
     }
 }
 
 private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val steer: Boolean = true) {
     private val targets = case.refs.map { ReciteTarget(it, Arabic.words(Assets.quran.text(it).orEmpty())) }
-    private val follower = Follower(targets)
+    private val follower = Follower(targets, holdsEdges = HOLD_EDGE)
     private val tracker = follower.tracker
     private val n = tracker.size
     private val shownAt = DoubleArray(n) { Double.NaN }
     /** Words right once a whole utterance was read: they stay so (ReciteSession.wasRight). */
     private val everOk = BooleanArray(n)
+    /** Words a whole utterance's reading decided (ReciteSession.decided), and those ever shown red. */
+    private val decided = BooleanArray(n)
+    private val red = BooleanArray(n)
+    private val redShown = BooleanArray(n)
     private var last = Array(n) { WordStatus.PENDING }
     private var flips = 0
     private var partials = 0
@@ -304,7 +316,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                 val c = if (u.final && steer && CHECK_TOLERANCE > 0) follower.toCheck(u.id) else null
                 if (c != null) {
                     val again = decoder.transcribe(Clarity.prepare(u.pcm), expected = c.expected)
-                    checking = Triple(c, again, at + (0.57 + 0.018 * u.seconds) * PHONE_FACTOR)
+                    checking = Triple(c, again, at + readingTime(u.seconds))
                     return
                 }
                 observe(at, u.final)
@@ -316,13 +328,19 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             val started = System.nanoTime()
             val text = decoder.transcribe(Clarity.prepare(u.pcm), expected = if (steer) follower.expected(u.id) else "")
             decodeNanos += System.nanoTime() - started
-            inFlight = Triple(u, text, t + (0.57 + 0.018 * u.seconds) * PHONE_FACTOR)
+            inFlight = Triple(u, text, t + readingTime(u.seconds))
         }
     }
 
     private fun observe(t: Double, final: Boolean) {
         val now = tracker.status
         if (final) for (w in 0 until n) if (now[w] == WordStatus.OK) everOk[w] = true
+        for (w in tracker.position until n) decided[w] = false
+        if (final) for (w in 0 until tracker.position) decided[w] = true
+        for (w in 0 until n) if (!everOk[w] && (now[w] == WordStatus.WRONG || now[w] == WordStatus.MISSED)) {
+            red[w] = true
+            if (decided[w]) redShown[w] = true
+        }
         for (w in 0 until n) {
             if (now[w] != WordStatus.PENDING && shownAt[w].isNaN()) shownAt[w] = t
             else if (!shownAt[w].isNaN() && now[w] != last[w]) flips++
@@ -346,6 +364,9 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             }
         }
         val lastSaid = recitedFlat.lastIndexOf(true)
+        val endsRight = (0 until n).map { everOk[it] || tracker.status[it] == WordStatus.OK }
+        val redRight = (0 until n).count { red[it] && endsRight[it] }
+        val redRightShown = (0 until n).count { redShown[it] && endsRight[it] }
         val lags = ArrayList<Double>()
         val places = ArrayList<Int>()
         var timed = 0
@@ -426,6 +447,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             timed,
             checks, rescued,
             swapped, caught,
+            redRight, redRightShown,
         )
     }
 
@@ -435,6 +457,15 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         val CHECK_TOLERANCE = System.getenv("HFD_CHECK_TOLERANCE")?.toFloatOrNull() ?: Follower.CHECK_TOLERANCE
         /** The phone's time per reading relative to the app's model (a bigger model: HFD_PHONE_FACTOR). */
         val PHONE_FACTOR = System.getenv("HFD_PHONE_FACTOR")?.toDoubleOrNull() ?: 1.0
+        /** Partial readings' unfinished last words wait (Follower.holdEdge); HFD_HOLD_EDGE=0: not (1.15.3). */
+        val HOLD_EDGE = System.getenv("HFD_HOLD_EDGE") != "0"
+
+        /**
+         * The phone's time for a reading of [seconds] of audio: with the encoder on the NPU (1.15.2,
+         * the owner's 240 readings of 11 Oct), 87 ms + 26 ms per second (127 ms at 0-3 s, 365 at
+         * 9-12 s). On the CPU it was 570 ms + 18 ms per second (1.14.3).
+         */
+        fun readingTime(seconds: Float): Double = (0.087 + 0.0264 * seconds) * PHONE_FACTOR
     }
 }
 

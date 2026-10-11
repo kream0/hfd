@@ -98,6 +98,13 @@ class ReciteSession(
     private val wasRight = BooleanArray(tracker.size)
     /** Words right when a whole utterance was read (flat index): shown, they stay right ([wasRight]). */
     private val confirmed = BooleanArray(tracker.size)
+    /**
+     * Words a whole utterance's reading decided (flat index), after its check. Until then a word
+     * wrong or missed in a partial reading shows as not yet recited: the model misreads a word a
+     * moment before it hears it whole (a madd held: red, then white, the owner, 11 Oct). A
+     * mistake shows when the reciter pauses, as the check would have it.
+     */
+    private val decided = BooleanArray(tracker.size)
 
     private val _ui = MutableStateFlow(snapshot(ReciteUi(targets, emptyList(), null)))
     val ui: StateFlow<ReciteUi> = _ui.asStateFlow()
@@ -286,6 +293,8 @@ class ReciteSession(
     /** After a reading (or a hint): the text follows; at the end of the passage, the āyāt are recorded. */
     private fun afterProgress(heard: String?, final: Boolean) {
         if (final) for (w in 0 until tracker.position) if (tracker.status[w] == WordStatus.OK) confirmed[w] = true
+        for (w in tracker.position until tracker.size) decided[w] = false
+        if (final) for (w in 0 until tracker.position) decided[w] = true
         val finished = tracker.finished()
         if (final) {
             val now = System.currentTimeMillis()
@@ -344,7 +353,9 @@ class ReciteSession(
         var flat = 0
         val status = targets.indices.map { a ->
             targets[a].words.indices.map { w ->
-                val st = if (flat + w < shown) tracker.statusOf(a, w) else WordStatus.PENDING
+                val raw = if (flat + w < shown) tracker.statusOf(a, w) else WordStatus.PENDING
+                val undecided = (raw == WordStatus.WRONG || raw == WordStatus.MISSED) && !decided[flat + w]
+                val st = if (undecided) WordStatus.PENDING else raw
                 if (st == WordStatus.OK && confirmed[flat + w]) wasRight[flat + w] = true
                 if (wasRight[flat + w]) WordStatus.OK else st
             }.also { flat += targets[a].words.size }
