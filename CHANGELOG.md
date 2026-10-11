@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.15.1
+The blue marker follows you when you say part of an āya again, and Recite can read your voice on your phone's AI chip.
+- Saying a phrase or an āya again, the blue marker goes back with you from the third word, and shows on words already recited too. It used to stay where you had got furthest.
+- On a Snapdragon 7 Gen 4 (your phone), the heaviest part of reading your voice now runs on the phone's AI chip (NPU) instead of its processor, which should make each reading several times faster. The first time, it downloads 18 MB in the background; Recite then checks itself on a reference recitation and keeps the processor if anything is off.
+
 ## 1.15.0
 A word you say wrongly now stays marked, and a word the app only misheard is checked first.
 - A word said differently (يؤمنون for ينفقون) could turn white for a moment as you went on, and then stayed white: the mistake never showed nor counted. A word now stays white once your whole phrase has been read and found it right. On the test recitations with a word swapped on purpose, 4 swaps out of 5 are caught (1 before).
