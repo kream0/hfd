@@ -14,12 +14,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   explore:
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -63,6 +63,62 @@ jobs:
               --output_dir out/ctx --config_file ext_v$v.json 2>&1 | tail -5
           done
           ls -la out/ctx || true
+          python3 $B/qnn-onnx-converter --help 2>&1 | grep -iE -A2 "float_bitwidth|bw|layout|io_|dtype|preserve" | head -60
+      - name: The compiled encoder's inputs and outputs (names, ids, shapes, types)
+        continue-on-error: true
+        run: |
+          B=$QNN_SDK_ROOT/bin/x86_64-linux-clang
+          export LD_LIBRARY_PATH=$QNN_SDK_ROOT/lib/x86_64-linux-clang:$LD_LIBRARY_PATH
+          $B/qnn-context-binary-utility --context_binary out/ctx/encoder_v73.bin --json_file out/ctx/info_v73.json 2>&1 | tail -3
+          python3 - <<'PY'
+          import json
+          info = json.load(open("out/ctx/info_v73.json"))
+          def walk(x, path=""):
+              if isinstance(x, dict):
+                  if "dimensions" in x or "dims" in x:
+                      print({k: x.get(k) for k in ("id", "name", "type", "dataType", "dimensions", "dims", "dataFormat", "quantizeParams") if k in x})
+                  for k, v in x.items(): walk(v, path + "/" + k)
+              elif isinstance(x, list):
+                  for v in x: walk(v, path)
+          print(json.dumps({k: v for k, v in info.items() if not isinstance(v, (dict, list))}, indent=1)[:2000])
+          walk(info)
+          PY
+      - name: The converted encoder run here (Qualcomm's CPU backend, and its HTP emulator as v73) against ONNX Runtime
+        continue-on-error: true
+        timeout-minutes: 40
+        run: |
+          B=$QNN_SDK_ROOT/bin/x86_64-linux-clang
+          L=$QNN_SDK_ROOT/lib/x86_64-linux-clang
+          export LD_LIBRARY_PATH=$L:$LD_LIBRARY_PATH
+          echo "$PWD/out/mel.raw" > list.txt
+          compare() {
+            python3 - "$1" <<'PY'
+          import glob, sys, numpy as np
+          ref = np.fromfile("out/encoder_out.raw", dtype=np.float32)
+          files = glob.glob(sys.argv[1] + "/**/*.raw", recursive=True)
+          print("outputs:", files)
+          for f in files:
+              got = np.fromfile(f, dtype=np.float32)
+              if got.size != ref.size:
+                  print(f, "size", got.size, "expected", ref.size); continue
+              same = np.abs(got - ref).max()
+              t = got.reshape(384, 1500).T.reshape(-1) if got.size == 1500 * 384 else got
+              print(f"{f}: max abs diff {same:.3e} (as is), {np.abs(t - ref).max():.3e} (transposed); scale {np.abs(ref).max():.2f}; cosine {float(got @ ref / np.linalg.norm(got) / np.linalg.norm(ref)):.6f}")
+          PY
+          }
+          t=$(date +%s); $B/qnn-net-run --backend $L/libQnnCpu.so --model out/qnn/lib/x86_64-linux-clang/libencoder.so --input_list list.txt --output_dir out/run_cpu 2>&1 | tail -5; echo "CPU backend: $(( $(date +%s) - t )) s"
+          compare out/run_cpu
+          t=$(date +%s); $B/qnn-net-run --backend $L/libQnnHtp.so --model out/qnn/lib/x86_64-linux-clang/libencoder.so --input_list list.txt --output_dir out/run_htp --config_file ext_v73.json 2>&1 | tail -5; echo "HTP emulator: $(( $(date +%s) - t )) s"
+          compare out/run_htp
+      - name: The context binary for the phone (v73) in the speech-model pre-release
+        if: github.ref_name == 'claude/hfd-quran-learning-app-n48y3d'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -s out/ctx/encoder_v73.bin
+          cp out/ctx/encoder_v73.bin encoder-tiny-ar-quran-qnn242-v73.bin
+          sha256sum encoder-tiny-ar-quran-qnn242-v73.bin
+          gh release upload speech-model encoder-tiny-ar-quran-qnn242-v73.bin --clobber --repo "$GITHUB_REPOSITORY"
       - name: Which Hexagon the Snapdragon 7 Gen 4 (SM7750) has, by Qualcomm's SDK
         continue-on-error: true
         run: |

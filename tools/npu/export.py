@@ -50,6 +50,9 @@ import onnxruntime as ort
 sess = ort.InferenceSession(path, providers=["CPUExecutionProvider"])
 got = sess.run(None, {"input_features": mel})[0]
 print("ONNX vs PyTorch: max abs diff %.2e (output scale %.2f)" % (np.abs(got - ref).max(), np.abs(ref).max()))
+# Raw float32 input and expected output, for Qualcomm's qnn-net-run (npu.yml compares its output).
+mel.tofile(os.path.join(out, "mel.raw"))
+got.astype(np.float32).tofile(os.path.join(out, "encoder_out.raw"))
 times = []
 for _ in range(5):
     t = time.perf_counter()
