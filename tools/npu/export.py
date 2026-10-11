@@ -52,6 +52,8 @@ got = sess.run(None, {"input_features": mel})[0]
 print("ONNX vs PyTorch: max abs diff %.2e (output scale %.2f)" % (np.abs(got - ref).max(), np.abs(ref).max()))
 # Raw float32 input and expected output, for Qualcomm's qnn-net-run (npu.yml compares its output).
 mel.tofile(os.path.join(out, "mel.raw"))
+# The compiled graph takes it frame by frame ([1, 3000, 80], the converter's layout; npu.c too).
+np.ascontiguousarray(mel.transpose(0, 2, 1)).tofile(os.path.join(out, "mel_t.raw"))
 got.astype(np.float32).tofile(os.path.join(out, "encoder_out.raw"))
 times = []
 for _ in range(5):

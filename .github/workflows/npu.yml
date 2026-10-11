@@ -83,14 +83,15 @@ jobs:
           print(json.dumps({k: v for k, v in info.items() if not isinstance(v, (dict, list))}, indent=1)[:2000])
           walk(info)
           PY
-      - name: The converted encoder run here (Qualcomm's CPU backend, and its HTP emulator as v73) against ONNX Runtime
+      - name: The converted encoder on Qualcomm's HTP emulator (as v73) against ONNX Runtime
         continue-on-error: true
         timeout-minutes: 40
         run: |
           B=$QNN_SDK_ROOT/bin/x86_64-linux-clang
           L=$QNN_SDK_ROOT/lib/x86_64-linux-clang
           export LD_LIBRARY_PATH=$L:$LD_LIBRARY_PATH
-          echo "$PWD/out/mel.raw" > list.txt
+          # The graph's input is frame by frame ([1, 3000, 80]: the converter's layout).
+          echo "$PWD/out/mel_t.raw" > list.txt
           compare() {
             python3 - "$1" <<'PY'
           import glob, sys, numpy as np
@@ -106,8 +107,6 @@ jobs:
               print(f"{f}: max abs diff {same:.3e} (as is), {np.abs(t - ref).max():.3e} (transposed); scale {np.abs(ref).max():.2f}; cosine {float(got @ ref / np.linalg.norm(got) / np.linalg.norm(ref)):.6f}")
           PY
           }
-          t=$(date +%s); $B/qnn-net-run --backend $L/libQnnCpu.so --model out/qnn/lib/x86_64-linux-clang/libencoder.so --input_list list.txt --output_dir out/run_cpu 2>&1 | tail -5; echo "CPU backend: $(( $(date +%s) - t )) s"
-          compare out/run_cpu
           t=$(date +%s); $B/qnn-net-run --backend $L/libQnnHtp.so --model out/qnn/lib/x86_64-linux-clang/libencoder.so --input_list list.txt --output_dir out/run_htp --config_file ext_v73.json 2>&1 | tail -5; echo "HTP emulator: $(( $(date +%s) - t )) s"
           compare out/run_htp
       - name: The context binary for the phone (v73) in the speech-model pre-release
@@ -118,7 +117,12 @@ jobs:
           test -s out/ctx/encoder_v73.bin
           cp out/ctx/encoder_v73.bin encoder-tiny-ar-quran-qnn242-v73.bin
           sha256sum encoder-tiny-ar-quran-qnn242-v73.bin
-          gh release upload speech-model encoder-tiny-ar-quran-qnn242-v73.bin --clobber --repo "$GITHUB_REPOSITORY"
+          # Once: the app pins the published file's SHA-256 (NpuEncoder). A new one takes a new name.
+          if gh release view speech-model --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx encoder-tiny-ar-quran-qnn242-v73.bin; then
+            echo "already published"
+          else
+            gh release upload speech-model encoder-tiny-ar-quran-qnn242-v73.bin --repo "$GITHUB_REPOSITORY"
+          fi
       - name: Which Hexagon the Snapdragon 7 Gen 4 (SM7750) has, by Qualcomm's SDK
         continue-on-error: true
         run: |
