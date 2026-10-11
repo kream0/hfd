@@ -20,7 +20,9 @@ import app.hfd.playback.WordsRepo
 import app.hfd.playback.PlayerConnection
 import app.hfd.recite.ModelState
 import app.hfd.recite.ModelStore
+import app.hfd.recite.NpuEncoder
 import app.hfd.recite.ReciteSession
+import app.hfd.recite.Whisper
 import app.hfd.update.Updater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,7 +72,7 @@ object Graph {
     /** Speech model for the Recite mode (downloaded once). */
     val speech: ModelStore by lazy { ModelStore(app, http, scope) }
     /** Recite's encoder compiled for this phone's NPU, if there is a build for it. */
-    val npu: app.hfd.recite.NpuEncoder by lazy { app.hfd.recite.NpuEncoder(app, http) }
+    val npu: NpuEncoder by lazy { NpuEncoder(app, http) }
 
     private val _recite = MutableStateFlow<ReciteSession?>(null)
     /** The recitation in progress (Recite mode), if any. */
@@ -123,7 +125,7 @@ object Graph {
 
     fun init(application: Application) {
         app = application
-        app.hfd.recite.Whisper.libraryDir = application.applicationInfo.nativeLibraryDir
+        Whisper.libraryDir = application.applicationInfo.nativeLibraryDir
         Diag.start(http, scope) { settings.current.sendDiagnostics }
         ReciteSession.recordings = { settings.current.sendRecordings }
         ReciteSession.audioManager = { application.getSystemService(AudioManager::class.java) }
