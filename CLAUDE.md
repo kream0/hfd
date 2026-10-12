@@ -197,8 +197,13 @@
   setting it up leaves it off for that version (`npu.skipped`). Diagnostics: `npu.download`,
   `npu.init` (with the NPU's arch / SoC / VTCM and the tensors), `whisper.text` npu / npuMs /
   npuError. The cross-attention K/V still run on the CPU (~10 % of the old encoder).
-- The next-word marker follows a phrase or an āya said again from three words
-  (`Tracker.voiceAt`, `Follower.voice`, display only); going back takes some five words. An āya
+- The marker (`Follower.voice`, display only) is on the word being said while the voice goes on
+  (a partial reading: the last word heard, or the one `holdEdge` holds back) and on the word to say
+  once it pauses (the final reading): 1.15.4's next-word marker sat on the next āya's first word
+  while the owner held the last one's madd (12 Oct, `FollowerMarkerTest`). Bench "MARKER": when it
+  leaves each word (from its end) and reaches it (from its start), by place, against 1.15.4's.
+  It follows a phrase or an āya said again from three words
+  (`Tracker.voiceAt`); going back takes some five words. An āya
   said again (1.15.4): `Tracker.feed` goes back when the chunk matches earlier text better than
   where it is (`AGAIN_MARGIN`), and the marker sits on the word the chunk ended inside
   (`Tracker.cut`), not the āya's last word (`FollowerAgainTest`).
