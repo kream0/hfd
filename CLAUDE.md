@@ -12,6 +12,8 @@
 - The app is for **learning** (memorising) the passages; the daily wird (recitation counts,
   time-of-day suggestions) is not the goal. Design for the learner first.
 - Keep replies short: what changed, what to do on the phone (ideally nothing), known limits.
+- Never block on a permission prompt (a session sat on one all night, 12 Oct): `.claude/settings.json`
+  pre-approves every tool; if one still asks, find another way rather than wait.
 - No pull requests unless asked. Work in small verified steps: run the JVM tests, re-read the
   diff, push, then check CI is green.
 
@@ -93,7 +95,9 @@
   right / wrong / missed and how soon they show per case (`ReciteBench`, "Report" step). Cases
   (`tools/recite/prepare.py`) cover noise, a muffled microphone, rumble, restarts, repetitions and
   skipped āyāt. Run it after any change to Recite's logic, and compare with the previous run
-  before releasing. Pushing core changes while a bench runs cancels it. Every case runs steered
+  before releasing. Pushing core changes while a bench runs cancels it. Each config runs in four
+  parts at once (`HFD_BENCH_SHARD` k/n; one job passed 240 min with the NPU's reading times); the
+  summary job adds them up (`tools/recite/summary.py`: read its log, not the parts'). Every case runs steered
   (below); the owner's sessions and the hard cases also free ("free" lines, SUBSET totals). The
   owner's sessions are scored on the words they recited (`tools/recite/owner.tsv`: add each new
   session there, from diag.yml's large-v3 transcription). `HFD_BENCH_ONLY` (a regular
@@ -194,7 +198,14 @@
   `npu.init` (with the NPU's arch / SoC / VTCM and the tensors), `whisper.text` npu / npuMs /
   npuError. The cross-attention K/V still run on the CPU (~10 % of the old encoder).
 - The next-word marker follows a phrase or an āya said again from three words
-  (`Tracker.voiceAt`, `Follower.voice`, display only); going back takes some five words.
+  (`Tracker.voiceAt`, `Follower.voice`, display only); going back takes some five words. An āya
+  said again (1.15.4): `Tracker.feed` goes back when the chunk matches earlier text better than
+  where it is (`AGAIN_MARGIN`), and the marker sits on the word the chunk ended inside
+  (`Tracker.cut`), not the āya's last word (`FollowerAgainTest`).
+- Red flashes on held vowels (1.15.4): a word turns red only once a final reading has passed it
+  (`ReciteSession.decided`, the bench's `redShown`); a partial reading's trailing non-right words
+  stay pending (`Follower.holdsEdges`, `HFD_HOLD_EDGE`). Bench "red then right N (shown M)": 577
+  (shown 7) without holding, 53 (shown 7) with; ok % and the owner's words unchanged.
 - `LogReplayTest` replays the owner's logged readings (`core/src/test/resources/recite/*.log`,
   from `recite.partial` / `recite.heard`) through `Follower`: add a log there when a session goes
   wrong, to reproduce it without audio.
