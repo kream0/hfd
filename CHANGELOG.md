@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.15.6
+Saying an āya again, the text goes back to it and stays there, even when part of it is misheard.
+- Repeating an āya you had just finished, Recite went back to it, then half a second later jumped to the next āya as if you hadn't: the next readings of your phrase were misheard (الله إلى إلى for الله لا إله إلا on your earbuds) and matched nothing. Once your phrase has gone back, a misheard reading no longer undoes it.
+- The marker goes back to the āya's first word: ٱللَّهُ لَآ looks like لَآ إِلَٰهَ إِلَّا without its alifs, and the marker went onto إِلَّا.
+- The āya you just recited is now among what Recite expects you may say, as starting the current one over is.
+
 ## 1.15.5
 In Recite, the blue marker stays on the word you are saying, and moves to the next one when you pause.
 - While you held an āya's last word (a madd), the marker was already on the next āya's first word: Recite recognises a word from its first letters and showed the word to say next. It now stays on the word you are saying as long as your voice goes on, and moves to the next word once you pause; if you go straight on, it follows you word by word. On the test recitations, the marker left an āya's last word 1.7 s before its end; it now leaves it about half a second after.

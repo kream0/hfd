@@ -210,6 +210,13 @@
   said again (1.15.4): `Tracker.feed` goes back when the chunk matches earlier text better than
   where it is (`AGAIN_MARGIN`), and the marker sits on the word the chunk ended inside
   (`Tracker.cut`), not the āya's last word (`FollowerAgainTest`).
+- An āya said again (1.15.6, the owner's 3:2 twice on earbuds, 12 Oct, `owner-1.15.5-imran-again.log`):
+  a reading that follows nothing after one of the same utterance went back leaves it gone back
+  (`Follower.keepsGoingBack`, as `followed` for going on); the āya before is a continuation at cost
+  1 from an āya's start (`steersPrevious`; it didn't fix that misreading: "الله إلى إلى" either way);
+  `Tracker.stretch` prefers an āya's start on a tie (letters without alifs: الله لا = لا إله إلا).
+  Bench (one run): ok 94.5 % / 94.4 without the āya before / 94.2 as 1.15.5; "SAID AGAIN" (the
+  marker in an āya while it is said again) 158/205 vs 157: EveryAyah repeats rarely misread.
 - Red flashes on held vowels (1.15.4): a word turns red only once a final reading has passed it
   (`ReciteSession.decided`, the bench's `redShown`); a partial reading's trailing non-right words
   stay pending (`Follower.holdsEdges`, `HFD_HOLD_EDGE`). Bench "red then right N (shown M)": 577
