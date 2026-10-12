@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.15.5
+In Recite, the blue marker stays on the word you are saying, and moves to the next one when you pause.
+- While you held an āya's last word (a madd), the marker was already on the next āya's first word: Recite recognises a word from its first letters and showed the word to say next. It now stays on the word you are saying as long as your voice goes on, and moves to the next word once you pause; if you go straight on, it follows you word by word. On the test recitations, the marker left an āya's last word 1.7 s before its end; it now leaves it about half a second after.
+
 ## 1.15.4
 Recite no longer flashes words red while you hold a long vowel, and saying an āya again starts it from its first word.
 - While you prolong a vowel (madd), the word you are on could turn red for a moment and back to white once you finished it. A word now only turns red once your phrase has been read to its end; on the test recitations, words shown red then found right went from 577 to 7.
