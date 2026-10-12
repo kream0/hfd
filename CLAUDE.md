@@ -25,7 +25,10 @@
 - A release build is never cancelled by a later push (its concurrency group includes the plan
   mode), but check the release exists (`list_releases`) before telling the owner. Push nothing
   else until it does: if its publish step fails (a transient 403 on 2 Oct), the next push's build
-  sees an unreleased VERSION and publishes it from its own commit (1.13.0 went out that way).
+  sees an unreleased VERSION and publishes it from its own commit (1.13.0 went out that way). A
+  publish cut short leaves a draft without assets (HTTP 500, 1.15.5 on 12 Oct): drafts count as
+  unreleased, and the publish step deletes one before creating the release (3 tries). The session
+  token can't create, edit or delete releases (403).
 - versionCode = major·1,000,000 + minor·1,000 + patch. Plain pushes build a test APK
   (`0.dev.<run>`, Actions artifact) that the app never offers.
 

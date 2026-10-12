@@ -58,7 +58,10 @@ jobs:
                 else
                   V=""
                 fi
-                if [ -n "$V" ] && ! gh release view "v$V" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+                # A draft is no release: a publish that failed half way (GitHub's HTTP 500, 12 Oct)
+                # leaves one without assets, and the next push publishes the version for real.
+                D=$(gh release view "v$V" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null) || D=""
+                if [ -n "$V" ] && [ "$D" != false ]; then
                   TAG="v$V"; MODE=create
                 fi
               fi ;;
@@ -193,8 +196,17 @@ jobs:
           cat dist/version.json
 
           if [ "$MODE" = create ]; then
-            gh release create "$TAG" dist/hfd.apk dist/version.json \
-              --target "$GITHUB_SHA" --title "HFD $HFD_VERSION_NAME" --notes "$NOTES"
+            # gh makes a draft, uploads the assets, then publishes it: a transient error on the way
+            # (HTTP 500, 12 Oct) leaves the draft, which is dropped before trying again.
+            for attempt in 1 2 3; do
+              D=$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null) || D=""
+              if [ "$D" = false ]; then break; fi
+              if [ "$D" = true ]; then gh release delete "$TAG" --yes || true; fi
+              if gh release create "$TAG" dist/hfd.apk dist/version.json \
+                --target "$GITHUB_SHA" --title "HFD $HFD_VERSION_NAME" --notes "$NOTES"; then break; fi
+              if [ "$attempt" = 3 ]; then exit 1; fi
+              sleep $((attempt * 20))
+            done
           else
             gh release upload "$TAG" dist/hfd.apk dist/version.json --clobber
           fi
