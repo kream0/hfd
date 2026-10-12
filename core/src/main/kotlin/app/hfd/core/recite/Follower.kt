@@ -21,8 +21,11 @@ class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean 
     /** Where the utterance's last reading that followed something left the recitation. */
     private var followed: Tracker.Mark? = null
     /**
-     * Where the reciter's voice is, if it says words already recited before the recitation goes
-     * back there (Tracker.voiceAt): for the next-word marker. Null: at the position.
+     * The word the reciter's voice is on, for the marker. While they speak (a partial reading),
+     * the last word heard: the next one isn't said yet (a madd held at an āya's end showed the
+     * next āya's first word, the owner, 12 Oct). Once they pause (the final reading), the word to
+     * say next. Also words already recited, said again before the recitation goes back there
+     * (Tracker.voiceAt). Null: at the position.
      */
     var voice: Int? = null
         private set
@@ -51,8 +54,8 @@ class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean 
             // Went back (a restart, a phrase said again): nothing of it is stable yet.
             previous = tracker.status.copyOf()
             stable = BooleanArray(tracker.size)
-            // Saying a word still (a partial reading ends inside it): the marker is on it.
-            if (final) closed = id else voice = tracker.cut
+            // Still speaking: the marker is on the word said last (or the one the reading ends inside).
+            if (final) closed = id else voice = tracker.cut ?: (tracker.position - 1).takeIf { it >= 0 }
             return tracker.position - from
         }
         // Nothing of this reading followed, where the one before did (a skipped āya accepted on a
@@ -77,8 +80,14 @@ class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean 
         previous = now.copyOf()
         if (tracker.position > from) followed = tracker.mark()
         // Nothing followed: maybe words already recited, said again.
-        if (tracker.position == from) voice = tracker.voiceAt(clean)
-        if (final) closed = id else if (holdsEdges) holdEdge(from)
+        if (tracker.position == from) voice = tracker.voiceAt(clean, final)
+        if (final) {
+            closed = id
+        } else {
+            // Still speaking: the voice is on the last word heard, unless it ends on one held back.
+            val held = holdsEdges && holdEdge(from)
+            if (voice == null && !held && tracker.position > from) voice = tracker.position - 1
+        }
         return tracker.position - from
     }
 
@@ -86,15 +95,16 @@ class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean 
      * A partial reading ends where the reciter is still speaking: the words it ends on, unless
      * right, may be one not said whole yet (a madd held: الرحمـــن read الرحار, then right; 1.15.2's
      * readings every 0.3 s turned such words red, then white, the owner, 11 Oct). They wait, not
-     * yet recited, for a reading that goes past them or the utterance's end.
+     * yet recited, for a reading that goes past them or the utterance's end. True if any wait.
      */
-    private fun holdEdge(from: Int) {
+    private fun holdEdge(from: Int): Boolean {
         var edge = tracker.position
         while (edge > from && tracker.status[edge - 1] != WordStatus.OK) edge--
-        if (edge == tracker.position) return
+        if (edge == tracker.position) return false
         val status = tracker.status.copyOf()
         for (w in edge until tracker.position) status[w] = WordStatus.PENDING
         tracker.reset(Tracker.Mark(edge, status))
+        return true
     }
 
     /** Words stable over the readings before stay right; the words among them keep what they were. */

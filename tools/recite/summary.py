@@ -23,6 +23,7 @@ def quantile(xs, f):
 for config, dirs in configs.items():
     counts = collections.defaultdict(collections.Counter)
     lags = collections.defaultdict(list)
+    marks = collections.defaultdict(list)
     owners, missing = [], []
     for d in dirs:
         t = os.path.join(d, "totals.tsv")
@@ -33,6 +34,8 @@ for config, dirs in configs.items():
                 name, kind, *rest = line.split()
                 if kind == "counts":
                     counts[name].update({k: int(v) for k, v in (x.split("=") for x in rest)})
+                elif kind == "marks":
+                    marks[name] += [(int(p), *map(float, v)) for p, *v in (x.split(":") for x in rest)]
                 else:
                     lags[name] += [(int(p), float(v)) for p, v in (x.split(":") for x in rest)]
         r = os.path.join(d, "report.txt")
@@ -52,6 +55,13 @@ for config, dirs in configs.items():
         by[p].append(v)
     print("LAG BY PLACE: " + "; ".join(f"{n} p50 {quantile(by[p], .5):.1f} p90 {quantile(by[p], .9):.1f} s ({len(by[p])})"
                                        for p, n in ((0, "āya's first word"), (1, "middle"), (2, "last"))))
+    def marker(place):
+        m = [x for x in marks["all"] if x[0] == place]
+        left, nxt, reached = ([x[i] for x in m] for i in (1, 2, 3))
+        return (f"leaves p10 {quantile(left, .1):.1f} p50 {quantile(left, .5):.1f} s (1.15.4: p10 {quantile(nxt, .1):.1f} "
+                f"p50 {quantile(nxt, .5):.1f} s), reaches p50 {quantile(reached, .5):.1f} p90 {quantile(reached, .9):.1f} s ({len(m)})")
+    if marks["all"]:
+        print("MARKER (from the word's end / start): " + "; ".join(f"{n} {marker(p)}" for p, n in ((0, "āya's first word"), (1, "middle"), (2, "last"))))
     for l in sorted(owners, key=lambda l: l.replace("free   ", "").strip()):
         print("  " + l)
     print()

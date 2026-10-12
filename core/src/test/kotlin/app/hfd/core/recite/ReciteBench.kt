@@ -63,7 +63,7 @@ class ReciteBench {
                 }
             }
         }
-        report.append('\n').append(totals.line()).append('\n').append(totals.places()).append('\n')
+        report.append('\n').append(totals.line()).append('\n').append(totals.places()).append('\n').append(totals.marker()).append('\n')
         report.append("SUBSET steered: ").append(steeredTotals.line()).append('\n')
         report.append("SUBSET free:    ").append(freeTotals.line()).append('\n')
         for (line in owners) report.append(line).append('\n')
@@ -162,6 +162,12 @@ class Result(
      * the tracker, and as the app shows them (a partial reading's mistakes wait for the utterance's end).
      */
     val redRight: Int = 0, val redRightShown: Int = 0,
+    /**
+     * The marker on each timed word said: when it left the word, from the word's end, as the app
+     * shows it (on the word being said while the voice goes on) and as 1.15.4 did (on the next
+     * word to say); when it reached the word, from its start; and the word's place (as [places]).
+     */
+    val marks: List<Mark> = emptyList(),
 ) {
     private val warning get() = (if (warned > 0) "  MUFFLED WARNING $warned/$finals" else "") +
         (if (redRight > 0) "  red then right $redRight (shown $redRightShown)" else "") +
@@ -186,6 +192,8 @@ class Result(
     }
 }
 
+class Mark(val place: Int, val left: Double, val leftNext: Double, val reached: Double)
+
 class Totals {
     private var said = 0
     private var ok = 0
@@ -202,12 +210,14 @@ class Totals {
     private var rescued = 0
     private var redRight = 0
     private var redRightShown = 0
+    private val marks = ArrayList<Mark>()
 
     /** Its counts ("<name> counts said ok …") and lags ("<name> lags place:lag …"), a line each. */
     fun dump(name: String): String =
         "$name counts said=$said ok=$ok wrong=$wrong missed=$missed pending=$pending cases=$cases timed=$timed " +
             "swapped=$swapped caught=$caught checks=$checks rescued=$rescued redRight=$redRight redRightShown=$redRightShown\n" +
-            "$name lags " + lags.indices.joinToString(" ") { String.format(Locale.US, "%d:%.2f", places.getOrElse(it) { 1 }, lags[it]) } + "\n"
+            "$name lags " + lags.indices.joinToString(" ") { String.format(Locale.US, "%d:%.2f", places.getOrElse(it) { 1 }, lags[it]) } + "\n" +
+            "$name marks " + marks.joinToString(" ") { String.format(Locale.US, "%d:%.2f:%.2f:%.2f", it.place, it.left, it.leftNext, it.reached) } + "\n"
 
     operator fun plusAssign(r: Result) {
         said += r.said; ok += r.ok; wrong += r.wrong; missed += r.missed; pending += r.pending
@@ -217,6 +227,7 @@ class Totals {
         swapped += r.swapped; caught += r.caught
         checks += r.checks; rescued += r.rescued
         redRight += r.redRight; redRightShown += r.redRightShown
+        marks += r.marks
         cases++
     }
 
@@ -229,6 +240,23 @@ class Totals {
             return String.format(Locale.US, "p50 %.1f p90 %.1f s, %d of %d over 1 s", q(0.5), q(0.9), l.count { it > 1.0 }, l.size)
         }
         return "LAG BY PLACE ($timed of ${lags.size} words timed): āya's first word ${of(0)}; middle ${of(1)}; last ${of(2)}"
+    }
+
+    /** When the marker leaves a word (from its end) and reaches it (from its start), by place. */
+    fun marker(): String {
+        fun of(place: Int): String {
+            val m = marks.filter { it.place == place }
+            if (m.isEmpty()) return "none"
+            fun q(l: List<Double>, f: Double) = l.sorted().let { it[((it.size - 1) * f).toInt()] }
+            val left = m.map { it.left }
+            val next = m.map { it.leftNext }
+            val reached = m.map { it.reached }
+            return String.format(
+                Locale.US, "leaves p10 %.1f p50 %.1f s (1.15.4: p10 %.1f p50 %.1f s), reaches p50 %.1f p90 %.1f s (%d)",
+                q(left, 0.1), q(left, 0.5), q(next, 0.1), q(next, 0.5), q(reached, 0.5), q(reached, 0.9), m.size,
+            )
+        }
+        return "MARKER: āya's first word ${of(0)}; middle ${of(1)}; last ${of(2)}"
     }
 
     fun line(): String {
@@ -254,6 +282,10 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private val red = BooleanArray(n)
     private val redShown = BooleanArray(n)
     private var last = Array(n) { WordStatus.PENDING }
+    /** When the marker first went past each word, as the app shows it and on the next word to say (1.15.4), and first reached it. */
+    private val markerLeft = DoubleArray(n) { Double.NaN }
+    private val nextLeft = DoubleArray(n) { Double.NaN }
+    private val markerReached = DoubleArray(n) { Double.NaN }
     private var flips = 0
     private var partials = 0
     private var finals = 0
@@ -359,6 +391,12 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             else if (!shownAt[w].isNaN() && now[w] != last[w]) flips++
         }
         last = now.copyOf()
+        val marker = follower.voice ?: tracker.position
+        for (w in 0 until n) {
+            if (marker > w && markerLeft[w].isNaN()) markerLeft[w] = t
+            if (tracker.position > w && nextLeft[w].isNaN()) nextLeft[w] = t
+            if (marker >= w && markerReached[w].isNaN()) markerReached[w] = t
+        }
     }
 
     private fun result(): Result {
@@ -382,6 +420,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         val redRightShown = (0 until n).count { redShown[it] && endsRight[it] }
         val lags = ArrayList<Double>()
         val places = ArrayList<Int>()
+        val markerTimes = ArrayList<Mark>()
         var timed = 0
         val detail = StringBuilder()
         for ((a, t) in targets.withIndex()) {
@@ -422,10 +461,14 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                             w + 1 < starts.size -> starts[w + 1]
                             else -> span.second
                         }
+                        val place = when (w) { t.words.lastIndex -> 2; 0 -> 0; else -> 1 }
                         if (!shownAt[flat + w].isNaN()) {
                             lags += shownAt[flat + w] - end
-                            places += when (w) { t.words.lastIndex -> 2; 0 -> 0; else -> 1 }
+                            places += place
                             if (starts != null) timed++
+                        }
+                        if (starts != null && !markerLeft[flat + w].isNaN() && !nextLeft[flat + w].isNaN() && !markerReached[flat + w].isNaN()) {
+                            markerTimes += Mark(place, markerLeft[flat + w] - end, nextLeft[flat + w] - end, markerReached[flat + w] - starts[w])
                         }
                     }
                 } else if (a > lastRecited) {
@@ -461,6 +504,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             checks, rescued,
             swapped, caught,
             redRight, redRightShown,
+            markerTimes,
         )
     }
 

@@ -360,8 +360,9 @@ class ReciteSession(
                 if (wasRight[flat + w]) WordStatus.OK else st
             }.also { flat += targets[a].words.size }
         }
-        // The marker follows the voice through words said again (Follower.voice), else the text.
-        val next = follower.voice ?: shown
+        // The marker is on the word being said (Follower.voice), else the next one; never past the
+        // words shown so far (they come one at a time).
+        val next = follower.voice?.let { minOf(it, shown) } ?: shown
         return base.copy(status = status, next = if (next >= tracker.size) null else tracker.locate(next))
     }
 

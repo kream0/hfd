@@ -160,22 +160,23 @@ class Tracker(val targets: List<ReciteTarget>) {
 
     /**
      * Where the reciter's voice is when [heard] says words already recited without the recitation
-     * going back (yet): the word after the last one it says. Going back takes a clear match (an
-     * āya said again: some five words); the next-word marker follows the voice sooner, from
-     * [VOICE_MIN_LETTERS] letters. Null when [heard] doesn't clearly say words before the position.
+     * going back (yet): still speaking, the last word it says; once [final], the word after it.
+     * Going back takes a clear match (an āya said again: some five words); the marker follows the
+     * voice sooner, from [VOICE_MIN_LETTERS] letters. Null when [heard] doesn't clearly say words
+     * before the position.
      */
-    fun voiceAt(heard: String): Int? {
+    fun voiceAt(heard: String, final: Boolean = true): Int? {
         if (position == 0) return null
         val hWords = heard.split(Regex("\\s+")).map { Arabic.skeleton(it) }.filter { it.isNotEmpty() }
         if (hWords.isEmpty()) return null
         val s = stretch(hWords) ?: return null
-        // Ending at the last word recited or after: the voice is at the position.
-        if (s.lastWord >= position - 1) return null
+        // Ending after the last word recited (or on it, once said): the voice is at the position.
+        if (s.lastWord >= position - (if (final) 1 else 0)) return null
         // An āya said again from its start shows from its first word (a phrase anywhere: three words).
         val least = if (starts.contains(s.first)) VOICE_START_LETTERS else VOICE_MIN_LETTERS
         if (s.same < least || s.same < JUMP_MATCH_FRACTION * s.letters || s.same < JUMP_MATCH_FRACTION * s.span) return null
         // A word still being said (the chunk ends inside it) is where the voice is.
-        return s.cut ?: (s.lastWord + 1)
+        return s.cut ?: if (final) s.lastWord + 1 else s.lastWord
     }
 
     /**

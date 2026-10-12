@@ -34,15 +34,16 @@ class FollowerAgainTest {
 
     @Test
     fun anAyaSaidAgainIsFollowedFromItsFirstWord() {
-        // 1:1 said again after 1:3: from بسم on, the marker is on الله, not where the recitation stood.
-        assertEquals(1, replay("partial 6 بِسْمِ").marker)
+        // 1:1 said again after 1:3: from بسم on, the marker is on it, not where the recitation stood.
+        assertEquals(0, replay("partial 6 بِسْمِ").marker)
         // بسم الل isn't 1:4's مالك: the recitation stays, the marker on الله.
         val f = replay("partial 6 مِسْمِ اللِّ")
         assertEquals(10, f.tracker.position)
         assertEquals(1, f.marker)
         // Going back while ٱلرَّحْمَٰنِ is being said: the marker is on it, not on 1:1's last word.
         assertEquals(2, replay("partial 6 مِسْمِ اللَّهِ الرَّحْمِ").marker)
-        assertEquals(3, replay("partial 6 مِسْمِ اللَّهِ الرَّحْمَنِ").marker)
+        // Said whole, still speaking: on it still (the next word once the voice pauses, 12 Oct).
+        assertEquals(2, replay("partial 6 مِسْمِ اللَّهِ الرَّحْمَنِ").marker)
     }
 
     @Test

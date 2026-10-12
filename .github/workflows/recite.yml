@@ -37,8 +37,6 @@ jobs:
         shard: ['0/4', '1/4', '2/4', '3/4']
         config:
           - { name: 'app: tiny, greedy, bonus 6, mistakes checked at 3 nats', key: app, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', only: '' }
-          # Partial readings' unfinished last words not held (1.15.3): the same run, so the same machines' noise.
-          - { name: 'last words of partial readings not held', key: nohold, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '0', only: '' }
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:

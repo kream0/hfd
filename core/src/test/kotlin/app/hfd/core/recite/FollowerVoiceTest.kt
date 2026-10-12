@@ -25,14 +25,15 @@ class FollowerVoiceTest {
         assertNull(f.voice)
         f.heard(3, "اللَّهُ لَا إِلَهَ", final = false)
         assertEquals(furthest, f.tracker.position)
-        assertEquals(AyahRef(3, 2) to 3, f.voice?.let { f.tracker.locate(it).let { (a, w) -> imran[a].ref to w } })
+        // On the word said last (إِلَٰهَ), while the voice goes on.
+        assertEquals(AyahRef(3, 2) to 2, f.voice?.let { f.tracker.locate(it).let { (a, w) -> imran[a].ref to w } })
         // Clearly said again: the recitation goes back there, and the marker is at its position.
         f.heard(3, "اللَّهُ لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ", final = true)
         assertEquals(f.tracker.startOf(2), f.tracker.position)
         assertNull(f.voice)
-        // Going on from there: the voice is at the position again.
+        // Going on from there: the voice is on the word said last, at the position's.
         f.heard(4, "نَزَّلَ عَلَيْكَ الْكِتَابَ", final = false)
-        assertNull(f.voice)
+        assertEquals(f.tracker.position - 1, f.voice)
     }
 
     @Test
