@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.15.4
+Recite no longer flashes words red while you hold a long vowel, and saying an āya again starts it from its first word.
+- While you prolong a vowel (madd), the word you are on could turn red for a moment and back to white once you finished it. A word now only turns red once your phrase has been read to its end; on the test recitations, words shown red then found right went from 577 to 7.
+- Saying an āya you had already recited again, the blue marker went back to it but sat on its last word. It now goes to the āya's first word and follows you from there.
+
 ## 1.15.3
 Recite reads your voice a little faster again.
 - Your first sessions with the AI chip: a short phrase is now read in about 130 ms (540 ms before), 6 to 9 seconds of recitation in about 290 ms (650 ms before), and every āya of al-Fātiḥa and 3:18–19 was followed without a false mistake.
