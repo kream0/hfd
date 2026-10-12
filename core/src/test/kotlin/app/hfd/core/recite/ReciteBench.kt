@@ -28,8 +28,11 @@ class ReciteBench {
         val dir = System.getenv("HFD_BENCH")
         Assume.assumeTrue("HFD_BENCH not set", dir != null)
         val only = System.getenv("HFD_BENCH_ONLY")?.takeIf { it.isNotBlank() }?.let(::Regex)
+        // One shard of the cases ("k/n": every n-th from the k-th), so that several jobs share them.
+        val shard = System.getenv("HFD_BENCH_SHARD")?.takeIf { it.isNotBlank() }?.split('/')?.map(String::toInt)
         val cases = File(dir, "cases.tsv").readLines().filter { it.isNotBlank() && !it.startsWith("#") }.map(Case::parse)
             .filter { only == null || only.containsMatchIn(it.id) }
+            .filterIndexed { i, _ -> shard == null || i % shard[1] == shard[0] }
         val report = StringBuilder()
         val totals = Totals()
         // These cases also run decoded freely (the app before 2 Oct), to compare: degraded audio,
@@ -47,6 +50,8 @@ class ReciteBench {
                 report.append(r.line()).append('\n')
                 if (r.detail.isNotEmpty()) report.append(r.detail)
                 println(r.line())
+                // As it goes: a job stopped by its time limit still says what it did.
+                File(dir, "report.txt").writeText(report.toString())
                 if (c.owner || COMPARED.any { it in c.id } || c.id.startsWith("fatiha-") && c.id.endsWith("-flow")) {
                     val p = Simulation(c, pcm, decoder, steer = false).run()
                     if (!c.owner) { steeredTotals += r; freeTotals += p }
@@ -63,6 +68,8 @@ class ReciteBench {
         report.append("SUBSET free:    ").append(freeTotals.line()).append('\n')
         for (line in owners) report.append(line).append('\n')
         File(dir, "report.txt").writeText(report.toString())
+        // The counts and lags, for tools/recite/summary.py to add up the shards.
+        File(dir, "totals.tsv").writeText(totals.dump("all") + steeredTotals.dump("steered") + freeTotals.dump("free"))
         println(totals.line())
     }
 
@@ -195,6 +202,12 @@ class Totals {
     private var rescued = 0
     private var redRight = 0
     private var redRightShown = 0
+
+    /** Its counts ("<name> counts said ok …") and lags ("<name> lags place:lag …"), a line each. */
+    fun dump(name: String): String =
+        "$name counts said=$said ok=$ok wrong=$wrong missed=$missed pending=$pending cases=$cases timed=$timed " +
+            "swapped=$swapped caught=$caught checks=$checks rescued=$rescued redRight=$redRight redRightShown=$redRightShown\n" +
+            "$name lags " + lags.indices.joinToString(" ") { String.format(Locale.US, "%d:%.2f", places.getOrElse(it) { 1 }, lags[it]) } + "\n"
 
     operator fun plusAssign(r: Result) {
         said += r.said; ok += r.ok; wrong += r.wrong; missed += r.missed; pending += r.pending

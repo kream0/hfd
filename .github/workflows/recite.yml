@@ -27,16 +27,18 @@ jobs:
   bench:
     # The app's settings on every case; other settings of the steered decoding on the owner's
     # sessions and the hard cases, side by side (tools/recite/decoder.c reads them).
-    name: bench (${{ matrix.config.name }})
+    name: bench (${{ matrix.config.name }}, part ${{ matrix.shard }})
     strategy:
       fail-fast: false
       matrix:
+        # Each config's cases in four parts at once: with the NPU's reading times (1.15.2) the
+        # phone reads several times as often, and one job went past its time limit. The summary
+        # job adds the parts up.
+        shard: ['0/4', '1/4', '2/4', '3/4']
         config:
-          - { name: 'app: tiny, greedy, bonus 6, mistakes checked at 3 nats', model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', only: '' }
-          # Mistakes not checked (1.14.3), and partial readings' unfinished last words not held
-          # (1.15.3): the same run, so the same machines' noise.
-          - { name: 'mistakes not checked', model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '0', hold: '1', only: '' }
-          - { name: 'last words of partial readings not held', model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '0', only: '' }
+          - { name: 'app: tiny, greedy, bonus 6, mistakes checked at 3 nats', key: app, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', only: '' }
+          # Partial readings' unfinished last words not held (1.15.3): the same run, so the same machines' noise.
+          - { name: 'last words of partial readings not held', key: nohold, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '0', only: '' }
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -86,7 +88,31 @@ jobs:
           HFD_BIAS_BONUS: ${{ matrix.config.bonus }}
           HFD_BEAM: ${{ matrix.config.beam }}
           HFD_BENCH_ONLY: ${{ matrix.config.only }}
+          HFD_BENCH_SHARD: ${{ matrix.shard }}
         run: ./gradlew --no-daemon -q :core:test --tests app.hfd.core.recite.ReciteBench
       - name: Report
         if: always()
         run: cat work/bench/report.txt || true
+      - name: Name the part
+        if: always()
+        run: echo "PART=$(echo '${{ matrix.shard }}' | tr / -)" >> $GITHUB_ENV
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-${{ matrix.config.key }}-${{ env.PART }}
+          path: |
+            work/bench/report.txt
+            work/bench/totals.tsv
+          if-no-files-found: ignore
+  summary:
+    # The parts added up, per config: totals, lags, and the owner's sessions.
+    needs: bench
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          path: parts
+      - name: Report
+        run: python3 tools/recite/summary.py parts
