@@ -49,7 +49,8 @@ for config, dirs in configs.items():
         print(f"{name.upper():8} {c['cases']} cases: ok {c['ok']}/{c['said']} ({100 * c['ok'] / max(1, c['said']):.1f} %), wrong {c['wrong']}, "
               f"missed {c['missed']}, pending {c['pending']}; lag p50 {quantile(l, .5):.1f} s, p90 {quantile(l, .9):.1f} s; "
               f"mistakes caught {c['caught']}/{c['swapped']}; checks {c['checks']} (+{c['rescued']}); "
-              f"red then right {c['redRight']} (shown {c['redRightShown']})")
+              f"red then right {c['redRight']} (shown {c['redRightShown']}); "
+              f"said again: marker in it {c['againIn']}/{c['againAll']}")
     by = collections.defaultdict(list)
     for p, v in lags["all"]:
         by[p].append(v)

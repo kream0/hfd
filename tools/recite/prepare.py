@@ -74,6 +74,9 @@ CASES = [(p, r, "flow", None) for p in PASSAGES if p != "imran-opening" for r in
     ("imran-opening", "alafasy", "flow", [1, 2, 1, 2, 3, 4]),
     ("ikhlas", "husary", "flow", [1, 2, 1, 2, 3, 4]),
     ("baqara-opening", "dossary", "flow", [1, 2, 3, 3, 4, 5]),
+    # An āya said again once finished, as the owner memorises (3:2 twice on earbuds, 12 Oct).
+    ("imran-opening", "maher", "sco", [1, 2, 2, 3]),
+    ("imran-opening", "husary", "muffled", [1, 2, 2, 3, 4]),
     ("fatiha", "maher", "flow", [1, 2, 3, 4, 5, 4, 5, 6, 7]),
     ("imran-opening", "maher", "muffled", [1, 2, 3, 4]),
     ("fatiha", "alafasy", "muffled", None),

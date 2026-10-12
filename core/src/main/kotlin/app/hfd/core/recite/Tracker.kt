@@ -32,7 +32,11 @@ data class AyahResult(
  * further back: the reciter starts an āya over (or the passage), and the recitation goes back
  * there with no mistake — the words after it are to be recited again.
  */
-class Tracker(val targets: List<ReciteTarget>) {
+class Tracker(
+    val targets: List<ReciteTarget>,
+    /** A chunk said again that fits as well from an āya's start as later goes back to the āya's start ([stretch]). */
+    private val ayaStartTies: Boolean = true,
+) {
     private val flat: List<String> = targets.flatMap { it.words }
     private val skel: List<String> = flat.map { Arabic.skeleton(it) }
     /** Words that are disconnected letters (الٓمٓ, حمٓ, يسٓ…). */
@@ -196,7 +200,9 @@ class Tracker(val targets: List<ReciteTarget>) {
 
     /**
      * The whole chunk against any stretch of the text up to a little past the position (starting
-     * anywhere for free); on a tie the latest end (the nearest place to go back to).
+     * anywhere for free); on a tie the latest end (the nearest place to go back to), unless an
+     * equal stretch starts an āya: the letters without their alifs make ٱللَّهُ لَآ (3:2's start) the
+     * same as لَآ إِلَٰهَ إِلَّا after it, and the owner saying 3:2 again went back onto إِلَّا (12 Oct).
      */
     private fun stretch(hWords: List<String>): Stretch? {
         val h = hWords.joinToString("")
@@ -221,6 +227,24 @@ class Tracker(val targets: List<ReciteTarget>) {
         }
         var best = 1
         for (i in 1..n) if (d[i][m] >= d[best][m]) best = i
+        /** Where the stretch ending at letter [end] starts (a letter index). */
+        fun startOf(end: Int): Int {
+            var i = end
+            var j = m
+            while (i > 0 && j > 0) {
+                val eq = e[i - 1] == h[j - 1]
+                when {
+                    d[i][j] == d[i - 1][j - 1] + (if (eq) MATCH else -MISMATCH) -> { i--; j-- }
+                    d[i][j] == d[i - 1][j] - GAP -> i--
+                    else -> j--
+                }
+            }
+            return i
+        }
+        fun startsAya(end: Int) = startOf(end).let { it < n && starts.contains(owner[it]) }
+        if (ayaStartTies && d[best][m] > 0 && !startsAya(best)) {
+            for (i in best - 1 downTo 1) if (d[i][m] == d[best][m] && startsAya(i)) { best = i; break }
+        }
         val matched = BooleanArray(n)
         val touched = BooleanArray(n)
         var i = best

@@ -6,10 +6,19 @@ package app.hfd.core.recite
  * utterance; the final one stays. A word heard right in two readings in a row stays right: on a
  * longer stretch the model sometimes drops words it had heard (ولم يولد, or the basmala before
  * an āya), and a later reading can't take them back. And a reading that follows nothing, after
- * one of the same utterance that did, leaves that one standing (the longer stretch misread).
+ * one of the same utterance that did (or went back), leaves that one standing (the longer
+ * stretch misread).
  */
-class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean = true) {
-    val tracker = Tracker(targets)
+class Follower(
+    val targets: List<ReciteTarget>,
+    private val holdsEdges: Boolean = true,
+    /** A reading that follows nothing after one of the same utterance went back leaves it gone back. */
+    private val keepsGoingBack: Boolean = true,
+    /** The āya before is among what the reciter may be saying ([expected]): said again. */
+    private val steersPrevious: Boolean = true,
+    ayaStartTies: Boolean = true,
+) {
+    val tracker = Tracker(targets, ayaStartTies)
     /** The utterance being followed, and the tracker before it. */
     private var current = -1
     private var before: Tracker.Mark? = null
@@ -20,6 +29,8 @@ class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean 
     private var stable = BooleanArray(tracker.size)
     /** Where the utterance's last reading that followed something left the recitation. */
     private var followed: Tracker.Mark? = null
+    /** Where the utterance's last reading that went back left it, and the marker then. */
+    private var wentBack: Pair<Tracker.Mark, Int?>? = null
     /**
      * The word the reciter's voice is on, for the marker. While they speak (a partial reading),
      * the last word heard: the next one isn't said yet (a madd held at an āya's end showed the
@@ -39,6 +50,7 @@ class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean 
             previous = null
             stable = BooleanArray(tracker.size)
             followed = null
+            wentBack = null
         } else {
             before?.let(tracker::reset)
         }
@@ -56,6 +68,18 @@ class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean 
             stable = BooleanArray(tracker.size)
             // Still speaking: the marker is on the word said last (or the one the reading ends inside).
             if (final) closed = id else voice = tracker.cut ?: (tracker.position - 1).takeIf { it >= 0 }
+            followed = null
+            wentBack = tracker.mark() to voice
+            return tracker.position - from
+        }
+        // Nothing of this reading followed, after one of the same utterance went back: the going
+        // back stands. (The owner saying 3:2 again on dark earbuds, 12 Oct: back at الله لا, then
+        // its readings as it grew, الله إلى إلى …, matched nothing, and the text was at 3:3 again.)
+        val back = wentBack
+        if (keepsGoingBack && back != null && tracker.position == from) {
+            tracker.reset(back.first)
+            if (final) closed = id
+            voice = if (final) null else back.second
             return tracker.position - from
         }
         // Nothing of this reading followed, where the one before did (a skipped āya accepted on a
@@ -78,7 +102,10 @@ class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean 
         val prev = previous
         stable = BooleanArray(now.size) { it >= from && prev != null && prev[it] == WordStatus.OK && now[it] == WordStatus.OK }
         previous = now.copyOf()
-        if (tracker.position > from) followed = tracker.mark()
+        if (tracker.position > from) {
+            followed = tracker.mark()
+            wentBack = null
+        }
         // Nothing followed: maybe words already recited, said again.
         if (tracker.position == from) voice = tracker.voiceAt(clean, final)
         if (final) {
@@ -128,9 +155,9 @@ class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean 
      * What the reciter may be saying in utterance [id], for the recogniser to prefer among what it
      * nearly hears (app/src/main/cpp/bias.h): the text from where the utterance began; at a cost
      * (edits the audio must make up for), from a few words before (a phrase said again), from the
-     * start of its āya (started over) and of the next two (skipped); at an āya's start also after
-     * the isti'ādha and the basmala. One continuation per line ("<cost>\t<text>"); empty once the
-     * passage is done (a recitation going back is read freely).
+     * start of its āya (started over), of the āya before (said again) and of the next two
+     * (skipped); at an āya's start also after the isti'ādha and the basmala. One continuation per
+     * line ("<cost>\t<text>"); empty once the passage is done (a recitation going back is read freely).
      */
     fun expected(id: Int): String {
         val from = (if (id == current && id > closed) before?.position else null) ?: tracker.position
@@ -142,6 +169,9 @@ class Follower(val targets: List<ReciteTarget>, private val holdsEdges: Boolean 
         start(from, 0)
         for (back in 1..BACK_WORDS) start(from - back, 1)
         start(tracker.startOf(aya), 1)
+        // The āya just recited, said again as a learner does: as likely as starting this one over
+        // (the owner's 3:2 said again, read الله إلى إلى without it, 12 Oct); from its middle, less.
+        if (steersPrevious && aya > 0) start(tracker.startOf(aya - 1), if (from == tracker.startOf(aya)) 1 else 2)
         if (aya + 1 < targets.size) start(tracker.startOf(aya + 1), 2)
         if (aya + 2 < targets.size) start(tracker.startOf(aya + 2), 3)
         val ayaStarts = targets.indices.map { tracker.startOf(it) }.toSet()

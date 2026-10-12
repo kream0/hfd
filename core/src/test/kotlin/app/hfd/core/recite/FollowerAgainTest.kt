@@ -46,6 +46,52 @@ class FollowerAgainTest {
         assertEquals(2, replay("partial 6 مِسْمِ اللَّهِ الرَّحْمَنِ").marker)
     }
 
+    private val imran = (1..9).map { ReciteTarget(AyahRef(3, it), Arabic.words(Assets.quran.text(AyahRef(3, it)).orEmpty())) }
+
+    /** The owner's 1.15.5 readings of 3:1-3:3 with 3:2 said again, up to the [n]th line of [kind] [id]. */
+    private fun replayImran(kind: String, id: Int, n: Int = 1, f: Follower = Follower(imran)): Follower {
+        var seen = 0
+        for (line in javaClass.getResourceAsStream("/recite/owner-1.15.5-imran-again.log")!!.bufferedReader().readLines()) {
+            if (line.isBlank() || line.startsWith("#")) continue
+            val p = line.split(" ", limit = 4)
+            if (p[1] == "session") continue
+            f.heard(p[2].toInt(), p.getOrElse(3) { "" }, p[1] == "final")
+            if (p[1] == kind && p[2].toInt() == id && ++seen == n) break
+        }
+        return f
+    }
+
+    @Test
+    fun anAyaSaidAgainStaysGoneBackWhenItsNextReadingsAreMisread() {
+        // 3:2 (words 1-7) recited, then said again (utterance 2): back at الله لا, onto 3:2's start
+        // (لا is also إلا to the letters without alifs: the same stretch ends there).
+        val start = replayImran("final", 1).tracker.position
+        assertEquals(8, start)
+        val back = replayImran("partial", 2, 4)
+        assertEquals(3, back.tracker.position)
+        assertEquals(2, back.marker)
+        // Its next readings (الله إلى إلى …, then garbage as it grew) follow nothing: still in 3:2.
+        for (n in 5..16) {
+            val f = replayImran("partial", 2, n)
+            assertTrue("reading $n at ${f.tracker.position}", f.tracker.position in 1..7)
+            assertTrue("reading $n marker ${f.marker}", f.marker in 1..7)
+        }
+        val ended = replayImran("final", 2)
+        assertTrue(ended.tracker.position in 1..7)
+        // 3:3 after it goes on from there.
+        assertTrue(replayImran("final", 3).tracker.position > 8)
+    }
+
+    @Test
+    fun theAyaBeforeIsAmongTheContinuations() {
+        // After 3:2, saying it again is steered to as starting 3:3 over would be (cost 1).
+        val f = Follower(imran)
+        f.heard(0, "الم", final = true)
+        f.heard(1, "اللَّهُ لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ", final = true)
+        val lines = f.expected(2).lines()
+        assertTrue(lines.any { it.startsWith("1\t") && skeletons(it.substringAfter('\t')).startsWith(skeletons("اللَّهُ لَا إِلَهَ إِلَّا هُوَ")) })
+    }
+
     @Test
     fun goingOnIsntTakenForSayingAgain() {
         // 1:3 (ٱلرَّحْمَٰنِ ٱلرَّحِيمِ, also 1:1's end) after 1:2 goes on.

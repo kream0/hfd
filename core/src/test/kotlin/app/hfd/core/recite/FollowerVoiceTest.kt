@@ -21,8 +21,10 @@ class FollowerVoiceTest {
         // recitation was furthest. Going back takes some five words; the voice is followed sooner.
         val f = recited()
         val furthest = f.tracker.position
+        // 3:2's first word: an āya said again from its start shows from it (ٱللَّهُ is also لَآ إِلَٰهَ to
+        // the letters without alifs; the āya's start wins the tie, 12 Oct).
         f.heard(3, "اللَّهُ", final = false)
-        assertNull(f.voice)
+        assertEquals(AyahRef(3, 2) to 0, f.voice?.let { f.tracker.locate(it).let { (a, w) -> imran[a].ref to w } })
         f.heard(3, "اللَّهُ لَا إِلَهَ", final = false)
         assertEquals(furthest, f.tracker.position)
         // On the word said last (إِلَٰهَ), while the voice goes on.

@@ -92,6 +92,8 @@ class Case(
     val wordStarts: Map<AyahRef, List<Double>> = emptyMap(),
     /** Words recited wrongly on purpose (another word's audio in their place, prepare.py): āya and word. */
     val mistakes: Set<Pair<AyahRef, Int>> = emptySet(),
+    /** Āyāt said again after the reciter went on past them, and when (each time after the first). */
+    val again: List<Pair<AyahRef, Pair<Double, Double>>> = emptyList(),
 ) {
     /** One of the owner's own sessions: when each word was said isn't known (tools/recite/owner.py). */
     val owner: Boolean get() = spans.isEmpty()
@@ -105,12 +107,15 @@ class Case(
             val refs = (a0..a1).map { AyahRef(s.toInt(), it) }
             val spans = LinkedHashMap<AyahRef, Pair<Double, Double>>()
             val wordStarts = HashMap<AyahRef, List<Double>>()
+            val again = ArrayList<Pair<AyahRef, Pair<Double, Double>>>()
             for (item in p.getOrElse(3) { "" }.split(',').filter { it.isNotBlank() }) {
                 val (ref, times) = item.split('@')
                 val (rs, ra) = ref.split(':').map(String::toInt)
                 val (t0, t1) = times.substringBefore('~').split('-').map(String::toDouble)
-                if (spans.putIfAbsent(AyahRef(rs, ra), t0 to t1) == null && '~' in times) {
-                    wordStarts[AyahRef(rs, ra)] = times.substringAfter('~').split(';').map(String::toDouble)
+                if (spans.putIfAbsent(AyahRef(rs, ra), t0 to t1) == null) {
+                    if ('~' in times) wordStarts[AyahRef(rs, ra)] = times.substringAfter('~').split(';').map(String::toDouble)
+                } else {
+                    again += AyahRef(rs, ra) to (t0 to t1)
                 }
             }
             val recited = p.getOrNull(4)?.takeIf { it.isNotBlank() }?.split(',')?.associate { item ->
@@ -129,7 +134,7 @@ class Case(
                 val (s, a) = ref.split(':').map(String::toInt)
                 AyahRef(s, a) to word.toInt() - 1
             }?.toSet().orEmpty()
-            return Case(p[0], refs, p[2], spans, recited, from, wordStarts, mistakes)
+            return Case(p[0], refs, p[2], spans, recited, from, wordStarts, mistakes, again)
         }
     }
 }
@@ -168,11 +173,14 @@ class Result(
      * word to say); when it reached the word, from its start; and the word's place (as [places]).
      */
     val marks: List<Mark> = emptyList(),
+    /** Readings while an āya was said again, and those that had the marker in it (or just after it). */
+    val againIn: Int = 0, val againAll: Int = 0,
 ) {
     private val warning get() = (if (warned > 0) "  MUFFLED WARNING $warned/$finals" else "") +
         (if (redRight > 0) "  red then right $redRight (shown $redRightShown)" else "") +
         (if (checks > 0) "  checks $checks (+$rescued)" else "") +
-        (if (swapped > 0) "  SWAPPED WORDS CAUGHT $caught/$swapped" else "")
+        (if (swapped > 0) "  SWAPPED WORDS CAUGHT $caught/$swapped" else "") +
+        (if (againAll > 0) "  SAID AGAIN: marker in it $againIn/$againAll" else "")
 
     fun line(): String {
         if (id.startsWith("owner-")) {
@@ -211,11 +219,14 @@ class Totals {
     private var redRight = 0
     private var redRightShown = 0
     private val marks = ArrayList<Mark>()
+    private var againIn = 0
+    private var againAll = 0
 
     /** Its counts ("<name> counts said ok …") and lags ("<name> lags place:lag …"), a line each. */
     fun dump(name: String): String =
         "$name counts said=$said ok=$ok wrong=$wrong missed=$missed pending=$pending cases=$cases timed=$timed " +
-            "swapped=$swapped caught=$caught checks=$checks rescued=$rescued redRight=$redRight redRightShown=$redRightShown\n" +
+            "swapped=$swapped caught=$caught checks=$checks rescued=$rescued redRight=$redRight redRightShown=$redRightShown " +
+            "againIn=$againIn againAll=$againAll\n" +
             "$name lags " + lags.indices.joinToString(" ") { String.format(Locale.US, "%d:%.2f", places.getOrElse(it) { 1 }, lags[it]) } + "\n" +
             "$name marks " + marks.joinToString(" ") { String.format(Locale.US, "%d:%.2f:%.2f:%.2f", it.place, it.left, it.leftNext, it.reached) } + "\n"
 
@@ -228,6 +239,7 @@ class Totals {
         checks += r.checks; rescued += r.rescued
         redRight += r.redRight; redRightShown += r.redRightShown
         marks += r.marks
+        againIn += r.againIn; againAll += r.againAll
         cases++
     }
 
@@ -263,15 +275,15 @@ class Totals {
         val l = lags.sorted()
         fun q(f: Double) = if (l.isEmpty()) Double.NaN else l[((l.size - 1) * f).toInt()]
         return String.format(
-            Locale.US, "ALL %d cases: ok %d/%d (%.1f %%), wrong %d, missed %d, pending %d; lag p50 %.1f s, p90 %.1f s; mistakes caught %d/%d; checks %d (+%d); red then right %d (shown %d)",
-            cases, ok, said, 100.0 * ok / maxOf(1, said), wrong, missed, pending, q(0.5), q(0.9), caught, swapped, checks, rescued, redRight, redRightShown,
+            Locale.US, "ALL %d cases: ok %d/%d (%.1f %%), wrong %d, missed %d, pending %d; lag p50 %.1f s, p90 %.1f s; mistakes caught %d/%d; checks %d (+%d); red then right %d (shown %d); said again: marker in it %d/%d",
+            cases, ok, said, 100.0 * ok / maxOf(1, said), wrong, missed, pending, q(0.5), q(0.9), caught, swapped, checks, rescued, redRight, redRightShown, againIn, againAll,
         )
     }
 }
 
 private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val steer: Boolean = true) {
     private val targets = case.refs.map { ReciteTarget(it, Arabic.words(Assets.quran.text(it).orEmpty())) }
-    private val follower = Follower(targets, holdsEdges = HOLD_EDGE)
+    private val follower = Follower(targets, holdsEdges = HOLD_EDGE, keepsGoingBack = KEEP_BACK, steersPrevious = STEER_PREVIOUS, ayaStartTies = AYA_START_TIES)
     private val tracker = follower.tracker
     private val n = tracker.size
     private val shownAt = DoubleArray(n) { Double.NaN }
@@ -286,6 +298,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private val markerLeft = DoubleArray(n) { Double.NaN }
     private val nextLeft = DoubleArray(n) { Double.NaN }
     private val markerReached = DoubleArray(n) { Double.NaN }
+    private var againIn = 0
+    private var againAll = 0
     private var flips = 0
     private var partials = 0
     private var finals = 0
@@ -392,6 +406,14 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         }
         last = now.copyOf()
         val marker = follower.voice ?: tracker.position
+        // An āya said again: while it is, the marker belongs in it (or on the word after it).
+        for ((ref, span) in case.again) {
+            if (t < span.first || t > span.second) continue
+            val a = targets.indexOfFirst { it.ref == ref }
+            if (a < 0) continue
+            againAll++
+            if (marker in tracker.startOf(a)..tracker.startOf(a) + targets[a].words.size) againIn++
+        }
         for (w in 0 until n) {
             if (marker > w && markerLeft[w].isNaN()) markerLeft[w] = t
             if (tracker.position > w && nextLeft[w].isNaN()) nextLeft[w] = t
@@ -505,6 +527,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             swapped, caught,
             redRight, redRightShown,
             markerTimes,
+            againIn, againAll,
         )
     }
 
@@ -516,6 +539,12 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         val PHONE_FACTOR = System.getenv("HFD_PHONE_FACTOR")?.toDoubleOrNull() ?: 1.0
         /** Partial readings' unfinished last words wait (Follower.holdEdge); HFD_HOLD_EDGE=0: not (1.15.3). */
         val HOLD_EDGE = System.getenv("HFD_HOLD_EDGE") != "0"
+        /** An utterance's going back stands when its later readings follow nothing (Follower.keepsGoingBack); HFD_KEEP_BACK=0: not (1.15.5). */
+        val KEEP_BACK = System.getenv("HFD_KEEP_BACK") != "0"
+        /** The āya before among the continuations steered to (Follower.steersPrevious); HFD_STEER_PREVIOUS=0: not (1.15.5). */
+        val STEER_PREVIOUS = System.getenv("HFD_STEER_PREVIOUS") != "0"
+        /** Going back to an āya's start on a tie (Tracker.ayaStartTies); HFD_AYA_START_TIES=0: the latest end (1.15.5). */
+        val AYA_START_TIES = System.getenv("HFD_AYA_START_TIES") != "0"
 
         /**
          * The phone's time for a reading of [seconds] of audio: with the encoder on the NPU (1.15.2,
