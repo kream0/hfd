@@ -438,7 +438,8 @@ private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () ->
         Icon(Ic.Search, contentDescription = null, tint = P.textDim, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(10.dp))
         Box(Modifier.weight(1f).padding(vertical = 11.dp)) {
-            if (query.isEmpty()) Text(stringResource(R.string.quran_search), style = Type.body, color = P.textFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val hint = stringResource(R.string.quran_search)
+            if (query.isEmpty()) Text(hint, style = Type.body, color = P.textFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
             BasicTextField(
                 value = query,
                 onValueChange = onChange,
@@ -447,7 +448,8 @@ private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () ->
                 cursorBrush = SolidColor(P.accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onDone() }),
-                modifier = Modifier.fillMaxWidth().testTag("search"),
+                // The field lies over its hint, which a screen reader then doesn't see: it says it itself.
+                modifier = Modifier.fillMaxWidth().testTag("search").semantics { contentDescription = hint },
             )
         }
         val label = stringResource(if (query.isNotEmpty()) R.string.quran_search_clear else R.string.quran_voice)
