@@ -29,6 +29,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import app.hfd.core.progress.Hiding
+import app.hfd.ui.ayahEnd
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
@@ -204,6 +209,20 @@ private fun ReviewCard(
                 hint -> Visibility.FIRST_WORD
                 else -> Visibility.HIDDEN
             }
+            // What comes just before, as the cue: the end of the āya before it (the joins between
+            // āyāt are what a memoriser loses first). Not for a sūra's first āya.
+            if (!revealed && ref.aya > 1) {
+                val before = remember(ref) { Hiding.lastWords(c.text(AyahRef(ref.sura, ref.aya - 1)), CUE_WORDS) }
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Text(
+                        "… " + before + ayahEnd(ref.aya - 1),
+                        style = Type.quran((arabicSize * 0.72f).toInt()),
+                        color = P.textFaint,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+            }
             ReciteAyah(ref, c.text(ref), visibility, arabicSize, translation, word = playing.at(ref))
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -229,3 +248,6 @@ private fun ReviewCard(
         }
     }
 }
+
+/** Words of the āya before shown as the cue to an āya to recall. */
+private const val CUE_WORDS = 3

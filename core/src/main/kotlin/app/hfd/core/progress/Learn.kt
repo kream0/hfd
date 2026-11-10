@@ -91,4 +91,19 @@ object Hiding {
 
     fun firstWord(text: String): String =
         text.split(' ').firstOrNull { w -> w.any(::isLetter) } ?: text.substringBefore(' ')
+
+    /**
+     * The end of [text] from its [words]-th word from the last (with the pause signs among them),
+     * as written: what comes just before the next āya, to recall that one by.
+     */
+    fun lastWords(text: String, words: Int): String {
+        val all = text.split(' ')
+        var left = words
+        var from = all.size
+        while (from > 0 && left > 0) {
+            from--
+            if (all[from].any(::isLetter)) left--
+        }
+        return all.subList(from, all.size).joinToString(" ")
+    }
 }

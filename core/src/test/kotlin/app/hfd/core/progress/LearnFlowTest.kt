@@ -60,5 +60,8 @@ class LearnFlowTest {
     fun firstWordSkipsMarks() {
         assertEquals("إِنَّ", Hiding.firstWord("۞ إِنَّ ٱللَّهَ"))
         assertEquals("الٓمٓ", Hiding.firstWord("الٓمٓ"))
+        // The end of an āya, as written, with a pause sign among its last words.
+        assertEquals("فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ", Hiding.lastWords("ذَٰلِكَ ٱلْكِتَٰبُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ", 3))
+        assertEquals("ٱللَّهُ ٱلصَّمَدُ", Hiding.lastWords("ٱللَّهُ ٱلصَّمَدُ", 3))
     }
 }
