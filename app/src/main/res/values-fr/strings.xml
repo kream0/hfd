@@ -290,4 +290,5 @@
     <string name="sura_medinan">Médinoise</string>
     <string name="sleep_end_sura">Fin de la sourate</string>
     <string name="quran_reciter">Récitateur du Coran</string>
+    <string name="offline_save">Enregistrer hors ligne</string>
 </resources>

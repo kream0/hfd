@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.16.0
+A new Qur'an section: listen to the whole Qur'an, sūra after sūra, with its text.
+- The new Coran tab lists the 114 sūras (search by name or number). A sūra opens with its text and translation; the āya being recited is lit and kept in view, and a tap on an āya plays from it.
+- A sūra plays through and the next one follows by itself, to the end of the Qur'an, screen off included. Next and previous (earbuds, notification) cross from one sūra to the other, and the timer can stop at the end of the sūra.
+- "Resume" starts again at the āya where you stopped, whatever passage you listened to in between.
+- The section has its own reciter (the chip under the player, or Settings), among those who have every āya. A sūra can be saved for offline listening with the chip next to the āya's number.
+- Listening there doesn't count in the learning statistics nor the daily goal: those stay about the passages you memorise.
+- The sūras' names are written as the passages' titles are (Al-Fātiḥa, Āl ʿImrān).
+
 ## 1.15.6
 Saying an āya again, the text goes back to it and stays there, even when part of it is misheard.
 - Repeating an āya you had just finished, Recite went back to it, then half a second later jumped to the next āya as if you hadn't: the next readings of your phrase were misheard (الله إلى إلى for الله لا إله إلا on your earbuds) and matched nothing. Once your phrase has gone back, a misheard reading no longer undoes it.

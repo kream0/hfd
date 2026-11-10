@@ -94,18 +94,23 @@ fun OfflineChip(f: Fadila, modifier: Modifier = Modifier) {
     OfflineChip(settings.reciterInfo, neededAudio(f, settings), modifier)
 }
 
-/** The same for [refs] as [reciter] recites them; a tap saves what is missing. */
+/**
+ * The same for [refs] as [reciter] recites them; a tap saves what is missing. [optional]: nothing
+ * is saved unless asked (a sūra of the Qur'an section streams), so "not saved" is an offer, in grey.
+ */
 @Composable
-fun OfflineChip(reciter: Reciter, refs: List<AyahRef>, modifier: Modifier = Modifier) {
+fun OfflineChip(reciter: Reciter, refs: List<AyahRef>, modifier: Modifier = Modifier, optional: Boolean = false) {
     val files by Graph.audio.files.collectAsStateWithLifecycle()
     val tasks by Graph.downloads.tasks.collectAsStateWithLifecycle()
     val progress = Graph.downloads.progress(reciter, refs, files, tasks)
     val keys = refs.map { Graph.audio.key(reciter, it) }
     val failed = keys.any { tasks[it]?.status == DlStatus.FAILED }
     val waiting = keys.any { tasks[it]?.status == DlStatus.WAITING_NETWORK }
-    val color = P.saveColor(progress)
     val active = keys.any { tasks[it] != null }
+    val offer = optional && progress <= 0f && !active
+    val color = if (offer) P.textDim else P.saveColor(progress)
     val label = when {
+        offer -> stringResource(R.string.offline_save)
         progress >= 1f -> stringResource(R.string.offline_saved)
         failed -> stringResource(R.string.offline_failed)
         waiting -> stringResource(R.string.offline_waiting)
@@ -115,17 +120,18 @@ fun OfflineChip(reciter: Reciter, refs: List<AyahRef>, modifier: Modifier = Modi
     Row(
         modifier
             .clip(CircleShape)
-            .border(1.dp, color, CircleShape)
+            .border(1.dp, if (offer) P.outline else color, CircleShape)
             .clickable(enabled = progress < 1f) { Graph.downloads.ensure(reciter, refs) }
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (progress >= 1f) {
             Box(Modifier.size(7.dp).clip(CircleShape).background(color))
-        } else {
+            Spacer(Modifier.width(6.dp))
+        } else if (!offer) {
             DotRing(progress, Modifier.size(12.dp), color = color, spinning = waiting)
+            Spacer(Modifier.width(6.dp))
         }
-        Spacer(Modifier.width(6.dp))
         Text(label.uppercase(), style = Type.labelBold, color = color, maxLines = 1)
     }
 }
@@ -281,7 +287,7 @@ fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifie
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            OfflineChip(reciter, remember(ayat) { if (sura != 1 && sura != 9) ayat + app.hfd.core.playback.EveryAyah.BASMALA else ayat })
+            OfflineChip(reciter, remember(ayat) { if (sura != 1 && sura != 9) ayat + app.hfd.core.playback.EveryAyah.BASMALA else ayat }, optional = true)
         }
         if (isThis) {
             val progress by Graph.player.progress.collectAsStateWithLifecycle()

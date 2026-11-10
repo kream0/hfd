@@ -289,4 +289,5 @@
     <string name="sura_medinan">Medinan</string>
     <string name="sleep_end_sura">End of the sūra</string>
     <string name="quran_reciter">Qur’an reciter</string>
+    <string name="offline_save">Save offline</string>
 </resources>
