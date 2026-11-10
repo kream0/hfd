@@ -90,6 +90,13 @@ class Whisper private constructor(private var ctx: Long) : AutoCloseable {
             if (java.lang.Long.bitCount(mask) == khz.count { it != null }) 0L else mask
         }
 
+        /**
+         * Keeps the calling thread on the fast cores, and with it the threads it creates from now
+         * on (they take their creator's cores): another recogniser's workers ([CtcEngine]). False
+         * where the cores are all alike or unknown, or without the native library.
+         */
+        fun pinToBigCores(): Boolean = available && BIG_CORES != 0L && runCatching { nativePin(BIG_CORES) == 0 }.getOrDefault(false)
+
         private fun cpuFeatures(): Set<String> = runCatching {
             java.io.File("/proc/cpuinfo").readLines().firstOrNull { it.startsWith("Features") }
                 ?.substringAfter(':')?.trim()?.split(Regex("\\s+"))?.toSet()

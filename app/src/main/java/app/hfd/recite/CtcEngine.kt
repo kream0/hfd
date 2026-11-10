@@ -41,14 +41,19 @@ class CtcEngine private constructor(private val model: OrtCtcModel, private val 
          */
         private const val THREADS = 2
 
-        /** Null where ONNX Runtime or the model doesn't load (logged: ctc.load). */
+        /**
+         * Null where ONNX Runtime or the model doesn't load (logged: ctc.load). Call it on the
+         * thread that will read: it is kept on the phone's fast cores, and so are ONNX Runtime's
+         * workers, created here (a Snapdragon 7 Gen 4's three small cores are several times slower).
+         */
         fun load(path: String): CtcEngine? {
             val started = System.currentTimeMillis()
+            val pinned = Whisper.pinToBigCores()
             val model = runCatching { OrtCtcModel(path, THREADS) }
                 .onFailure { Diag.error("ctc.load", it) }
                 .getOrNull()
             // Throwable too: a missing native library is an Error, not an Exception (runCatching takes both).
-            Diag.log("ctc.load", "ok" to (model != null), "ms" to System.currentTimeMillis() - started, "bytes" to java.io.File(path).length(), "threads" to THREADS)
+            Diag.log("ctc.load", "ok" to (model != null), "ms" to System.currentTimeMillis() - started, "bytes" to java.io.File(path).length(), "threads" to THREADS, "pinned" to pinned)
             return model?.let { CtcEngine(it, THREADS) }
         }
     }
