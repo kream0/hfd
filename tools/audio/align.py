@@ -15,6 +15,9 @@ text: the report lists the āyāt whose first or last word isn't where it should
 
 Output: app/src/main/assets/audio/<reciter>.json
 Usage: align.py <reciter id> [sūra …]
+With sūras given it is a trial that writes nothing, unless WHOLE=1: then every āya of those sūras
+is cut (not the passages' alone) and written to $OUT, a part that merge.py adds to the asset (the
+Qur'an section plays any sūra; audio.yml runs the whole Qur'an in parts).
 """
 import json, os, re, subprocess, sys, urllib.request
 import numpy as np
@@ -717,9 +720,10 @@ def check(rid, text, ayat, infos):
 def main():
     rid = sys.argv[1]
     only = {int(x) for x in sys.argv[2:]}
+    whole = os.environ.get("WHOLE") == "1"
     cfg = RECITERS[rid]
     text = quran()
-    want = needed()
+    want = {s: set(range(1, ayah_count(s) + 1)) for s in sorted(only)} if whole else needed()
     # Does the server serve byte ranges? (The app fetches each āya as one.)
     req = urllib.request.Request(cfg["base"] + "001.mp3", headers={"User-Agent": UA, "Range": "bytes=0-99"})
     with urllib.request.urlopen(req, timeout=60) as r:
@@ -749,7 +753,9 @@ def main():
         "ayat": {k: ayat[k] for k in sorted(ayat, key=lambda k: tuple(map(int, k.split(":"))))},
         "unchecked": [f"{s}:{a}" for s, a, *_ in bad],
     }
-    if not only:
+    if whole:
+        dest = os.environ["OUT"]
+    if whole or not only:
         json.dump(doc, open(dest, "w", encoding="utf-8"), ensure_ascii=False, indent=None, separators=(",", ":"))
         print("wrote", dest, len(ayat), "āyāt")
 

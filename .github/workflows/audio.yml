@@ -1,8 +1,9 @@
 name: Recitation timings
 
 # Āya boundaries in whole-sūra recitations (mp3quran.net), for reciters everyayah.com doesn't
-# have: tools/audio/align.py finds them with Tarteel's model (the app's), checks every āya cut and
-# commits app/src/main/assets/audio/<reciter>.json. The dev sandbox can't reach the audio hosts;
+# have: tools/audio/align.py finds them with Tarteel's model (the app's) and checks every āya cut,
+# sūra by sūra over the whole Qur'an, and tools/audio/merge.py adds them to
+# app/src/main/assets/audio/<reciter>.json, which is committed. The dev sandbox can't reach the audio hosts;
 # read the report with get_job_logs, and pull before your next push.
 on:
   push:
@@ -21,8 +22,15 @@ concurrency:
 
 jobs:
   align:
+    # The whole Qur'an, every āya (the Qur'an section plays any sūra), in parts of about the same
+    # length of text. A part takes around an hour.
+    name: align (sūras ${{ matrix.suras }})
+    strategy:
+      fail-fast: false
+      matrix:
+        suras: ['1-4', '5-8', '9-15', '16-23', '24-33', '34-46', '47-76', '77-114']
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v6
       - name: ffmpeg, numpy
@@ -38,10 +46,27 @@ jobs:
           curl -sSfL -o ggml-tiny-ar-quran-q8_0.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-tiny-ar-quran-q8_0.bin
           echo "ef01ab441b004f9e6f1ea98d397b43452b3a45efab7c3928ab37af655dde8b52  ggml-tiny-ar-quran-q8_0.bin" | sha256sum -c
       - name: Align Badr at-Turkī
-        # SURAS: a trial on a few sūras (writes nothing); empty = all of the passages' sūras.
         env:
-          SURAS: ''
-        run: python3 tools/audio/align.py badr-alturki $SURAS
+          WHOLE: '1'
+          OUT: part-${{ matrix.suras }}.json
+          RANGE: ${{ matrix.suras }}
+        run: python3 tools/audio/align.py badr-alturki $(seq "${RANGE%-*}" "${RANGE#*-}")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timings-${{ matrix.suras }}
+          path: part-${{ matrix.suras }}.json
+  merge:
+    # The parts into the asset: the āyāt already cut keep their cut (tools/audio/merge.py).
+    needs: align
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          path: parts
+      - name: Merge
+        run: python3 tools/audio/merge.py badr-alturki parts
       - name: Commit timings
         run: |
           git config user.name "github-actions[bot]"
