@@ -68,6 +68,23 @@ json.dump({'schema': 1, 'source': 'Tanzil quran-data.xml', 'suras': suras},
 print('suras.json written')
 PY
 
+# parts.json: where each juzʾ (30) and each quarter of a ḥizb (240; a ḥizb is four) begins, as
+# [sūra, āya], from the same metadata.
+python3 - "$TMP/quran-data.xml" "$OUT/parts.json" <<'PY'
+import sys, json, xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+def starts(tag):
+    rows = sorted(root.iter(tag), key=lambda e: int(e.get('index')))
+    assert [int(e.get('index')) for e in rows] == list(range(1, len(rows) + 1)), tag
+    return [[int(e.get('sura')), int(e.get('aya'))] for e in rows]
+juz, quarters = starts('juz'), starts('quarter')
+assert len(juz) == 30 and len(quarters) == 240 and juz == quarters[::8], (len(juz), len(quarters))
+with open(sys.argv[2], 'w', encoding='utf-8') as f:
+    f.write('{\n "schema": 1,\n "source": "Tanzil quran-data.xml",\n "juz": %s,\n "quarters": %s\n}\n'
+            % (json.dumps(juz, separators=(',', ':')), json.dumps(quarters, separators=(',', ':'))))
+print('parts.json written')
+PY
+
 cp "$TMP/lock" tools/data.lock
 echo "==== tools/data.lock"; cat tools/data.lock
 for f in "$OUT"/*.txt; do echo "==== $f (head / tail)"; head -3 "$f"; tail -12 "$f"; done
