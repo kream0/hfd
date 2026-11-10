@@ -6,20 +6,18 @@ that the app already holds:
   - Qur'an text: app/src/main/assets/quran/quran-uthmani.txt (Tanzil, verbatim; a sūra's first
     āya without the basmala, which Tanzil's text file prefixes to it and its XML sets apart);
   - virtues: app/src/main/assets/fadail.json (the verified dataset), with their sources;
-  - the reciters' count: core/.../playback/Reciters.kt; the dot font: the app's Doto (subset);
+  - the reciters' count: core/.../playback/Reciters.kt; the star: the launcher icon's;
   - the screenshots: docs/screenshots (tools/screenshots/normalise.py).
-Needs Pillow, fontTools and segno. Usage: python3 tools/site/build.py
+Needs Pillow and segno. Usage: python3 tools/site/build.py
 """
-import base64
 import html
-import io
 import json
+import math
 import os
 import re
 import sys
 
 from PIL import Image, ImageDraw, ImageFont
-from fontTools import subset
 import segno
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -69,27 +67,19 @@ def fr(text):
 
 
 # ------------------------------------------------------------------ pieces
-def doto_woff():
-    opts = subset.Options()
-    opts.flavor = "woff"
-    font = subset.load_font(os.path.join(FONTS, "doto_black.ttf"), opts)
-    s = subset.Subsetter(opts)
-    s.populate(unicodes=list(range(0x20, 0x7F)) + list(range(0xA0, 0x100)) + [0x2019, 0x2013, 0x00B7, 0x2026, 0x0152, 0x0153])
-    s.subset(font)
-    buf = io.BytesIO()
-    subset.save_font(font, buf, opts)
-    return base64.b64encode(buf.getvalue()).decode()
+STAR = (54, 54, 25)  # the launcher icon's star (res/drawable/ic_launcher_foreground.xml): centre, radius
 
 
-def icon_dots():
-    """The launcher icon's dots (res/drawable/ic_launcher_foreground.xml): (x, y, r, colour)."""
-    xml = read("app", "src", "main", "res", "drawable", "ic_launcher_foreground.xml")
-    dots = []
-    for colour, d in re.findall(r'android:fillColor="(#[0-9A-Fa-f]+)" android:pathData="([^"]+)"', xml):
-        for m in re.finditer(r"M([\d.]+),([\d.]+)a([\d.]+),", d):
-            x, y, r = map(float, m.groups())
-            dots.append((x + r, y, r, colour))
-    return dots
+def star_points(cx, cy, r):
+    """The eight-pointed star's two squares, one turned an eighth: their corners."""
+    h = r * math.cos(math.pi / 4)
+    return [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)], [(cx - h, cy - h), (cx + h, cy - h), (cx + h, cy + h), (cx - h, cy + h)]
+
+
+def draw_star(d, cx, cy, r, width, colour, dot):
+    for square in star_points(cx, cy, r):
+        d.line(square + [square[0], square[1]], fill=colour, width=width, joint="curve")
+    d.ellipse((cx - dot, cy - dot, cx + dot, cy + dot), fill=colour)
 
 
 def qr_rows():
@@ -113,6 +103,12 @@ SHOTS = [
     ("kursi-text", "Lecture",
      "Le texte de Tanzil en grand, la traduction dessous, l'āya jouée mise en avant. Répétitions, pause et récitateur à portée de pouce.",
      "Āyat al-Kursī en lecture : sourate al-Baqara, 2:255 en texte uthmani, lecteur en bas avec les réglages Āya ×1, Plage ×1, Pause et le récitateur."),
+    ("quran", "Tout le Coran",
+     "Les 114 sourates à écouter, l'une après l'autre. «&nbsp;Reprendre&nbsp;» repart de l'āya où vous vous êtes arrêté.",
+     "Onglet Coran : reprise de l'écoute à al-Kahf, āya 10 sur 110, champ de recherche, puis les sourates d'al-Fātiḥa à al-Anfāl avec leur nom arabe."),
+    ("sura", "Une sourate",
+     "Son texte et sa traduction, l'āya récitée suivie à l'écran. À la fin, la sourate suivante s'enchaîne.",
+     "Sourate al-Kahf : son titre encadré, la basmala, les āyāt 18:1 et 18:2 avec leur traduction, lecteur en bas avec le récitateur, la vitesse et la minuterie."),
     ("learn", "Apprendre",
      "Écouter avec le texte, répéter dans les pauses, le premier mot seul, puis de mémoire.",
      "Apprendre Al-Ikhlāṣ, āya 4 sur 4 : étape Écouter, le texte de 112:4 et sa traduction, boutons Réécouter, Passer et Suivant."),
@@ -123,11 +119,11 @@ SHOTS = [
      "Ce qui est dû aujourd'hui, texte caché&nbsp;: réciter de mémoire, dévoiler, noter.",
      "Révision : Al-Baqara 2:255, texte caché, boutons Indice et Dévoiler."),
     ("stats", "Progrès",
-     "Série, āyāt mémorisées, récitations, temps d'écoute, et vingt semaines en points.",
-     "Stats : série, record, āyāt mémorisées, temps d'écoute, calendrier de points sur vingt semaines, progrès par faḍīla."),
+     "Série, āyāt mémorisées, récitations, temps d'écoute, et vingt semaines de pratique.",
+     "Stats : série, record, āyāt mémorisées, temps d'écoute, calendrier de vingt semaines, progrès par faḍīla."),
     ("reminders", "Réglages",
-     "Le rappel de révision, la langue, le thème sombre ou papier, la taille du texte.",
-     "Réglages : rappel Āyāt à réviser à 19 h, langue Français, English ou Système, thème Système, Sombre ou Papier, taille du texte coranique."),
+     "Le rappel de révision, la langue, le thème nuit ou papier, la taille du texte.",
+     "Réglages : rappel Āyāt à réviser à 19 h, langue Français, English ou Système, thème Système, Nuit ou Papier, taille du texte coranique."),
 ]
 
 
@@ -189,41 +185,38 @@ def virtues():
     return "\n".join(cards)
 
 
-def brand_svg(dots):
-    return "\n".join(f'        <circle cx="{x:g}" cy="{y:g}" r="{r:g}" fill="{c}"/>' for x, y, r, c in dots)
+def brand_svg():
+    cx, cy, r = STAR
+    squares = "".join(
+        '        <path d="M' + "L".join(f"{x:.2f},{y:.2f}" for x, y in square) + 'z" fill="none" stroke="#DDB869" stroke-width="3.2" stroke-linejoin="round"/>\n'
+        for square in star_points(cx, cy, r)
+    )
+    return squares + f'        <circle cx="{cx}" cy="{cy}" r="5.2" fill="#DDB869"/>'
 
 
 # ------------------------------------------------------------------ images
-def icon_png(dots, size=432):
-    s = size / 72  # viewBox 18 18 72 72
-    im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+def icon_png(size=432):
+    k = 4  # drawn larger, then reduced: smooth edges
+    s = size * k / 72  # viewBox 18 18 72 72
+    im = Image.new("RGBA", (size * k, size * k), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
-    d.ellipse((0, 0, size - 1, size - 1), fill="#000000", outline="#2A2A2A")
-    for x, y, r, c in dots:
-        cx, cy = (x - 18) * s, (y - 18) * s
-        d.ellipse((cx - r * s, cy - r * s, cx + r * s, cy + r * s), fill=c)
-    im.save(os.path.join(DOCS, "icon.png"))
+    d.ellipse((0, 0, size * k - 1, size * k - 1), fill="#10201B", outline="#2B3E37", width=k)
+    cx, cy, r = STAR
+    draw_star(d, (cx - 18) * s, (cy - 18) * s, r * s, round(3.2 * s), "#DDB869", 5.2 * s)
+    im.resize((size, size), Image.LANCZOS).save(os.path.join(DOCS, "icon.png"))
 
 
-def og_png(dots):
+def og_png():
     W, H = 1200, 630
-    im = Image.new("RGB", (W, H), "#000000")
+    im = Image.new("RGB", (W, H), "#0D1614")
     d = ImageDraw.Draw(im)
-    for y in range(18, H, 26):  # a faint dot field
-        for x in range(18, W, 26):
-            d.ellipse((x - 1.6, y - 1.6, x + 1.6, y + 1.6), fill="#161616")
-    # the dot logo
-    s = 1.25
-    for x, y, r, c in dots:
-        cx, cy = 60 + (x - 18) * s, 40 + (y - 18) * s
-        d.ellipse((cx - r * s, cy - r * s, cx + r * s, cy + r * s), fill=c)
-    dot = ImageFont.truetype(os.path.join(FONTS, "doto_black.ttf"), 196)
-    sans = ImageFont.truetype(os.path.join(FONTS, "space_grotesk_medium.ttf"), 38)
-    mono = ImageFont.truetype(os.path.join(FONTS, "space_mono_bold.ttf"), 20)
-    d.text((56, 150), "HFD", font=dot, fill="#FFFFFF")
-    d.ellipse((440, 172, 462, 194), fill="#D71921")
-    d.multiline_text((62, 370), "Apprendre par cœur les passages\ndu Coran aux vertus établies,\nà l'oreille, āya par āya.", font=sans, fill="#FFFFFF", spacing=10)
-    d.text((64, 540), "ANDROID 8+ · SANS COMPTE · HORS LIGNE", font=mono, fill="#9B9B9B")
+    serif = ImageFont.truetype(os.path.join(FONTS, "serif_semibold.ttf"), 170)
+    text = ImageFont.truetype(os.path.join(FONTS, "serif_regular.ttf"), 40)
+    small = ImageFont.truetype(os.path.join(FONTS, "sans_semibold.ttf"), 22)
+    draw_star(d, 104, 96, 44, 6, "#DDB869", 9)
+    d.text((58, 150), "HFD", font=serif, fill="#F2ECDD")
+    d.multiline_text((62, 368), "Apprendre par cœur les passages\ndu Coran aux vertus établies,\nà l'oreille, āya par āya.", font=text, fill="#F2ECDD", spacing=10)
+    d.text((64, 548), "ANDROID 8+  ·  SANS COMPTE  ·  HORS LIGNE", font=small, fill="#A5B4AB")
     # the home screen in a phone frame
     shot = Image.open(os.path.join(DOCS, "screenshots", "home.webp")).convert("RGB")
     pw = 300
@@ -232,7 +225,7 @@ def og_png(dots):
     x0, y0 = 820, 60
     frame = Image.new("RGBA", (pw + 24, ph + 24), (0, 0, 0, 0))
     fd = ImageDraw.Draw(frame)
-    fd.rounded_rectangle((0, 0, pw + 23, ph + 23), radius=46, fill="#1B1B1C", outline="#3A3A3C", width=2)
+    fd.rounded_rectangle((0, 0, pw + 23, ph + 23), radius=46, fill="#1C2D27", outline="#2B3E37", width=2)
     mask = Image.new("L", (pw, ph), 0)
     ImageDraw.Draw(mask).rounded_rectangle((0, 0, pw - 1, ph - 1), radius=36, fill=255)
     frame.paste(shot, (12, 12), mask)
@@ -242,15 +235,13 @@ def og_png(dots):
 
 def main():
     w, h = Image.open(os.path.join(DOCS, "screenshots", "home.webp")).size
-    dots = icon_dots()
     rows, counts = ikhlas()
     alt = {name: a for name, _, _, a in SHOTS}
     script = open(os.path.join(SITE, "site.js"), encoding="utf-8").read()
     script = script.replace("{{QR_JSON}}", json.dumps(qr_rows())).replace("{{AYAT_JSON}}", json.dumps(counts))
     page = open(os.path.join(SITE, "template.html"), encoding="utf-8").read()
     fills = {
-        "DOTO_WOFF": doto_woff(),
-        "BRAND_DOTS": brand_svg(dots),
+        "BRAND_STAR": brand_svg(),
         "SHOT_W": str(w), "SHOT_H": str(h),
         "SHOTS": shot_html(w, h),
         "ALT_HOME": html.escape(alt["home"]),
@@ -266,8 +257,8 @@ def main():
     if left:
         sys.exit(f"unfilled: {left}")
     open(os.path.join(DOCS, "index.html"), "w", encoding="utf-8").write(page)
-    icon_png(dots)
-    og_png(dots)
+    icon_png()
+    og_png()
     print("docs/index.html", len(page), "bytes;", reciter_count(), "reciters; āyāt words", counts)
 
 

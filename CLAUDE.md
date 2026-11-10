@@ -57,7 +57,7 @@
 - The website (French): `tools/site/build.py` writes `docs/index.html`, `icon.png` and `og.png`
   from `tools/site/template.html` + `site.js`, the bundled Tanzil text (verbatim, with its
   reference), `fadail.json` (only verified virtues, with their sources) and the screenshots;
-  `pip install pillow fonttools segno`. Check it with Playwright (Chromium in `/opt/pw-browsers`,
+  `pip install pillow segno`. Check it with Playwright (Chromium in `/opt/pw-browsers`,
   the global `playwright` node module) at 1440 and 390 px in both schemes before pushing. The
   *Site* workflow (`pages.yml`) publishes `docs/` on pushes touching it (a bot's screenshot commit
   doesn't trigger it: push `docs/` yourself). No Glyph Matrix for this app (the owner).

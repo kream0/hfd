@@ -9,7 +9,7 @@
   const readTheme = () => {
     T = {
       bg: css("--bg"), surface: css("--surface"), fg: css("--fg"), dim: css("--dim"), faint: css("--faint"),
-      off: css("--dot-off"), red: css("--red"), orange: css("--s-orange"), yellow: css("--s-yellow"),
+      off: css("--track"), accent: css("--accent"), red: css("--s-red"), orange: css("--s-orange"), yellow: css("--s-yellow"),
       green: css("--s-green"), qrFg: css("--qr-fg"), qrBg: css("--qr-bg"),
     };
   };
@@ -50,18 +50,18 @@
     };
 
     const drawBar = f => {
-      const ctx = bar.getContext("2d"), W = bar.width, H = bar.height;
-      const n = Math.max(24, Math.round(W / (H * 0.36))), cell = W / n, rad = Math.min(cell, H) * 0.24;
-      const headAt = Math.min(n - 1, Math.floor(f * n));
+      // A stroke per step: thick for a recitation, thin for the pause after it; the head in gold.
+      const ctx = bar.getContext("2d"), W = bar.width, H = bar.height, pad = H * 0.3, span = W - 2 * pad, gap = 7;
+      const pill = (x, w, h) => { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, (H - h) / 2, w, h, h / 2) : ctx.rect(x, (H - h) / 2, w, h); ctx.fill(); };
       ctx.clearRect(0, 0, W, H);
-      for (let i = 0; i < n; i++) {
-        if (i === headAt) continue;
-        const s = at((i + .5) / n), played = i < headAt;
-        ctx.fillStyle = s.rec ? (played ? T.fg : T.off) : (played ? T.faint : T.off);
-        ctx.beginPath(); ctx.arc((i + .5) * cell, H / 2, s.rec ? rad : rad * 0.5, 0, 7); ctx.fill();
-      }
-      ctx.fillStyle = T.red;
-      ctx.beginPath(); ctx.arc((headAt + .5) * cell, H / 2, rad * 2.1, 0, 7); ctx.fill();
+      segs.forEach(s => {
+        const x = pad + s.from * span, w = (s.to - s.from) * span - gap, h = s.rec ? H * 0.26 : H * 0.1;
+        ctx.fillStyle = T.off; pill(x, w, h);
+        const done = Math.min(1, Math.max(0, (f - s.from) / (s.to - s.from)));
+        if (done > 0) { ctx.fillStyle = s.rec ? T.fg : T.faint; pill(x, Math.max(h, w * done), h); }
+      });
+      ctx.fillStyle = T.accent;
+      ctx.beginPath(); ctx.arc(pad + f * span, H / 2, H * 0.24, 0, 7); ctx.fill();
     };
 
     const renderAt = f => {
@@ -74,9 +74,9 @@
       drawBar(f);
       rows.forEach((li, i) => li.classList.toggle("on", i === s.a));
       rings.forEach((c, i) => ring(c, strength[i]));
-      const label = s.rec ? `ÉCOUTE ${s.r}/${REPS}` : `À VOUS ${s.r}/${REPS}`;
+      const label = s.rec ? `Écoute ${s.r}/${REPS}` : `À vous ${s.r}/${REPS}`;
       if (chip.textContent !== label) chip.textContent = label;
-      chip.style.color = s.rec ? T.fg : T.red;
+      chip.style.color = s.rec ? T.fg : T.accent;
     };
 
     const render = now => {
@@ -93,31 +93,6 @@
     const still = () => { strength = [1, 0.75, 0.5, 0]; lastSeg = null; renderAt(0.62); };
     return { render, still, el: bar };
   })();
-
-  // ---------------------------------------------------------------- feature icons (dot pictograms)
-  const ICONS = {
-    list: ["1011111", "0000000", "1011111", "0000000", "1011100", "0000000", "1010000", "0000100", "0001110"],
-    book: ["1100011", "1110111", "1011101", "1001001", "1001001", "1001001", "1001001", "1111111", "0001000"],
-    loop: ["0011100", "0100010", "1000001", "1000101", "1001101", "1000101", "1000001", "0100010", "0011100"],
-    ear: ["0111000", "1000100", "1010100", "1000100", "0111100", "0000100", "0000100", "0000100", "0000100"],
-    learn: ["0000001", "0000001", "0000101", "0000101", "0010101", "0010101", "1010101", "1010101", "1010101"],
-    calendar: ["1010101", "1111111", "1000001", "1010101", "1000001", "1010101", "1000001", "1010101", "1111111"],
-    mic: ["1011100", "0011100", "0011100", "0011100", "1011101", "1011101", "0100010", "0011100", "0111110"],
-    save: ["0001000", "0001000", "0001000", "1001001", "0101010", "0011100", "0001000", "0000000", "1111111"],
-    journal: ["1011111", "0000000", "0011111", "0000000", "0011110", "0000000", "0011111", "0000000", "0011100"],
-    bell: ["0001000", "0011100", "0111110", "0111110", "0111110", "0111110", "1111111", "0000000", "0011100"],
-    theme: ["0011100", "0111010", "1111001", "1111001", "1111001", "1111001", "1111001", "0111010", "0011100"],
-    update: ["0001000", "0011100", "0101010", "1001001", "0001000", "0001000", "0001000", "0000000", "1111111"],
-  };
-  const drawIcon = canvas => {
-    const rows = ICONS[canvas.dataset.icon], ctx = canvas.getContext("2d"), W = canvas.width;
-    const n = 9, cell = W / n, ox = (W - rows[0].length * cell) / 2;
-    ctx.clearRect(0, 0, W, W);
-    rows.forEach((r, y) => [...r].forEach((b, x) => {
-      ctx.fillStyle = b === "1" ? (y === 0 && x === rows[0].indexOf("1") ? T.red : T.fg) : T.off;
-      ctx.beginPath(); ctx.arc(ox + (x + .5) * cell, (y + .5) * cell, cell * (b === "1" ? .36 : .18), 0, 7); ctx.fill();
-    }));
-  };
 
   // ---------------------------------------------------------------- QR code (drawn in dots)
   const drawQR = () => {
@@ -141,7 +116,6 @@
 
   // ---------------------------------------------------------------- paint + loop
   const paintStatic = () => {
-    document.querySelectorAll("canvas[data-icon]").forEach(drawIcon);
     drawQR();
   };
   paintStatic();
@@ -169,7 +143,7 @@
     const current = root.dataset.theme || (dark.matches ? "dark" : "light");
     modeButtons.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === current)));
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = current === "dark" ? "#000000" : "#EEE8DA";
+    if (meta) meta.content = current === "dark" ? "#0D1614" : "#F4EEDF";
   };
   try { const saved = localStorage.getItem("hfd-theme"); if (saved === "dark" || saved === "light") root.dataset.theme = saved; } catch (e) {}
   modeButtons.forEach(b => b.addEventListener("click", () => {
@@ -185,7 +159,7 @@
   const copy = document.getElementById("copy");
   copy.addEventListener("click", () => {
     const url = document.getElementById("apk-url").textContent;
-    const done = ok => { copy.textContent = ok ? "COPIÉ" : "SÉLECTIONNÉ"; setTimeout(() => (copy.textContent = "COPIER"), 1800); };
+    const done = ok => { copy.textContent = ok ? "Copié" : "Sélectionné"; setTimeout(() => (copy.textContent = "Copier"), 1800); };
     const select = () => { const s = getSelection(), r = document.createRange(); r.selectNodeContents(document.getElementById("apk-url")); s.removeAllRanges(); s.addRange(r); done(false); };
     try { navigator.clipboard.writeText(url).then(() => done(true), select); } catch (e) { select(); }
   });
