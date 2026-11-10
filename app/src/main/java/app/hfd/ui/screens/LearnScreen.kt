@@ -70,7 +70,11 @@ fun startLearning(fadila: Fadila, fromIndex: Int? = null) {
     val saved = Graph.sessions.session.value?.learn
     val state = when {
         fromIndex != null -> LearnState(fadila.id, minOf(range.from, fromIndex), maxOf(range.to, fromIndex), fromIndex)
-        saved != null && saved.fadilaId == fadila.id && saved.step != LearnStep.DONE -> saved
+        // The lesson left unfinished goes on, unless another range of the passage was chosen since.
+        // (Its own range: the one chosen, or one begun "from here" on an āya outside it.)
+        saved != null && saved.fadilaId == fadila.id && saved.step != LearnStep.DONE &&
+            (saved.from == range.from && saved.to == range.to ||
+                saved.from <= range.from && saved.to >= range.to && saved.index !in range.from..range.to) -> saved
         else -> LearnFlow.start(fadila.id, range.from, range.to) { i -> !progress[fadila.ayat[i].key].started }
     }
     Graph.sessions.update { it.copy(mode = AppMode.LEARN, fadilaId = fadila.id, learn = state) }

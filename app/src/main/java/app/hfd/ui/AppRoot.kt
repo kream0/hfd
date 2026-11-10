@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -44,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -250,7 +252,7 @@ private fun BottomNav(tab: Tab, onTab: (Tab) -> Unit) {
                 Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable { onTab(t) }
+                    .selectable(selected, role = Role.Tab) { onTab(t) }
                     .padding(vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

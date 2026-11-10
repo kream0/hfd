@@ -224,10 +224,14 @@ class Updater(
                 }
                 val flags = PendingIntent.FLAG_UPDATE_CURRENT or
                     (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0)
+                // The installer answers through MainActivity, which any app can start: the answer
+                // carries a token only this install knows, and is ignored without it.
+                val token = java.util.UUID.randomUUID().toString()
+                prefs.edit().putString(KEY_INSTALL_TOKEN, token).apply()
                 val callback = PendingIntent.getActivity(
                     activity,
                     sessionId,
-                    Intent(activity, MainActivity::class.java).setAction(MainActivity.ACTION_INSTALL_STATUS),
+                    Intent(activity, MainActivity::class.java).setAction(MainActivity.ACTION_INSTALL_STATUS).putExtra(EXTRA_INSTALL_TOKEN, token),
                     flags,
                 )
                 session.commit(callback.intentSender)
@@ -240,10 +244,21 @@ class Updater(
 
     /** Result of [install], delivered to MainActivity by the package installer. */
     fun onInstallStatus(activity: Activity, intent: Intent) {
+        // Only the answer to an install started here ([install]'s token): another app could send
+        // this action with an intent of its own for HFD to start in its name.
+        val token = prefs.getString(KEY_INSTALL_TOKEN, null)
+        if (token == null || intent.getStringExtra(EXTRA_INSTALL_TOKEN) != token) {
+            Log.w(TAG, "install status without this install's token: ignored")
+            return
+        }
         when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent::class.java)
-                    ?.let { activity.startActivity(it) }
+                // The system's confirmation screen; it is given no access to anything of HFD's.
+                IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent::class.java)?.let {
+                    it.removeFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
+                    activity.startActivity(it)
+                }
             }
             PackageInstaller.STATUS_SUCCESS -> Unit // we're being replaced
             PackageInstaller.STATUS_FAILURE_ABORTED -> Graph.toast(R.string.update_cancelled)
@@ -273,6 +288,9 @@ class Updater(
     companion object {
         private const val TAG = "Updater"
         private const val KEY_LAST_CHECK = "lastCheck"
+        /** The token of the install in progress, and the extra its answer carries it in ([onInstallStatus]). */
+        private const val KEY_INSTALL_TOKEN = "installToken"
+        private const val EXTRA_INSTALL_TOKEN = "app.hfd.installToken"
         /** Just enough to avoid re-checking when hopping between apps (e.g. to the installer). */
         private const val CHECK_INTERVAL_MS = 60 * 1000L
         /** GitHub redirects this to the assets of the newest non-prerelease release. */

@@ -135,6 +135,9 @@ class PlayerConnection(private val context: Context) {
             c.pause()
         } else {
             if (c.playbackState == Player.STATE_IDLE) c.prepare()
+            // Over: again from its first āya. (Not the first item still in the player, which on a
+            // long plan is some twenty before the end, and under what the timer left of the plan.)
+            if (c.playbackState == Player.STATE_ENDED && Graph.engine.value?.replay() == true) return@withController
             if (c.playbackState == Player.STATE_ENDED) c.seekToDefaultPosition(0)
             c.play()
         }

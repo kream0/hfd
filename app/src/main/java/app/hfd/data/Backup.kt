@@ -51,7 +51,7 @@ object Backup {
         if (file.schema > BackupFile.SCHEMA) throw IOException("Made by a newer version of HFD")
         val added = Graph.progress.importLines(file.events)
         file.ranges.forEach { (id, r) -> Graph.ranges.set(id, r) }
-        file.settings?.let { s -> Graph.settings.update { s } }
+        file.settings?.let { Graph.settings.restore(it) }
         return added
     }
 }

@@ -180,11 +180,27 @@ class PlaybackEngine(
         load(spec, Cursor(1, index, rep.coerceAtLeast(1)), 0, play = playing)
     }
 
+    /** The session that ended, played again from its start; false if there is none. */
+    fun replay(): Boolean {
+        play(session ?: return false)
+        return true
+    }
+
     fun nextAyah() {
         val spec = spec ?: return
         val current = currentItem() ?: return
-        // Past the last āya of the last pass there's nothing to skip to, but a sūra's next sūra.
-        val target = PlaybackPlan.nextAyah(spec, current.cursor) ?: return continueQuran()
+        // The basmala comes before its āya: next is that āya, not the one after it.
+        if (current is PlanItem.Basmala && player.currentMediaItemIndex + 1 < player.mediaItemCount) {
+            return player.seekTo(player.currentMediaItemIndex + 1, 0)
+        }
+        // Past the last āya of the last pass there's nothing to skip to, but a sūra's next sūra;
+        // unless the timer was to stop at this one's end: skipping past it is that end.
+        val target = PlaybackPlan.nextAyah(spec, current.cursor) ?: run {
+            if (!endOfFadila) return continueQuran()
+            endOfFadila = false
+            setSleep(null)
+            return player.pause()
+        }
         jumpTo(spec, target)
     }
 
@@ -281,7 +297,8 @@ class PlaybackEngine(
         val item = PlaybackPlan.decode(spec, saved.mediaId)
         val cursor = item?.cursor ?: Cursor()
         val items = PlaybackPlan.items(spec, cursor).take(WINDOW).toList()
-        val found = items.indexOfFirst { it.mediaId == saved.mediaId }
+        // (The item as this version names it: an id saved by an older one has no place in it.)
+        val found = items.indexOfFirst { it.mediaId == item?.mediaId }
         publishLater()
         return Triple(items.map { build(spec, it) }, found.coerceAtLeast(0), if (found >= 0) saved.positionMs else 0)
     }

@@ -60,12 +60,16 @@ sealed interface PlanItem {
     /** Silence after a recitation of [ref], [factor] × its length. */
     data class Gap(override val cursor: Cursor, override val ref: AyahRef, val factor: Float) : PlanItem
 
-    /** Stable id: "sūra:āya:repetition#pass", with a suffix for gaps and the basmala. */
+    /**
+     * Stable id: "sūra:āya:repetition#pass@place", with a suffix for gaps and the basmala. The
+     * place is the āya's in the plan's list: playing every passage, an āya comes more than once
+     * (al-Kahf's last four in two passages, al-Fātiḥa and al-Baqara's opening again in the closing).
+     */
     val mediaId: String
         get() = when (this) {
-            is Ayah -> "${ref.sura}:${ref.aya}:${cursor.rep}#${cursor.pass}"
-            is Gap -> "${ref.sura}:${ref.aya}:${cursor.rep}#${cursor.pass}/gap"
-            is Basmala -> "${ref.sura}:${ref.aya}:0#${cursor.pass}/basmala"
+            is Ayah -> "${ref.sura}:${ref.aya}:${cursor.rep}#${cursor.pass}@${cursor.index}"
+            is Gap -> "${ref.sura}:${ref.aya}:${cursor.rep}#${cursor.pass}@${cursor.index}/gap"
+            is Basmala -> "${ref.sura}:${ref.aya}:0#${cursor.pass}@${cursor.index}/basmala"
         }
 }
 
@@ -124,7 +128,8 @@ object PlaybackPlan {
     /** Parses [PlanItem.mediaId] back into an item of [spec]; null if it doesn't belong to it. */
     fun decode(spec: PlanSpec, mediaId: String): PlanItem? {
         val parsed = MediaIds.parse(mediaId) ?: return null
-        val index = spec.ayat.indexOf(parsed.ref)
+        // Its place in the list (an id saved before places were written: the āya's first one).
+        val index = parsed.index?.takeIf { spec.ayat.getOrNull(it) == parsed.ref } ?: spec.ayat.indexOf(parsed.ref)
         if (index < 0) return null
         val c = Cursor(parsed.pass, index, if (parsed.kind == MediaIds.Kind.BASMALA) 1 else parsed.rep)
         return when (parsed.kind) {
@@ -138,7 +143,7 @@ object PlaybackPlan {
 /** mediaId parsing without a spec (for UI that only needs the āya and repetition). */
 object MediaIds {
     enum class Kind { AYAH, GAP, BASMALA }
-    data class Parsed(val ref: AyahRef, val rep: Int, val pass: Int, val kind: Kind)
+    data class Parsed(val ref: AyahRef, val rep: Int, val pass: Int, val kind: Kind, val index: Int? = null)
 
     fun parse(mediaId: String): Parsed? {
         val main = mediaId.substringBefore('/')
@@ -153,8 +158,10 @@ object MediaIds {
         val sura = parts[0].toIntOrNull() ?: return null
         val aya = parts[1].toIntOrNull() ?: return null
         val rep = parts[2].toIntOrNull() ?: return null
-        val pass = main.substringAfter('#', "").toIntOrNull() ?: return null
+        val tail = main.substringAfter('#', "")
+        val pass = tail.substringBefore('@').toIntOrNull() ?: return null
+        val index = if ('@' in tail) tail.substringAfter('@').toIntOrNull() ?: return null else null
         if (sura !in 1..114 || aya < 1) return null
-        return Parsed(AyahRef(sura, aya), rep, pass, kind)
+        return Parsed(AyahRef(sura, aya), rep, pass, kind, index)
     }
 }

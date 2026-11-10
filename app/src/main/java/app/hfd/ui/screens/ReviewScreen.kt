@@ -90,17 +90,21 @@ fun ReviewScreen(testOf: String?, only: List<AyahRef>?, onClose: () -> Unit) {
     val c = content
     val test = testOf?.let { c?.fadila(it) }
     // The review queue is fixed when the screen opens (rating an āya makes it not due any more).
-    val queue: List<AyahRef>? = remember(c, testOf, only) {
+    // (Once the progress is read: opened by the reminder on a cold start, nothing was due yet.)
+    val loaded by Graph.progress.loaded.collectAsStateWithLifecycle()
+    val queue: List<AyahRef>? = remember(c, testOf, only, loaded) {
         when {
-            c == null -> null
+            c == null || !loaded -> null
             // A passage that no longer exists (saved before the list changed): nothing to test.
             testOf != null -> c.fadila(testOf)?.ayat ?: emptyList()
             only != null -> only
             else -> Stats.due(Graph.progress.state.value, System.currentTimeMillis(), Graph.progress.zone, c.shownAyat)
         }
     }
-    var reviewIndex by rememberSaveable { mutableIntStateOf(0) }
-    var reviewGood by rememberSaveable { mutableIntStateOf(0) }
+    // The place in the queue lives as long as that queue: made again (the screen recreated), what
+    // is still due is gone through from its start, where a kept index skipped as many āyāt.
+    var reviewIndex by remember(queue) { mutableIntStateOf(0) }
+    var reviewGood by remember(queue) { mutableIntStateOf(0) }
     val testState = session?.test?.takeIf { it.fadilaId == testOf }
     val index = if (testOf != null) testState?.index ?: 0 else reviewIndex
     val good = if (testOf != null) testState?.good ?: 0 else reviewGood

@@ -90,13 +90,35 @@ class PlanTest {
         for (item in PlaybackPlan.items(spec)) {
             assertEquals(item, PlaybackPlan.decode(spec, item.mediaId))
         }
-        assertEquals("2:255:3#1", PlanItem.Ayah(Cursor(1, 0, 3), AyahRef(2, 255), 5).mediaId)
-        val parsed = MediaIds.parse("2:255:3#1/gap")!!
+        assertEquals("2:255:3#1@0", PlanItem.Ayah(Cursor(1, 0, 3), AyahRef(2, 255), 5).mediaId)
+        val parsed = MediaIds.parse("2:255:3#1@4/gap")!!
         assertEquals(AyahRef(2, 255), parsed.ref)
         assertEquals(3, parsed.rep)
+        assertEquals(4, parsed.index)
         assertEquals(MediaIds.Kind.GAP, parsed.kind)
         assertNull(MediaIds.parse("nonsense"))
         assertNull(PlaybackPlan.decode(spec, "2:255:1#1"))
+        // An id saved before the place was written (the position to resume): the āya's first place.
+        assertEquals(Cursor(1, 2, 1), PlaybackPlan.decode(spec, "113:3:1#1")!!.cursor)
+    }
+
+    /**
+     * Every passage played in a row says some āyāt twice (al-Fātiḥa again in the closing): each
+     * item is its own place in the list, so the plan goes on from there and ends at its end. (It
+     * was taken for the āya's first place: after the last passage the plan went on from the first
+     * one again, without end.)
+     */
+    @Test
+    fun anAyaTwiceInThePlanIsEachOfItsPlaces() {
+        val spec = PlanSpec(ayat(1, 1..3) + ayat(112, 1..2) + ayat(1, 1..3))
+        val all = PlaybackPlan.items(spec).toList()
+        for (item in all) assertEquals(item, PlaybackPlan.decode(spec, item.mediaId))
+        val last = PlaybackPlan.decode(spec, all.last().mediaId)!!
+        assertEquals(7, last.cursor.index)
+        assertEquals(emptyList<PlanItem>(), PlaybackPlan.after(spec, last).toList())
+        // From the second al-Fātiḥa's first āya, the next one is its second, not the first's.
+        val again = PlaybackPlan.decode(spec, all.first { it.cursor.index == 5 }.mediaId)!!
+        assertEquals(6, PlaybackPlan.after(spec, again).first { it is PlanItem.Ayah }.cursor.index)
     }
 
     @Test

@@ -192,7 +192,9 @@ fun PlayerPanel(f: Fadila, modifier: Modifier = Modifier) {
     val ranges by Graph.ranges.ranges.collectAsStateWithLifecycle()
     val range = remember(ranges, f) { Graph.ranges.get(f.id, f.size) }
     val title = f.title.text
-    val isThis = np?.fadilaId == f.id
+    // The passage being listened to; not one āya of it a lesson or a review last played (their
+    // sessions carry a tag): Play then starts the passage, where it replayed that āya alone.
+    val isThis = np?.fadilaId == f.id && np?.session?.tag == null
     val playing = isThis && ui.playWhenReady
 
     Column(
@@ -214,14 +216,7 @@ fun PlayerPanel(f: Fadila, modifier: Modifier = Modifier) {
             OfflineChip(f)
         }
         if (isThis) {
-            val progress by Graph.player.progress.collectAsStateWithLifecycle()
-            val fraction = if (ui.durationMs > 0) progress.positionMs.toFloat() / ui.durationMs else 0f
-            SeekBar(
-                progress = fraction,
-                onSeek = { p -> if (ui.durationMs > 0) Graph.player.seekTo((p * ui.durationMs).toLong()) },
-                modifier = Modifier.padding(horizontal = 14.dp),
-                height = 22.dp,
-            )
+            PositionBar(ui.durationMs)
         } else {
             Spacer(Modifier.height(8.dp))
         }
@@ -304,14 +299,7 @@ fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifie
             OfflineChip(reciter, remember(ayat) { if (sura != 1 && sura != 9) ayat + app.hfd.core.playback.EveryAyah.BASMALA else ayat }, optional = true)
         }
         if (isThis) {
-            val progress by Graph.player.progress.collectAsStateWithLifecycle()
-            val fraction = if (ui.durationMs > 0) progress.positionMs.toFloat() / ui.durationMs else 0f
-            SeekBar(
-                progress = fraction,
-                onSeek = { p -> if (ui.durationMs > 0) Graph.player.seekTo((p * ui.durationMs).toLong()) },
-                modifier = Modifier.padding(horizontal = 14.dp),
-                height = 22.dp,
-            )
+            PositionBar(ui.durationMs)
         } else {
             Spacer(Modifier.height(8.dp))
         }
@@ -352,6 +340,22 @@ fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifie
             if (onRecite != null) SettingChip(stringResource(R.string.recite), onRecite, icon = Ic.Mic)
         }
     }
+}
+
+/**
+ * Where the āya playing is, to drag. On its own: the position changes ten times a second, and
+ * read in a panel it had the whole panel drawn again each time.
+ */
+@Composable
+private fun PositionBar(durationMs: Long) {
+    val progress by Graph.player.progress.collectAsStateWithLifecycle()
+    val fraction = if (durationMs > 0) progress.positionMs.toFloat() / durationMs else 0f
+    SeekBar(
+        progress = fraction,
+        onSeek = { p -> if (durationMs > 0) Graph.player.seekTo((p * durationMs).toLong()) },
+        modifier = Modifier.padding(horizontal = 14.dp),
+        height = 22.dp,
+    )
 }
 
 @Composable

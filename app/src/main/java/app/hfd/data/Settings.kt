@@ -112,6 +112,15 @@ class Settings(context: Context) {
         save(next)
     }
 
+    /**
+     * Settings from outside (a backup file read back) in place of the current ones, each value
+     * checked as when they are read at start: one out of range falls back to its default.
+     */
+    fun restore(s: AppSettings) {
+        save(s)
+        _state.value = load()
+    }
+
     private fun load(): AppSettings {
         val d = AppSettings()
         return AppSettings(

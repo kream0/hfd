@@ -34,7 +34,8 @@ object Stats {
      * still stands on yesterday.
      */
     fun streak(days: Map<Long, DayStats>, goalMs: Long, today: Long): Streak {
-        fun met(day: Long) = (days[day]?.practiceMs ?: 0) >= goalMs
+        // (A goal of nothing would be met every day there ever was: a day counts with some practice.)
+        fun met(day: Long) = (days[day]?.practiceMs ?: 0) >= maxOf(goalMs, 1)
         val todayDone = met(today)
         var current = 0
         var d = if (todayDone) today else today - 1

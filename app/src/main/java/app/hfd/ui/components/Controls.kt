@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -116,7 +117,7 @@ fun Segmented(
                     .clip(CircleShape)
                     .background(if (isSelected) P.accent.copy(alpha = if (P.isDark) 0.2f else 0.16f) else Color.Transparent)
                     .then(if (isSelected) Modifier.border(1.dp, P.accent.copy(alpha = 0.7f), CircleShape) else Modifier)
-                    .clickable { onSelect(i) }
+                    .selectable(isSelected, role = Role.RadioButton) { onSelect(i) }
                     .padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
