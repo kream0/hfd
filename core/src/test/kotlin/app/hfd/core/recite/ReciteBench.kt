@@ -284,7 +284,7 @@ class Totals {
 
 private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val steer: Boolean = true) {
     private val targets = case.refs.map { ReciteTarget(it, Arabic.words(Assets.quran.text(it).orEmpty())) }
-    private val follower = Follower(targets, holdsEdges = HOLD_EDGE, keepsGoingBack = KEEP_BACK, steersPrevious = STEER_PREVIOUS, ayaStartTies = AYA_START_TIES)
+    private val follower = Follower(targets, holdsEdges = HOLD_EDGE, keepsGoingBack = KEEP_BACK, steersPrevious = STEER_PREVIOUS, ayaStartTies = AYA_START_TIES, finalRules = FINAL_RULES)
     private val tracker = follower.tracker
     private val n = tracker.size
     private val shownAt = DoubleArray(n) { Double.NaN }
@@ -560,6 +560,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         val STEER_PREVIOUS = System.getenv("HFD_STEER_PREVIOUS") != "0"
         /** Going back to an āya's start on a tie (Tracker.ayaStartTies); HFD_AYA_START_TIES=0: the latest end (1.15.5). */
         val AYA_START_TIES = System.getenv("HFD_AYA_START_TIES") != "0"
+        /** A word the whole utterance's reading reads differently isn't kept right by earlier readings (Follower.finalRules); HFD_FINAL_RULES=0: it is (2.0.1). */
+        val FINAL_RULES = System.getenv("HFD_FINAL_RULES") != "0"
         /** Voice after a pause with no reading moving the recitation that ends the utterance there (Stall), in ms; HFD_STALL_MS=0: never (2.0.1). */
         val STALL_AFTER = System.getenv("HFD_STALL_MS")?.toIntOrNull()?.let { it * Segmenter.RATE / 1000 } ?: Stall.AFTER
 

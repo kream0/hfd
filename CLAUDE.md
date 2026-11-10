@@ -133,6 +133,12 @@
   kept (`HFD_PAUSE_FRAMES`, one run, 58 cases): 400 ms 94.5 % (wrong 42, missed 19, lag p90
   0.3 s), 300 ms 93.8 % (47, 20, 0.1 s), 240 ms 93.1 % (63, 29, 0.1 s): words show sooner but a
   muffled voice's fragments are too short to make out (al-Baqara 1–5 muffled: 33 → 28 of 36).
+  Ending an utterance sooner showed a hole: a word read right twice while it was still being said
+  (the last word of two partial readings, steered to the text) stayed right whatever the whole
+  utterance's reading said: the bench's swapped يُنفِقُونَ, said يُؤْمِنُونَ, read يُنفِقُونَ twice then
+  يُنْمِنُونَ. Such a word now stands as the whole reading has it, for the check to rule on
+  (`Follower.finalRules`, `whole`); one read right with words after it is kept as before (the
+  owner's ٱلدِّينِ, right four times then اتِّينِ on the longer stretch: `LogReplayTest`).
   Tried here and not kept (10 Nov): the isti'ādha and basmala at a higher cost inside a sūra, and
   a continuation's first letter left out at no cost in bias.h (ٱلْحَمْدُ still read أَمْ أُلِ after a
   pause; free decoding reads it حَمْدُ). Wrong words on the bench are 2 % of āyāt' first words, 3 %

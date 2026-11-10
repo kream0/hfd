@@ -17,6 +17,8 @@ class Follower(
     /** The āya before is among what the reciter may be saying ([expected]): said again. */
     private val steersPrevious: Boolean = true,
     ayaStartTies: Boolean = true,
+    /** A word only read right while it was the last one read isn't kept right against the whole utterance's reading ([keepStable]). */
+    private val finalRules: Boolean = true,
 ) {
     val tracker = Tracker(targets, ayaStartTies)
     /** The utterance being followed, and the tracker before it. */
@@ -27,6 +29,8 @@ class Follower(
     /** The utterance's previous reading, and the words right in it and the one before. */
     private var previous: Array<WordStatus>? = null
     private var stable = BooleanArray(tracker.size)
+    /** Stable words read right at least once with a word read after them (said whole by then). */
+    private var whole = BooleanArray(tracker.size)
     /** Where the utterance's last reading that followed something left the recitation. */
     private var followed: Tracker.Mark? = null
     /** Where the utterance's last reading that went back left it, and the marker then. */
@@ -49,6 +53,7 @@ class Follower(
             before = tracker.mark()
             previous = null
             stable = BooleanArray(tracker.size)
+            whole = BooleanArray(tracker.size)
             followed = null
             wentBack = null
         } else {
@@ -66,6 +71,7 @@ class Follower(
             // Went back (a restart, a phrase said again): nothing of it is stable yet.
             previous = tracker.status.copyOf()
             stable = BooleanArray(tracker.size)
+            whole = BooleanArray(tracker.size)
             // Still speaking: the marker is on the word said last (or the one the reading ends inside).
             if (final) closed = id else voice = tracker.cut ?: (tracker.position - 1).takeIf { it >= 0 }
             followed = null
@@ -92,7 +98,7 @@ class Follower(
             if (tracker.feed(clean) <= 0) tracker.reset(kept)
         }
         val fellBack = tracker.position <= stable.indexOfLast { it }
-        keepStable(from)
+        keepStable(from, final)
         // This reading lost stable words at its start: what it heard is after them.
         if (fellBack) {
             val kept = tracker.mark()
@@ -101,6 +107,7 @@ class Follower(
         val now = tracker.status
         val prev = previous
         stable = BooleanArray(now.size) { it >= from && prev != null && prev[it] == WordStatus.OK && now[it] == WordStatus.OK }
+        for (w in from until tracker.position - 1) if (stable[w]) whole[w] = true
         previous = now.copyOf()
         if (tracker.position > from) {
             followed = tracker.mark()
@@ -134,14 +141,24 @@ class Follower(
         return true
     }
 
-    /** Words stable over the readings before stay right; the words among them keep what they were. */
-    private fun keepStable(from: Int) {
+    /**
+     * Words stable over the readings before stay right; the words among them keep what they were.
+     * Unless a word was only ever read right as the last one read, still being said, and the
+     * whole utterance's reading ([final]) reads it differently: it then stands as wrong, for the
+     * check to rule on. Two readings of a word not said whole yet, steered to the text, can both
+     * give the text's word (يُنفِقُونَ twice while يُؤْمِنُونَ was being said in its place, then يُنْمِنُونَ
+     * to the end: the bench's swapped word, kept right by them). A word read right with others
+     * after it stays: the model misreads on a longer stretch what it had read (the owner's ٱلدِّينِ,
+     * four times right, then اتِّينِ once 1:5 followed in the same utterance, 11 Oct).
+     */
+    private fun keepStable(from: Int, final: Boolean) {
         val last = stable.indexOfLast { it }
         val prev = previous
         if (last < 0 || prev == null) return
         val status = tracker.status.copyOf()
         for (w in from..last) {
             status[w] = when {
+                stable[w] && finalRules && final && !whole[w] && status[w] == WordStatus.WRONG -> WordStatus.WRONG
                 stable[w] -> WordStatus.OK
                 status[w] != WordStatus.PENDING -> status[w]
                 prev[w] != WordStatus.PENDING -> prev[w]
