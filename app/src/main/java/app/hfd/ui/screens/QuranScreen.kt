@@ -46,13 +46,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.quran.SuraMeta
-import app.hfd.ui.components.DotEqualizer
-import app.hfd.ui.components.DotLoader
+import app.hfd.ui.components.Equalizer
+import app.hfd.ui.components.Loader
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.PillButton
 import app.hfd.ui.components.PillStyle
 import app.hfd.ui.components.ScreenHeader
 import app.hfd.ui.components.SectionLabel
+import app.hfd.ui.components.Star
+import app.hfd.ui.components.card
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
 import java.text.Normalizer
@@ -71,13 +73,13 @@ fun QuranScreen(onOpen: (Int) -> Unit) {
     val c = content
     Box(Modifier.fillMaxSize().statusBarsPadding()) {
         if (c == null) {
-            DotLoader(Modifier.align(Alignment.Center))
+            Loader(Modifier.align(Alignment.Center))
             return@Box
         }
         val playingSura = np?.session?.sura
         val shown = remember(c, query) { c.suras.filter { matches(it, query) } }
         LazyColumn(Modifier.fillMaxSize().testTag("quran")) {
-            item(key = "header") { ScreenHeader(stringResource(R.string.tab_quran).uppercase()) }
+            item(key = "header") { ScreenHeader(stringResource(R.string.tab_quran)) }
             // Where the listening stopped: the sūra playing now, else the last place.
             val at = np?.takeIf { playingSura != null }?.item?.ref ?: place
             if (at != null) {
@@ -88,17 +90,17 @@ fun QuranScreen(onOpen: (Int) -> Unit) {
                         Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(P.surface)
+                            .card()
                             .clickable { onOpen(at.sura) }
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(stringResource(if (playing) R.string.quran_listening else R.string.quran_resume).uppercase(), style = Type.label, color = P.textDim)
+                            Text(stringResource(if (playing) R.string.quran_listening else R.string.quran_resume).uppercase(), style = Type.overline, color = P.textDim)
+                            Spacer(Modifier.height(2.dp))
                             Text(
                                 stringResource(R.string.quran_resume_at, meta.tname, at.aya, meta.ayas),
-                                style = Type.title,
+                                style = Type.name,
                                 color = P.text,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
@@ -146,8 +148,9 @@ private fun SearchField(query: String, onChange: (String) -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 10.dp)
             .clip(CircleShape)
+            .background(P.surface)
             .border(1.dp, P.outline, CircleShape)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(Ic.Search, contentDescription = null, tint = P.textDim, modifier = Modifier.size(18.dp))
@@ -185,17 +188,19 @@ private fun SuraRow(s: SuraMeta, playing: Boolean, active: Boolean, onClick: () 
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.width(34.dp), contentAlignment = Alignment.CenterStart) {
-            if (playing) DotEqualizer(active, Modifier.size(18.dp))
-            else Text(s.index.toString(), style = Type.clock.copy(fontSize = 15.sp), color = P.textDim, maxLines = 1)
+        // Its number in the star, as in a muṣḥaf's margin.
+        Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) {
+            Star(Modifier.size(38.dp), color = if (playing) P.accent else P.outline, outline = true)
+            if (playing) Equalizer(active, Modifier.size(14.dp))
+            else Text(s.index.toString(), style = Type.clock.copy(fontSize = 13.sp), color = P.textDim, maxLines = 1)
         }
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(s.tname, style = Type.title, color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(4.dp))
+            Text(s.tname, style = Type.name, color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(3.dp))
             Text(
-                (stringResource(if (s.type == "Medinan") R.string.sura_medinan else R.string.sura_meccan) + " · " +
-                    pluralStringResource(R.plurals.ayat_count, s.ayas, s.ayas)).uppercase(),
+                stringResource(if (s.type == "Medinan") R.string.sura_medinan else R.string.sura_meccan) + " · " +
+                    pluralStringResource(R.plurals.ayat_count, s.ayas, s.ayas),
                 style = Type.label,
                 color = P.textDim,
                 maxLines = 1,

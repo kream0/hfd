@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,9 +29,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
 
+/** [Filled] and [Accent]: the screen's main action; [Outline]: the others. */
 enum class PillStyle { Filled, Accent, Outline }
 
 @Composable
@@ -43,16 +46,15 @@ fun PillButton(
     enabled: Boolean = true,
 ) {
     val (bg, fg, border) = when (style) {
-        PillStyle.Filled -> Triple(P.inverse, P.onInverse, P.inverse)
-        PillStyle.Accent -> Triple(P.accent, Color.White, P.accent)
+        PillStyle.Filled, PillStyle.Accent -> Triple(P.primary, P.onPrimary, P.primary)
         PillStyle.Outline -> Triple(Color.Transparent, P.text, P.outline)
     }
     Row(
         modifier
             .height(44.dp)
             .clip(CircleShape)
-            .background(bg)
-            .border(1.dp, border, CircleShape)
+            .background(if (enabled) bg else bg.copy(alpha = bg.alpha * 0.35f))
+            .border(1.dp, if (enabled) border else border.copy(alpha = 0.35f), CircleShape)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -62,7 +64,7 @@ fun PillButton(
             Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(text, style = Type.labelBold, color = if (enabled) fg else fg.copy(alpha = 0.4f), maxLines = 1)
+        Text(text, style = Type.button, color = if (enabled) fg else fg.copy(alpha = 0.5f), maxLines = 1)
     }
 }
 
@@ -89,7 +91,7 @@ fun IconBtn(
     }
 }
 
-/** Pill segmented control; the selected segment is inverted (white on black / black on white). */
+/** Pill segmented control; the selected segment is lit in the accent. */
 @Composable
 fun Segmented(
     options: List<String>,
@@ -110,15 +112,16 @@ fun Segmented(
                 Modifier
                     .weight(1f)
                     .clip(CircleShape)
-                    .background(if (isSelected) P.inverse else Color.Transparent)
+                    .background(if (isSelected) P.accent.copy(alpha = if (P.isDark) 0.2f else 0.16f) else Color.Transparent)
+                    .then(if (isSelected) Modifier.border(1.dp, P.accent.copy(alpha = 0.7f), CircleShape) else Modifier)
                     .clickable { onSelect(i) }
                     .padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     label,
-                    style = Type.labelBold,
-                    color = if (isSelected) P.onInverse else P.textDim,
+                    style = Type.button.copy(fontSize = 14.sp),
+                    color = if (isSelected) P.text else P.textDim,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -127,16 +130,16 @@ fun Segmented(
     }
 }
 
-/** Nothing-style switch: outlined pill, red when on. */
+/** A switch: an outlined pill, filled when on. */
 @Composable
-fun NothingSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+fun Toggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     val x by animateDpAsState(if (checked) 22.dp else 3.dp, label = "switch")
     Box(
         modifier
             .size(width = 46.dp, height = 26.dp)
             .clip(CircleShape)
-            .background(if (checked) P.accent else Color.Transparent)
-            .border(1.dp, if (checked) P.accent else P.outline, CircleShape)
+            .background(if (checked) P.primary else Color.Transparent)
+            .border(1.dp, if (checked) P.primary else P.outline, CircleShape)
             .clickable { onCheckedChange(!checked) },
     ) {
         Box(
@@ -144,7 +147,7 @@ fun NothingSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier
                 .offset(x = x, y = 3.dp)
                 .size(20.dp)
                 .clip(CircleShape)
-                .background(if (checked) Color.White else P.textDim),
+                .background(if (checked) P.onPrimary else P.textDim),
         )
     }
 }
@@ -177,13 +180,18 @@ private fun StepButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** Small red dot + mono caps label. */
+/** A card: the raised surface, round-cornered, with a hairline so it stands off the paper too. */
+@Composable
+fun Modifier.card(radius: Dp = 22.dp): Modifier =
+    clip(RoundedCornerShape(radius)).background(P.surface).border(1.dp, P.outline.copy(alpha = if (P.isDark) 0.6f else 0.8f), RoundedCornerShape(radius))
+
+/** A section's heading: the star, then small capitals. */
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier, color: Color = P.textDim) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(6.dp).clip(CircleShape).background(P.accent))
+        Star(Modifier.size(9.dp))
         Spacer(Modifier.width(8.dp))
-        Text(text.uppercase(), style = Type.label, color = color)
+        Text(text.uppercase(), style = Type.overline, color = color)
     }
 }
 
@@ -196,10 +204,10 @@ fun ScreenHeader(
     Row(
         modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 12.dp, top = 14.dp, bottom = 10.dp),
+            .padding(start = 20.dp, end = 12.dp, top = 16.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, style = Type.display, color = P.text, modifier = Modifier.weight(1f), maxLines = 1)
+        Text(title, style = Type.display, color = P.text, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         trailing()
     }
 }

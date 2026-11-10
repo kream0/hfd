@@ -43,14 +43,15 @@ import app.hfd.core.recite.Arabic
 import app.hfd.data.AppMode
 import app.hfd.ui.AppViewModel
 import app.hfd.ui.Tab
-import app.hfd.ui.components.DotLoader
-import app.hfd.ui.components.DotRing
+import app.hfd.ui.components.Loader
+import app.hfd.ui.components.ProgressRing
 import app.hfd.ui.components.FadilaRow
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.LocalSheets
 import app.hfd.ui.components.PillButton
 import app.hfd.ui.components.PillStyle
 import app.hfd.ui.components.ScreenHeader
+import app.hfd.ui.components.card
 import app.hfd.ui.components.SectionLabel
 import app.hfd.ui.components.SheetAction
 import app.hfd.ui.components.SheetSpec
@@ -73,10 +74,10 @@ fun HomeScreen(app: AppViewModel) {
             .verticalScroll(rememberScrollState())
             .padding(bottom = 24.dp),
     ) {
-        ScreenHeader(stringResource(R.string.app_name).uppercase())
+        ScreenHeader(stringResource(R.string.app_name))
         val c = content
         if (c == null) {
-            Box(Modifier.fillMaxSize().padding(top = 80.dp), contentAlignment = Alignment.Center) { DotLoader() }
+            Box(Modifier.fillMaxSize().padding(top = 80.dp), contentAlignment = Alignment.Center) { Loader() }
             return@Column
         }
         val now = System.currentTimeMillis()
@@ -89,25 +90,25 @@ fun HomeScreen(app: AppViewModel) {
 
         // Today: goal ring, streak, and what's due.
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(24.dp)).background(P.surface).padding(16.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp).card().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val fraction = (todayMs.toFloat() / goalMs).coerceIn(0f, 1f)
-            DotRing(fraction, Modifier.size(52.dp), color = if (fraction >= 1f) P.saveGreen else P.text, dots = 24)
+            ProgressRing(fraction, Modifier.size(52.dp), color = if (fraction >= 1f) P.saveGreen else P.accent)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.home_goal).uppercase(), style = Type.label, color = P.textDim)
-                Text(stringResource(R.string.home_goal_value, (todayMs / 60_000).toInt(), settings.dailyGoalMin), style = Type.clock, color = P.text)
-                Text(stringResource(R.string.home_streak, streak.current).uppercase(), style = Type.label, color = if (streak.todayDone) P.accent else P.textDim)
+                Text(stringResource(R.string.home_goal).uppercase(), style = Type.overline, color = P.textDim)
+                Text(stringResource(R.string.home_goal_value, (todayMs / 60_000).toInt(), settings.dailyGoalMin), style = Type.displaySmall, color = P.text)
+                Text(stringResource(R.string.home_streak, streak.current), style = Type.label, color = if (streak.todayDone) P.accent else P.textDim)
             }
         }
         Spacer(Modifier.height(10.dp))
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(24.dp)).background(P.surface).padding(16.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp).card().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.home_due).uppercase(), style = Type.label, color = P.textDim)
+                Text(stringResource(R.string.home_due).uppercase(), style = Type.overline, color = P.textDim)
                 Text(pluralStringResource(R.plurals.home_due_count, due.size, due.size), style = Type.title, color = P.text)
             }
             PillButton(stringResource(R.string.review), { app.review() }, style = if (due.isNotEmpty()) PillStyle.Accent else PillStyle.Outline, enabled = due.isNotEmpty())
@@ -132,14 +133,15 @@ fun HomeScreen(app: AppViewModel) {
         if (cont != null) {
             Spacer(Modifier.height(10.dp))
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(24.dp)).background(P.surface).padding(16.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp).card().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.home_continue).uppercase(), style = Type.label, color = P.textDim)
+                    Text(stringResource(R.string.home_continue).uppercase(), style = Type.overline, color = P.textDim)
                     Text(cont.first, style = Type.title, color = P.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
-                PillButton(stringResource(R.string.home_continue), cont.second, style = PillStyle.Filled)
+                Spacer(Modifier.width(10.dp))
+                PillButton(stringResource(R.string.home_continue), cont.second, style = PillStyle.Outline)
             }
         }
 

@@ -23,6 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,8 +34,8 @@ import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.progress.DayStats
 import app.hfd.core.progress.Stats
-import app.hfd.ui.components.DotLoader
-import app.hfd.ui.components.DotRing
+import app.hfd.ui.components.Loader
+import app.hfd.ui.components.ProgressRing
 import app.hfd.ui.components.ScreenHeader
 import app.hfd.ui.components.SectionLabel
 import app.hfd.ui.components.formatInterval
@@ -61,7 +64,7 @@ fun StatsScreen(onOpen: (String) -> Unit) {
     val todayMs = progress.days[today]?.practiceMs ?: 0
 
     Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-        ScreenHeader(stringResource(R.string.stats_title).uppercase())
+        ScreenHeader(stringResource(R.string.stats_title))
 
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BigNumber(streak.current.toString(), stringResource(R.string.stats_streak), Modifier.weight(1f))
@@ -94,7 +97,7 @@ fun StatsScreen(onOpen: (String) -> Unit) {
         SectionLabel(stringResource(R.string.stats_goal), Modifier.padding(horizontal = 20.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             val fraction = (todayMs.toFloat() / goalMs).coerceIn(0f, 1f)
-            DotRing(fraction, Modifier.size(56.dp), color = if (fraction >= 1f) P.saveGreen else P.text, dots = 24)
+            ProgressRing(fraction, Modifier.size(56.dp), color = if (fraction >= 1f) P.saveGreen else P.accent)
             Spacer(Modifier.width(16.dp))
             Text(
                 stringResource(R.string.home_goal_value, (todayMs / 60_000).toInt(), settings.dailyGoalMin),
@@ -111,7 +114,7 @@ fun StatsScreen(onOpen: (String) -> Unit) {
         SectionLabel(stringResource(R.string.stats_fadail), Modifier.padding(horizontal = 20.dp))
         val c = content
         if (c == null) {
-            DotLoader(Modifier.padding(20.dp))
+            Loader(Modifier.padding(20.dp))
         } else {
             val lang = uiLanguage
             // The passages being learnt (all forty would mostly be empty rings).
@@ -124,15 +127,15 @@ fun StatsScreen(onOpen: (String) -> Unit) {
                     Modifier.fillMaxWidth().clickable { onOpen(f.id) }.padding(horizontal = 20.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    DotRing(p.fraction, Modifier.size(22.dp), color = P.saveColor(p.fraction))
+                    ProgressRing(p.fraction, Modifier.size(22.dp), color = P.saveColor(p.fraction))
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(f.title.text, style = Type.title, color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(f.title.text, style = Type.name, color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val due = p.nextDue?.let { d ->
                             " · " + stringResource(R.string.progress_next_due, if (d <= now) stringResource(R.string.due_now) else stringResource(R.string.due_in, formatInterval(d - now, lang)))
                         }.orEmpty()
                         Text(
-                            (stringResource(R.string.progress_memorised, p.memorised, p.total) + due).uppercase(),
+                            stringResource(R.string.progress_memorised, p.memorised, p.total) + due,
                             style = Type.label,
                             color = P.textDim,
                             maxLines = 1,
@@ -149,13 +152,13 @@ fun StatsScreen(onOpen: (String) -> Unit) {
 private fun BigNumber(value: String, label: String, modifier: Modifier = Modifier) {
     Column(modifier) {
         Text(value, style = Type.display, color = P.text, maxLines = 1)
-        Text(label.uppercase(), style = Type.label, color = P.textDim, maxLines = 2)
+        Text(label, style = Type.label, color = P.textDim, maxLines = 2)
     }
 }
 
 /**
- * Twenty weeks of practice as a dot matrix (columns = weeks, rows = Monday…Sunday): dim dots
- * for no practice, brighter as the day's practice grows, red once the goal was met.
+ * Twenty weeks of practice as a calendar of small squares (columns = weeks, rows = Monday…Sunday):
+ * dim for no practice, brighter as the day's practice grows, gold once the goal was met.
  */
 @Composable
 private fun Heatmap(days: Map<Long, DayStats>, today: Long, goalMs: Long, modifier: Modifier = Modifier) {
@@ -163,14 +166,15 @@ private fun Heatmap(days: Map<Long, DayStats>, today: Long, goalMs: Long, modifi
     val todayDate = LocalDate.ofEpochDay(today)
     val lastMonday = todayDate.minusDays((todayDate.dayOfWeek.value - 1).toLong()).toEpochDay()
     val first = lastMonday - (weeks - 1) * 7
-    val off = P.dotOff
-    val low = P.textFaint
-    val mid = P.textDim
+    val off = P.track
     val full = P.accent
+    val low = full.copy(alpha = 0.3f)
+    val mid = full.copy(alpha = 0.6f)
     val future = P.background
+    val ring = P.text
     Canvas(modifier.height(120.dp)) {
         val cell = minOf(size.width / weeks, size.height / 7)
-        val r = cell * 0.36f
+        val side = cell * 0.78f
         for (w in 0 until weeks) for (d in 0 until 7) {
             val day = first + w * 7 + d
             val ms = days[day]?.practiceMs ?: 0
@@ -181,8 +185,10 @@ private fun Heatmap(days: Map<Long, DayStats>, today: Long, goalMs: Long, modifi
                 ms >= goalMs / 2 -> mid
                 else -> low
             }
-            val radius = if (day == today) r * 1.25f else r
-            drawCircle(color, radius, Offset(w * cell + cell / 2, d * cell + cell / 2))
+            val at = Offset(w * cell + (cell - side) / 2, d * cell + (cell - side) / 2)
+            drawRoundRect(color, at, Size(side, side), CornerRadius(side * 0.28f))
+            // Today, ringed.
+            if (day == today) drawRoundRect(ring, at, Size(side, side), CornerRadius(side * 0.28f), style = Stroke(side * 0.12f))
         }
     }
 }

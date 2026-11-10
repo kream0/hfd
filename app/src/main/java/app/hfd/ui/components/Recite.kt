@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.progress.Hiding
@@ -41,7 +42,7 @@ import java.util.Locale
 enum class Visibility { FULL, FIRST_WORD, HIDDEN }
 
 /**
- * An āya in a recitation card: whole, only its first word, or hidden behind a calm dot field.
+ * An āya in a recitation card: whole, only its first word, or hidden behind a calm field of stars.
  * The text itself is never altered; hiding only chooses what to draw.
  */
 @Composable
@@ -68,7 +69,7 @@ fun ReciteAyah(
                 Visibility.FIRST_WORD -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(Hiding.firstWord(text), style = Type.quran(arabicSize), color = P.text)
                     Box(Modifier.weight(1f).height((arabicSize * 1.6f).dp).padding(horizontal = 12.dp)) {
-                        DotGrid(Modifier.fillMaxWidth().height((arabicSize * 1.2f).dp), color = P.outline, spacing = 12.dp, radius = 1.6.dp)
+                        StarField(Modifier.fillMaxWidth().height((arabicSize * 1.2f).dp), color = P.outline, spacing = 16.dp, radius = 2.6.dp)
                     }
                     Text(ayahEnd(ref.aya).trim(), style = Type.quran(arabicSize), color = P.textDim)
                 }
@@ -76,7 +77,7 @@ fun ReciteAyah(
                     Modifier.fillMaxWidth().height((arabicSize * 3.2f).dp).clip(RoundedCornerShape(18.dp)).background(P.surface),
                     contentAlignment = Alignment.Center,
                 ) {
-                    DotGrid(Modifier.fillMaxWidth().height((arabicSize * 3.2f).dp), color = P.outline, spacing = 14.dp, radius = 1.6.dp)
+                    StarField(Modifier.fillMaxWidth().height((arabicSize * 3.2f).dp), color = P.outline, spacing = 18.dp, radius = 2.6.dp)
                     Text(ayahEnd(ref.aya).trim(), style = Type.quran(arabicSize), color = P.textDim)
                 }
             }
@@ -126,16 +127,16 @@ fun RatingButtons(card: SrsCard, onRate: (Rating) -> Unit, modifier: Modifier = 
                 Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .border(1.dp, if (accent) P.accent else P.outline, RoundedCornerShape(16.dp))
-                    .background(if (r == Rating.GOOD) P.inverse else Color.Transparent)
+                    .border(1.dp, if (accent) P.error else if (r == Rating.GOOD) P.primary else P.outline, RoundedCornerShape(16.dp))
+                    .background(if (r == Rating.GOOD) P.primary else Color.Transparent)
                     .clickable { onRate(r) }
                     .padding(vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                val fg = if (r == Rating.GOOD) P.onInverse else if (accent) P.accent else P.text
-                Text(label.uppercase(), style = Type.labelBold, color = fg, maxLines = 1)
+                val fg = if (r == Rating.GOOD) P.onPrimary else if (accent) P.error else P.text
+                Text(label, style = Type.button.copy(fontSize = 14.sp), color = fg, maxLines = 1)
                 Spacer(Modifier.height(2.dp))
-                Text(formatInterval(next.due - now, lang), style = Type.label, color = if (r == Rating.GOOD) P.onInverse else P.textDim, maxLines = 1)
+                Text(formatInterval(next.due - now, lang), style = Type.label.copy(fontSize = 12.sp), color = if (r == Rating.GOOD) P.onPrimary else P.textDim, maxLines = 1)
             }
         }
     }
@@ -144,7 +145,7 @@ fun RatingButtons(card: SrsCard, onRate: (Rating) -> Unit, modifier: Modifier = 
 /** Small ring showing an āya's memorisation strength on the red → green scale. */
 @Composable
 fun StrengthRing(strength: Float, modifier: Modifier = Modifier) {
-    DotRing(strength, modifier, color = P.saveColor(strength), dots = 10)
+    ProgressRing(strength, modifier, color = P.saveColor(strength))
 }
 
 /** Big step dots at the top of the Learn flow. */
@@ -156,7 +157,7 @@ fun StepDots(count: Int, current: Int, modifier: Modifier = Modifier) {
                 Modifier
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(if (i <= current) P.text else P.dotOff)
+                    .background(if (i <= current) P.accent else P.track)
                     .padding(horizontal = if (i == current) 12.dp else 3.dp),
             )
         }
@@ -169,12 +170,12 @@ fun ChoiceButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
     Box(
         modifier
             .clip(RoundedCornerShape(16.dp))
-            .border(1.dp, if (strong) P.inverse else P.outline, RoundedCornerShape(16.dp))
-            .background(if (strong) P.inverse else Color.Transparent)
+            .border(1.dp, if (strong) P.primary else P.outline, RoundedCornerShape(16.dp))
+            .background(if (strong) P.primary else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text.uppercase(), style = Type.labelBold, color = if (strong) P.onInverse else P.text)
+        Text(text, style = Type.button, color = if (strong) P.onPrimary else P.text)
     }
 }

@@ -35,7 +35,7 @@ import app.hfd.Graph
 import app.hfd.R
 import app.hfd.data.AppSettings
 import app.hfd.ui.components.LocalSheets
-import app.hfd.ui.components.NothingSwitch
+import app.hfd.ui.components.Toggle
 import app.hfd.ui.components.SheetSpec
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
@@ -73,11 +73,11 @@ private fun ReminderLine(title: String, on: Boolean, at: Int, onToggle: (Boolean
                 Modifier.clip(CircleShape).border(1.dp, P.outline, CircleShape).clickable(onClick = onTime)
                     .padding(horizontal = 12.dp, vertical = 5.dp),
             ) {
-                Text(stringResource(R.string.remind_at, hhmm(at)).uppercase(), style = Type.labelBold, color = if (on) P.text else P.textDim)
+                Text(stringResource(R.string.remind_at, hhmm(at)), style = Type.labelBold, color = if (on) P.text else P.textDim)
             }
         }
         Spacer(Modifier.width(12.dp))
-        NothingSwitch(on, onToggle)
+        Toggle(on, onToggle)
     }
 }
 

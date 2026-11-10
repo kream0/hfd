@@ -54,7 +54,7 @@ import app.hfd.BuildConfig
 import app.hfd.diag.Diag
 import app.hfd.Graph
 import app.hfd.R
-import app.hfd.ui.components.NothingSwitch
+import app.hfd.ui.components.Toggle
 import app.hfd.ui.components.PillButton
 import app.hfd.ui.components.PillStyle
 import app.hfd.ui.components.ScreenHeader
@@ -78,7 +78,7 @@ fun SettingsScreen() {
             .testTag("settings")
             .padding(bottom = 24.dp),
     ) {
-        ScreenHeader(stringResource(R.string.tab_settings).uppercase())
+        ScreenHeader(stringResource(R.string.tab_settings))
 
         SettingsSection(stringResource(R.string.settings_progress)) {
             ProgressSection(settings)
@@ -158,11 +158,11 @@ fun SettingsScreen() {
 
         SettingsSection(stringResource(R.string.settings_about)) {
             SettingLine(stringResource(R.string.settings_diagnostics), stringResource(R.string.settings_diagnostics_body, Diag.session)) {
-                NothingSwitch(settings.sendDiagnostics, { on -> Graph.settings.update { it.copy(sendDiagnostics = on) } })
+                Toggle(settings.sendDiagnostics, { on -> Graph.settings.update { it.copy(sendDiagnostics = on) } })
             }
             if (settings.sendDiagnostics) {
                 SettingLine(stringResource(R.string.settings_recordings), stringResource(R.string.settings_recordings_body)) {
-                    NothingSwitch(settings.sendRecordings, { on -> Graph.settings.update { it.copy(sendRecordings = on) } })
+                    Toggle(settings.sendRecordings, { on -> Graph.settings.update { it.copy(sendRecordings = on) } })
                 }
             }
             Text(
@@ -259,7 +259,7 @@ private fun ListeningSection(settings: AppSettings) {
         })
     }
     SettingLine(stringResource(R.string.basmala_setting), stringResource(R.string.basmala_setting_body)) {
-        NothingSwitch(settings.basmala, { on -> Graph.settings.update { it.copy(basmala = on) } })
+        Toggle(settings.basmala, { on -> Graph.settings.update { it.copy(basmala = on) } })
     }
     val files by Graph.audio.files.collectAsStateWithLifecycle()
     var bytes by remember { mutableLongStateOf(0L) }
@@ -300,7 +300,7 @@ private fun ReadingSection(settings: AppSettings) {
         }
     }
     SettingLine(stringResource(R.string.settings_translation), stringResource(R.string.settings_translation_body)) {
-        NothingSwitch(settings.showTranslation, { on -> Graph.settings.update { it.copy(showTranslation = on) } })
+        Toggle(settings.showTranslation, { on -> Graph.settings.update { it.copy(showTranslation = on) } })
     }
     if (settings.showTranslation) {
         Box(Modifier.padding(horizontal = 20.dp)) {
@@ -347,7 +347,7 @@ private fun UpdatesSection(autoUpdate: Boolean) {
         }
     }
     SettingLine(stringResource(R.string.update_auto_title), stringResource(R.string.update_auto_body)) {
-        NothingSwitch(autoUpdate, { on -> Graph.settings.update { it.copy(autoUpdate = on) } })
+        Toggle(autoUpdate, { on -> Graph.settings.update { it.copy(autoUpdate = on) } })
     }
 }
 

@@ -59,7 +59,7 @@ fun SheetHost(spec: SheetSpec?, onShow: (SheetSpec) -> Unit, onDismiss: () -> Un
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.6f))
+                    .background(Color.Black.copy(alpha = if (P.isDark) 0.6f else 0.35f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -88,17 +88,15 @@ fun SheetHost(spec: SheetSpec?, onShow: (SheetSpec) -> Unit, onDismiss: () -> Un
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 14.dp),
             ) {
-                // Grab handle, as three dots.
+                // Grab handle.
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center) {
-                    repeat(3) {
-                        Box(Modifier.padding(horizontal = 3.dp).size(5.dp).clip(CircleShape).background(P.textFaint))
-                    }
+                    Box(Modifier.size(width = 36.dp, height = 4.dp).clip(CircleShape).background(P.outline))
                 }
-                Spacer(Modifier.height(14.dp))
-                Text(shown.title, style = Type.title.copy(fontSize = Type.title.fontSize * 1.15f), color = P.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(16.dp))
+                Text(shown.title, style = Type.displaySmall, color = P.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (!shown.subtitle.isNullOrBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(shown.subtitle.uppercase(), style = Type.label, color = P.textDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(4.dp))
+                    Text(shown.subtitle, style = Type.label, color = P.textDim, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(Modifier.height(12.dp))
                 shown.content?.let {
@@ -123,16 +121,16 @@ fun SheetHost(spec: SheetSpec?, onShow: (SheetSpec) -> Unit, onDismiss: () -> Un
                             .padding(horizontal = 6.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        val tint = if (action.destructive) P.accent else P.text
+                        val tint = if (action.destructive) P.error else P.text
                         if (action.icon != null) {
-                            Icon(action.icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+                            Icon(action.icon, contentDescription = null, tint = if (action.destructive) tint else P.accent, modifier = Modifier.size(20.dp))
                         } else {
                             Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
-                                Box(Modifier.size(6.dp).clip(CircleShape).background(tint))
+                                Box(Modifier.size(5.dp).clip(CircleShape).background(P.textFaint))
                             }
                         }
-                        Spacer(Modifier.width(16.dp))
-                        Text(action.label.uppercase(), style = Type.labelBold.copy(fontSize = Type.label.fontSize * 1.1f), color = tint)
+                        Spacer(Modifier.width(14.dp))
+                        Text(action.label, style = Type.title.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium), color = tint)
                     }
                 }
             }

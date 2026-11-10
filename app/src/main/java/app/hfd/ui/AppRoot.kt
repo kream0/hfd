@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -38,24 +39,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.playback.QuranListening
 import app.hfd.playback.NowPlaying
-import app.hfd.ui.components.DotGlyphs
-import app.hfd.ui.components.DotIcon
-import app.hfd.ui.components.DotProgressBar
+import app.hfd.ui.components.Equalizer
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.itemLabel
 import app.hfd.ui.components.LocalSheets
 import app.hfd.ui.components.SheetAction
 import app.hfd.ui.components.SheetHost
 import app.hfd.ui.components.SheetSpec
+import app.hfd.ui.components.SeekBar
 import app.hfd.ui.screens.FadailScreen
 import app.hfd.ui.screens.FadilaScreen
 import app.hfd.ui.screens.HomeScreen
@@ -178,10 +181,12 @@ private fun MiniPlayer(np: NowPlaying, onOpen: () -> Unit) {
             .clickable(onClick = onOpen),
     ) {
         Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Equalizer(ui.playWhenReady, Modifier.size(16.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(np.title, style = Type.title, color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(np.title, style = Type.name.copy(fontSize = 16.sp), color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    listOf(itemLabel(np.item), np.reciter.short.uppercase()).filter { it.isNotBlank() }.joinToString("  ·  "),
+                    listOf(itemLabel(np.item), np.reciter.short).filter { it.isNotBlank() }.joinToString("  ·  "),
                     style = Type.label,
                     color = P.textDim,
                     maxLines = 1,
@@ -192,52 +197,76 @@ private fun MiniPlayer(np: NowPlaying, onOpen: () -> Unit) {
                 Modifier.size(44.dp).clip(CircleShape).clickable { Graph.player.togglePlay() },
                 contentAlignment = Alignment.Center,
             ) {
-                DotIcon(if (ui.playWhenReady) DotGlyphs.PAUSE else DotGlyphs.PLAY, P.text, Modifier.size(18.dp))
+                Icon(
+                    if (ui.playWhenReady) Ic.Pause else Ic.Play,
+                    contentDescription = stringResource(if (ui.playWhenReady) R.string.player_pause else R.string.player_play),
+                    tint = P.text,
+                    modifier = Modifier.size(26.dp),
+                )
             }
             Box(
                 Modifier.size(44.dp).clip(CircleShape).clickable { Graph.player.nextAyah() },
                 contentAlignment = Alignment.Center,
             ) {
-                DotIcon(DotGlyphs.NEXT, P.textDim, Modifier.size(16.dp))
+                Icon(Ic.Next, contentDescription = stringResource(R.string.player_next), tint = P.textDim, modifier = Modifier.size(24.dp))
             }
         }
-        DotProgressBar(
+        SeekBar(
             progress = fraction,
             modifier = Modifier.padding(horizontal = 14.dp),
-            height = 14.dp,
-            spacing = 5.dp,
-            radius = 1.2.dp,
+            height = 12.dp,
+            thickness = 3.dp,
             showHead = false,
         )
     }
 }
 
+private val Tab.icon: ImageVector
+    get() = when (this) {
+        Tab.HOME -> Ic.Home
+        Tab.FADAIL -> Ic.Star
+        Tab.QURAN -> Ic.Book
+        Tab.STATS -> Ic.Chart
+        Tab.SETTINGS -> Ic.Tune
+    }
+
+/** The tabs: an icon over its name; the one shown is lit on a pill. */
 @Composable
 private fun BottomNav(tab: Tab, onTab: (Tab) -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
+            .background(P.surface)
             .navigationBarsPadding()
-            .padding(horizontal = 6.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .padding(horizontal = 4.dp, vertical = 6.dp),
     ) {
         Tab.entries.forEach { t ->
             val selected = t == tab
             Column(
                 Modifier
-                    .clip(RoundedCornerShape(14.dp))
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
                     .clickable { onTab(t) }
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                    .padding(vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(
                     Modifier
-                        .size(5.dp)
+                        .size(width = 52.dp, height = 28.dp)
                         .clip(CircleShape)
-                        .background(if (selected) P.accent else Color.Transparent),
+                        .background(if (selected) P.accent.copy(alpha = if (P.isDark) 0.18f else 0.16f) else Color.Transparent),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(t.icon, contentDescription = null, tint = if (selected) P.accent else P.textFaint, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    stringResource(t.label),
+                    style = Type.label.copy(fontSize = 12.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal),
+                    color = if (selected) P.text else P.textDim,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(5.dp))
-                Text(stringResource(t.label).uppercase(), style = Type.labelBold, color = if (selected) P.text else P.textFaint, maxLines = 1)
             }
         }
     }
@@ -265,13 +294,13 @@ private fun ToastHost(modifier: Modifier = Modifier) {
             Modifier
                 .padding(horizontal = 24.dp)
                 .clip(CircleShape)
-                .background(if (P.isDark) Color(0xFF1E1E1E) else P.inverse)
+                .background(if (P.isDark) P.surfaceHigh else P.inverse)
                 .padding(horizontal = 16.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.size(7.dp).clip(CircleShape).background(P.accent))
             Spacer(Modifier.width(10.dp))
-            Text(last, style = Type.label, color = if (P.isDark) Color.White else P.onInverse, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(last, style = Type.label, color = if (P.isDark) P.text else P.onInverse, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }

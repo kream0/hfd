@@ -19,7 +19,7 @@ import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.progress.Stats
 import app.hfd.playback.PlaySession
-import app.hfd.ui.components.DotLoader
+import app.hfd.ui.components.Loader
 import app.hfd.ui.components.FadilaRow
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.PillButton
@@ -41,11 +41,11 @@ fun FadailScreen(onOpen: (String) -> Unit) {
     val c = content
     Box(Modifier.fillMaxSize().statusBarsPadding()) {
         if (c == null) {
-            DotLoader(Modifier.align(Alignment.Center))
+            Loader(Modifier.align(Alignment.Center))
             return@Box
         }
         LazyColumn(Modifier.fillMaxSize()) {
-            item { ScreenHeader(stringResource(R.string.tab_fadail).uppercase()) }
+            item { ScreenHeader(stringResource(R.string.tab_fadail)) }
             item {
                 Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 6.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     SectionLabel(stringResource(R.string.fadail_count, c.fadail.size), Modifier.weight(1f))

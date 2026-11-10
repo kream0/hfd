@@ -43,7 +43,7 @@ import app.hfd.core.fadail.Localized
 import app.hfd.core.playback.QuranListening
 import app.hfd.core.quran.AyahRef
 import app.hfd.core.quran.SuraMeta
-import app.hfd.ui.components.DotLoader
+import app.hfd.ui.components.Loader
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.IconBtn
 import app.hfd.ui.components.KeepScreenOn
@@ -124,7 +124,7 @@ fun SuraScreen(sura: Int, onOpen: (Int) -> Unit, onBack: () -> Unit) {
                 if (meta != null) {
                     Text(
                         stringResource(R.string.sura_title, meta.index, meta.tname),
-                        style = Type.title,
+                        style = Type.name,
                         color = P.text,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -133,15 +133,15 @@ fun SuraScreen(sura: Int, onOpen: (Int) -> Unit, onBack: () -> Unit) {
                 }
             }
             if (c == null || meta == null || f == null) {
-                Box(Modifier.fillMaxSize()) { DotLoader(Modifier.align(Alignment.Center)) }
+                Box(Modifier.fillMaxSize()) { Loader(Modifier.align(Alignment.Center)) }
                 return@Column
             }
             val bottomSpace = with(LocalDensity.current) { panelPx.toDp() } + 24.dp
             LazyColumn(Modifier.fillMaxSize().testTag("reading"), state = listState) {
                 item(key = "intro") {
                     Text(
-                        (stringResource(if (meta.type == "Medinan") R.string.sura_medinan else R.string.sura_meccan) + " · " +
-                            pluralStringResource(R.plurals.ayat_count, meta.ayas, meta.ayas)).uppercase(),
+                        stringResource(if (meta.type == "Medinan") R.string.sura_medinan else R.string.sura_meccan) + " · " +
+                            pluralStringResource(R.plurals.ayat_count, meta.ayas, meta.ayas),
                         style = Type.label,
                         color = P.textDim,
                         textAlign = TextAlign.Center,

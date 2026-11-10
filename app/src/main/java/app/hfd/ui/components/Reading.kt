@@ -2,6 +2,7 @@ package app.hfd.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.hfd.R
 import app.hfd.core.fadail.Fadila
 import app.hfd.core.quran.AyahRef
@@ -96,18 +98,28 @@ fun LazyListScope.readingItems(
     }
 }
 
+/** A sūra's heading as a muṣḥaf frames it: its name in a gold-lined cartouche, a star at each end. */
 @Composable
 private fun SuraHeader(index: Int, arabic: String, translit: String, range: String) {
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 22.dp, bottom = 6.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 22.dp, bottom = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("سورة $arabic", style = Type.arabicTitle, color = P.text, textAlign = TextAlign.Center)
-        Text(stringResource(R.string.sura_header, index, translit, range).uppercase(), style = Type.label, color = P.textDim)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            repeat(5) { Box(Modifier.size(3.dp).clip(CircleShape).background(P.textFaint)) }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(P.accent.copy(alpha = if (P.isDark) 0.07f else 0.09f))
+                .border(1.dp, P.accent.copy(alpha = 0.55f), RoundedCornerShape(18.dp))
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Star(Modifier.size(14.dp), outline = true)
+            Text("سورة $arabic", style = Type.arabicTitle, color = P.text, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+            Star(Modifier.size(14.dp), outline = true)
         }
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(R.string.sura_header, index, translit, range), style = Type.label, color = P.textDim, textAlign = TextAlign.Center)
     }
 }
 
@@ -145,7 +157,8 @@ fun AyahBlock(
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 2.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(if (highlighted) P.surfaceHigh else Color.Transparent)
+            .background(if (highlighted) P.surface else Color.Transparent)
+            .then(if (highlighted) Modifier.border(1.dp, P.accent.copy(alpha = 0.35f), RoundedCornerShape(18.dp)) else Modifier)
             .then(clickable)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
@@ -162,9 +175,9 @@ fun AyahBlock(
                     end = ayahEnd(ref.aya),
                 )
                 Column(Modifier.padding(top = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.size(6.dp).clip(CircleShape).background(if (highlighted) P.accent else Color.Transparent))
+                    Star(Modifier.size(8.dp), color = if (highlighted) P.accent else Color.Transparent)
                     Spacer(Modifier.height(4.dp))
-                    Text(ref.key, style = Type.label, color = if (highlighted) P.text else P.textFaint)
+                    Text(ref.key, style = Type.label.copy(fontSize = 12.sp), color = if (highlighted) P.accent else P.textFaint)
                     if (mark != null) {
                         Spacer(Modifier.height(6.dp))
                         mark()

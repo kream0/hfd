@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,6 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -129,10 +132,10 @@ fun OfflineChip(reciter: Reciter, refs: List<AyahRef>, modifier: Modifier = Modi
             Box(Modifier.size(7.dp).clip(CircleShape).background(color))
             Spacer(Modifier.width(6.dp))
         } else if (!offer) {
-            DotRing(progress, Modifier.size(12.dp), color = color, spinning = waiting)
+            ProgressRing(progress, Modifier.size(12.dp), color = color, spinning = waiting)
             Spacer(Modifier.width(6.dp))
         }
-        Text(label.uppercase(), style = Type.labelBold, color = color, maxLines = 1)
+        Text(label, style = Type.labelBold, color = color, maxLines = 1)
     }
 }
 
@@ -157,16 +160,23 @@ fun autoAudio(f: Fadila, s: AppSettings): List<AyahRef> {
 
 private const val LONG_PREFETCH = 10
 
+/** A listening setting under the player; [active]: other than its default, lit. */
 @Composable
-private fun SettingChip(text: String, onClick: () -> Unit, active: Boolean = false) {
-    Box(
+private fun SettingChip(text: String, onClick: () -> Unit, active: Boolean = false, icon: ImageVector? = null) {
+    Row(
         Modifier
             .clip(CircleShape)
-            .border(1.dp, if (active) P.accent else P.outline, CircleShape)
+            .background(if (active) P.accent.copy(alpha = 0.14f) else Color.Transparent)
+            .border(1.dp, if (active) P.accent.copy(alpha = 0.7f) else P.outline, CircleShape)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text.uppercase(), style = Type.labelBold, color = if (active) P.text else P.textDim, maxLines = 1)
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = if (active) P.accent else P.textDim, modifier = Modifier.size(15.dp))
+            if (text.isNotEmpty()) Spacer(Modifier.width(5.dp))
+        }
+        if (text.isNotEmpty()) Text(text, style = Type.labelBold, color = if (active) P.text else P.textDim, maxLines = 1)
     }
 }
 
@@ -187,9 +197,9 @@ fun PlayerPanel(f: Fadila, modifier: Modifier = Modifier) {
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             .background(P.surface)
-            .padding(top = 12.dp, bottom = 10.dp),
+            .padding(top = 14.dp, bottom = 12.dp),
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -205,11 +215,11 @@ fun PlayerPanel(f: Fadila, modifier: Modifier = Modifier) {
         if (isThis) {
             val progress by Graph.player.progress.collectAsStateWithLifecycle()
             val fraction = if (ui.durationMs > 0) progress.positionMs.toFloat() / ui.durationMs else 0f
-            DotProgressBar(
+            SeekBar(
                 progress = fraction,
                 onSeek = { p -> if (ui.durationMs > 0) Graph.player.seekTo((p * ui.durationMs).toLong()) },
-                modifier = Modifier.padding(horizontal = 18.dp),
-                height = 18.dp,
+                modifier = Modifier.padding(horizontal = 14.dp),
+                height = 22.dp,
             )
         } else {
             Spacer(Modifier.height(8.dp))
@@ -219,22 +229,23 @@ fun PlayerPanel(f: Fadila, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TransportButton(DotGlyphs.PREV, stringResource(R.string.player_previous), enabled = isThis) { Graph.player.previousAyah() }
+            TransportButton(Ic.Previous, stringResource(R.string.player_previous), enabled = isThis) { Graph.player.previousAyah() }
             Spacer(Modifier.width(22.dp))
             Box(
                 Modifier
                     .size(60.dp)
                     .clip(CircleShape)
-                    .background(P.inverse)
+                    .background(P.primary)
                     .clickable {
                         if (isThis) Graph.player.togglePlay() else Graph.player.play(sessionFor(f, title, range))
-                    },
+                    }
+                    .semantics { contentDescription = context.getString(if (playing) R.string.player_pause else R.string.player_play) },
                 contentAlignment = Alignment.Center,
             ) {
-                DotIcon(if (playing) DotGlyphs.PAUSE else DotGlyphs.PLAY, P.onInverse, Modifier.size(22.dp))
+                Icon(if (playing) Ic.Pause else Ic.Play, contentDescription = null, tint = P.onPrimary, modifier = Modifier.size(30.dp))
             }
             Spacer(Modifier.width(22.dp))
-            TransportButton(DotGlyphs.NEXT, stringResource(R.string.player_next), enabled = isThis) { Graph.player.nextAyah() }
+            TransportButton(Ic.Next, stringResource(R.string.player_next), enabled = isThis) { Graph.player.nextAyah() }
         }
         Spacer(Modifier.height(6.dp))
         Row(
@@ -248,7 +259,7 @@ fun PlayerPanel(f: Fadila, modifier: Modifier = Modifier) {
             SettingChip(settings.reciterInfo.short, { sheets(reciterSheet(context, settings.reciter)) })
             SettingChip(rangeLabel(f, range), { sheets(rangeSheet(context, f, title)) }, range.from != 0 || range.to != f.ayat.lastIndex)
             val sleep = if (isThis) np?.sleep else null
-            SettingChip(sleepLabel(sleep), { sheets(sleepSheet(context)) }, sleep != null)
+            SettingChip(sleepLabel(sleep), { sheets(sleepSheet(context)) }, sleep != null, icon = Ic.Moon)
         }
     }
 }
@@ -276,9 +287,9 @@ fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifie
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             .background(P.surface)
-            .padding(top = 12.dp, bottom = 10.dp),
+            .padding(top = 14.dp, bottom = 12.dp),
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -294,11 +305,11 @@ fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifie
         if (isThis) {
             val progress by Graph.player.progress.collectAsStateWithLifecycle()
             val fraction = if (ui.durationMs > 0) progress.positionMs.toFloat() / ui.durationMs else 0f
-            DotProgressBar(
+            SeekBar(
                 progress = fraction,
                 onSeek = { p -> if (ui.durationMs > 0) Graph.player.seekTo((p * ui.durationMs).toLong()) },
-                modifier = Modifier.padding(horizontal = 18.dp),
-                height = 18.dp,
+                modifier = Modifier.padding(horizontal = 14.dp),
+                height = 22.dp,
             )
         } else {
             Spacer(Modifier.height(8.dp))
@@ -308,21 +319,21 @@ fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifie
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TransportButton(DotGlyphs.PREV, stringResource(R.string.player_previous), enabled = isThis) { Graph.player.previousAyah() }
+            TransportButton(Ic.Previous, stringResource(R.string.player_previous), enabled = isThis) { Graph.player.previousAyah() }
             Spacer(Modifier.width(22.dp))
             Box(
                 Modifier
                     .size(60.dp)
                     .clip(CircleShape)
-                    .background(P.inverse)
+                    .background(P.primary)
                     .clickable { if (isThis) Graph.player.togglePlay() else Graph.playSura(sura, resumeAt) }
                     .semantics { contentDescription = context.getString(if (playing) R.string.player_pause else R.string.player_play) },
                 contentAlignment = Alignment.Center,
             ) {
-                DotIcon(if (playing) DotGlyphs.PAUSE else DotGlyphs.PLAY, P.onInverse, Modifier.size(22.dp))
+                Icon(if (playing) Ic.Pause else Ic.Play, contentDescription = null, tint = P.onPrimary, modifier = Modifier.size(30.dp))
             }
             Spacer(Modifier.width(22.dp))
-            TransportButton(DotGlyphs.NEXT, stringResource(R.string.player_next), enabled = isThis) { Graph.player.nextAyah() }
+            TransportButton(Ic.Next, stringResource(R.string.player_next), enabled = isThis) { Graph.player.nextAyah() }
         }
         Spacer(Modifier.height(6.dp))
         Row(
@@ -335,20 +346,20 @@ fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifie
             )
             SettingChip(speedLabel(settings.speed), { sheets(speedSheet(context)) }, settings.speed != 1f)
             val sleep = if (isThis) np?.sleep else null
-            SettingChip(sleepLabel(sleep), { sheets(sleepSheet(context, context.getString(R.string.sleep_end_sura))) }, sleep != null)
+            SettingChip(sleepLabel(sleep), { sheets(sleepSheet(context, context.getString(R.string.sleep_end_sura))) }, sleep != null, icon = Ic.Moon)
         }
     }
 }
 
 @Composable
 private fun sleepLabel(sleep: Sleep?): String = when (sleep) {
-    null -> "☾"
-    Sleep.EndOfFadila -> "☾ ⇥"
-    is Sleep.At -> "☾ " + ((sleep.endsAtMs - System.currentTimeMillis()) / 60_000 + 1).coerceAtLeast(1) + "′"
+    null -> ""
+    Sleep.EndOfFadila -> stringResource(R.string.sleep_chip_end)
+    is Sleep.At -> stringResource(R.string.sleep_minutes, ((sleep.endsAtMs - System.currentTimeMillis()) / 60_000 + 1).coerceAtLeast(1).toInt())
 }
 
 @Composable
-private fun TransportButton(glyph: List<String>, description: String, enabled: Boolean, onClick: () -> Unit) {
+private fun TransportButton(icon: ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .size(48.dp)
@@ -357,7 +368,7 @@ private fun TransportButton(glyph: List<String>, description: String, enabled: B
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        DotIcon(glyph, if (enabled) P.text else P.textFaint, Modifier.size(18.dp))
+        Icon(icon, contentDescription = null, tint = if (enabled) P.text else P.textFaint, modifier = Modifier.size(28.dp))
     }
 }
 
@@ -487,7 +498,7 @@ fun rangeSheet(context: android.content.Context, f: Fadila, title: String) = She
 @Composable
 private fun RangeStepper(label: String, ref: AyahRef, canMinus: Boolean, canPlus: Boolean, onMinus: () -> Unit, onPlus: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label.uppercase(), style = Type.label, color = P.textDim, modifier = Modifier.width(56.dp))
+        Text(label, style = Type.label, color = P.textDim, modifier = Modifier.width(56.dp))
         StepCircle("−", canMinus, onMinus)
         Text(ref.toString(), style = Type.clock, color = P.text, modifier = Modifier.padding(horizontal = 14.dp).width(84.dp), maxLines = 1)
         StepCircle("+", canPlus, onPlus)

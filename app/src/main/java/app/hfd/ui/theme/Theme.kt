@@ -22,7 +22,10 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.sp
 import app.hfd.R
 
-/** Nothing OS inspired palette: pure black / off-white, greys, one signal red. */
+/**
+ * The app's colours, after an illuminated muṣḥaf: a deep green night or warm paper, cream or ink
+ * for the text, gold for what is lit, and red kept for mistakes alone.
+ */
 @Immutable
 data class Palette(
     val isDark: Boolean,
@@ -33,8 +36,15 @@ data class Palette(
     val text: Color,
     val textDim: Color,
     val textFaint: Color,
+    /** What is lit: the selected tab, a progress, the āya being recited, ornaments. */
     val accent: Color,
-    val dotOff: Color,
+    /** The main action's button, and what is written on it. */
+    val primary: Color,
+    val onPrimary: Color,
+    /** Mistakes and failures only (a word recited wrongly, a download that failed). */
+    val error: Color,
+    /** The unfilled part of a ring, a bar or a calendar. */
+    val track: Color,
     val inverse: Color,
     val onInverse: Color,
     /** Offline-state scale: not saved → saving → saved. */
@@ -42,7 +52,7 @@ data class Palette(
     val saveOrange: Color,
     val saveYellow: Color,
     val saveGreen: Color,
-    /** The word being recited while listening: an electric blue, not red (red means a mistake). */
+    /** The word being recited while listening, and the word to say in Recite: a clear turquoise, apart from the text, the gold and the red. */
     val wordMark: Color,
 ) {
     /** Colour for a download that is [progress] (0..1) complete: red → orange → yellow → green. */
@@ -56,50 +66,52 @@ data class Palette(
     }
 }
 
-val NothingRed = Color(0xFFD71921)
-
+/** Night: deep green, cream text, gold. */
 val DarkPalette = Palette(
     isDark = true,
-    background = Color(0xFF000000),
-    surface = Color(0xFF0D0D0D),
-    surfaceHigh = Color(0xFF1A1A1A),
-    outline = Color(0xFF2B2B2B),
-    text = Color(0xFFFFFFFF),
-    textDim = Color(0xFF9B9B9B),
-    textFaint = Color(0xFF5A5A5A),
-    accent = NothingRed,
-    dotOff = Color(0xFF262626),
-    inverse = Color(0xFFFFFFFF),
-    onInverse = Color(0xFF000000),
-    saveRed = NothingRed,
-    saveOrange = Color(0xFFF26B1D),
-    saveYellow = Color(0xFFF5C518),
-    saveGreen = Color(0xFF35D07F),
-    wordMark = Color(0xFF29B6FF),
+    background = Color(0xFF0D1614),
+    surface = Color(0xFF14211D),
+    surfaceHigh = Color(0xFF1C2D27),
+    outline = Color(0xFF2B3E37),
+    text = Color(0xFFF2ECDD),
+    textDim = Color(0xFFA5B4AB),
+    textFaint = Color(0xFF66776E),
+    accent = Color(0xFFDDB869),
+    primary = Color(0xFFDDB869),
+    onPrimary = Color(0xFF1B1608),
+    error = Color(0xFFEF6B57),
+    track = Color(0xFF24352F),
+    inverse = Color(0xFFF2ECDD),
+    onInverse = Color(0xFF0D1614),
+    saveRed = Color(0xFFEF6B57),
+    saveOrange = Color(0xFFEE9A4D),
+    saveYellow = Color(0xFFE3C15A),
+    saveGreen = Color(0xFF55C993),
+    wordMark = Color(0xFF5FE0C6),
 )
 
-/**
- * The light theme: warm paper rather than white, with black ink and the same red, like a printed
- * muṣḥaf (no pure white anywhere).
- */
+/** Paper: warm cream (no pure white anywhere), green-black ink, deep green and ochre. */
 val LightPalette = Palette(
     isDark = false,
-    background = Color(0xFFEEE8DA),
-    surface = Color(0xFFF7F3EA),
-    surfaceHigh = Color(0xFFE3DCCB),
-    outline = Color(0xFFD2C8B4),
-    text = Color(0xFF1C1A16),
-    textDim = Color(0xFF6A6252),
-    textFaint = Color(0xFFA0957F),
-    accent = NothingRed,
-    dotOff = Color(0xFFD8CFBC),
-    inverse = Color(0xFF1C1A16),
-    onInverse = Color(0xFFF7F3EA),
-    saveRed = NothingRed,
-    saveOrange = Color(0xFFD9580B),
-    saveYellow = Color(0xFFB98B00),
-    saveGreen = Color(0xFF1E8A4C),
-    wordMark = Color(0xFF0A67C9),
+    background = Color(0xFFF4EEDF),
+    surface = Color(0xFFFBF7EC),
+    surfaceHigh = Color(0xFFE9E1CD),
+    outline = Color(0xFFD5CBB3),
+    text = Color(0xFF1D2924),
+    textDim = Color(0xFF5E6A61),
+    textFaint = Color(0xFF9AA091),
+    accent = Color(0xFFA6771F),
+    primary = Color(0xFF1F5B4A),
+    onPrimary = Color(0xFFFBF7EC),
+    error = Color(0xFFB93A2B),
+    track = Color(0xFFDDD4BE),
+    inverse = Color(0xFF1D2924),
+    onInverse = Color(0xFFFBF7EC),
+    saveRed = Color(0xFFB93A2B),
+    saveOrange = Color(0xFFC2651A),
+    saveYellow = Color(0xFFA6771F),
+    saveGreen = Color(0xFF237F5A),
+    wordMark = Color(0xFF0E7C72),
 )
 
 val LocalPalette = staticCompositionLocalOf { DarkPalette }
@@ -111,30 +123,41 @@ val P: Palette
     get() = LocalPalette.current
 
 object Fonts {
-    /** Dot-matrix display face (Doto, rounded dots) standing in for Nothing's NDot. */
-    val Dot = FontFamily(Font(R.font.doto_black, FontWeight.Black))
-    val Sans = FontFamily(
-        Font(R.font.space_grotesk_regular, FontWeight.Normal),
-        Font(R.font.space_grotesk_medium, FontWeight.Medium),
-        Font(R.font.space_grotesk_bold, FontWeight.Bold),
+    /**
+     * Source Serif 4 (OFL; tools/fonts/make.py): names and titles. It writes the transliteration's
+     * letters well (Faḍāʾil, Āl ʿImrān).
+     */
+    val Serif = FontFamily(
+        Font(R.font.serif_regular, FontWeight.Normal),
+        Font(R.font.serif_semibold, FontWeight.SemiBold),
     )
-    val Mono = FontFamily(
-        Font(R.font.space_mono_regular, FontWeight.Normal),
-        Font(R.font.space_mono_bold, FontWeight.Bold),
+    /** Source Sans 3 (OFL): everything else in Latin letters. */
+    val Sans = FontFamily(
+        Font(R.font.sans_regular, FontWeight.Normal),
+        Font(R.font.sans_medium, FontWeight.Medium),
+        Font(R.font.sans_semibold, FontWeight.SemiBold),
     )
     /** Amiri Quran (OFL): designed for Unicode Qur'an text such as Tanzil's Uthmani script. */
     val Quran = FontFamily(Font(R.font.amiri_quran, FontWeight.Normal))
 }
 
 object Type {
-    val display = TextStyle(fontFamily = Fonts.Dot, fontWeight = FontWeight.Black, fontSize = 34.sp, letterSpacing = 2.sp)
-    val displaySmall = TextStyle(fontFamily = Fonts.Dot, fontWeight = FontWeight.Black, fontSize = 22.sp, letterSpacing = 1.sp)
-    val clock = TextStyle(fontFamily = Fonts.Dot, fontWeight = FontWeight.Black, fontSize = 18.sp, letterSpacing = 1.sp)
-    val titleLarge = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 30.sp)
-    val title = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 20.sp)
-    val body = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp)
-    val label = TextStyle(fontFamily = Fonts.Mono, fontWeight = FontWeight.Normal, fontSize = 11.sp, letterSpacing = 1.2.sp)
-    val labelBold = label.copy(fontWeight = FontWeight.Bold)
+    /** A screen's title. */
+    val display = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.SemiBold, fontSize = 30.sp, lineHeight = 36.sp)
+    val displaySmall = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 28.sp)
+    /** Figures that change in place (an āya's number, minutes): of equal widths. */
+    val clock = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 24.sp, fontFeatureSettings = "tnum, lnum")
+    val titleLarge = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.SemiBold, fontSize = 25.sp, lineHeight = 31.sp)
+    /** A passage's or a sūra's name in a list. */
+    val name = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 22.sp)
+    val title = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 21.sp)
+    val body = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 21.sp)
+    /** Secondary lines under a title, descriptions. */
+    val label = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp, fontFeatureSettings = "lnum")
+    val labelBold = label.copy(fontWeight = FontWeight.SemiBold)
+    /** The small capitals above a section. */
+    val overline = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 1.1.sp)
+    val button = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 20.sp)
     val input = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.Medium, fontSize = 17.sp)
 
     /** Qur'an text: generous line height so ḥarakāt and waqf marks never collide. */
@@ -146,16 +169,17 @@ object Type {
         textAlign = TextAlign.Right,
     )
     val arabicTitle = TextStyle(fontFamily = Fonts.Quran, fontSize = 26.sp, lineHeight = 44.sp, textDirection = TextDirection.Rtl)
-    val translation = TextStyle(fontFamily = Fonts.Sans, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 21.sp)
+    /** The translation of the meanings, set as a book's text. */
+    val translation = TextStyle(fontFamily = Fonts.Serif, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp)
 }
 
-/** [dark]: black theme, otherwise paper (see [app.hfd.data.ThemeMode]). */
+/** [dark]: the night theme, otherwise paper (see [app.hfd.data.ThemeMode]). */
 @Composable
 fun HfdTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val p = if (dark) DarkPalette else LightPalette
     val scheme = if (dark) {
         darkColorScheme(
-            primary = p.accent, onPrimary = Color.White,
+            primary = p.primary, onPrimary = p.onPrimary,
             background = p.background, onBackground = p.text,
             surface = p.surface, onSurface = p.text,
             surfaceVariant = p.surfaceHigh, onSurfaceVariant = p.textDim,
@@ -163,7 +187,7 @@ fun HfdTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> U
         )
     } else {
         lightColorScheme(
-            primary = p.accent, onPrimary = Color.White,
+            primary = p.primary, onPrimary = p.onPrimary,
             background = p.background, onBackground = p.text,
             surface = p.surface, onSurface = p.text,
             surfaceVariant = p.surfaceHigh, onSurfaceVariant = p.textDim,

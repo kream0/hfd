@@ -12,7 +12,7 @@
     <string name="settings_diagnostics_body">Ce que le mode Réciter entend et fait, et les erreurs de lecture, partent au développeur pour corriger les problèmes. Jamais le son ni la position. Session %1$s</string>
     <string name="settings_recordings">Envoyer des enregistrements</string>
     <string name="settings_recordings_body">Seulement pour corriger Réciter : les premières récitations de chaque lancement de l’app partent au développeur en audio.</string>
-    <string name="settings_about_body">HFD %1$s\nApprendre à l\'oreille les versets aux mérites établis.\nPolices : Doto, Space Grotesk, Space Mono (OFL) · Lecture : AndroidX Media3</string>
+    <string name="settings_about_body">HFD %1$s\nApprendre à l\'oreille les versets aux mérites établis.\nPolices : Source Serif 4, Source Sans 3, Amiri Quran (OFL) · Lecture : AndroidX Media3</string>
 
     <string name="update_test_build">version de test n°%1$d</string>
     <string name="update_unreachable">GitHub injoignable</string>
@@ -67,14 +67,14 @@
     <string name="settings_appearance">Apparence</string>
     <string name="settings_theme">Thème</string>
     <string name="settings_language">Langue</string>
-    <string name="settings_language_body">La langue de l\'app. SYSTÈME suit celle du téléphone.</string>
-    <string name="language_system">SYSTÈME</string>
-    <string name="theme_system">SYSTÈME</string>
-    <string name="theme_dark">SOMBRE</string>
-    <string name="theme_paper">PAPIER</string>
-    <string name="theme_system_body">Suit le mode sombre du téléphone : noir quand il est activé, papier sinon.</string>
-    <string name="theme_dark_body">Noir, comme Nothing OS.</string>
-    <string name="theme_paper_body">Papier chaud au lieu du blanc, encre noire, comme un muṣḥaf imprimé.</string>
+    <string name="settings_language_body">La langue de l\'app. Système suit celle du téléphone.</string>
+    <string name="language_system">Système</string>
+    <string name="theme_system">Système</string>
+    <string name="theme_dark">Nuit</string>
+    <string name="theme_paper">Papier</string>
+    <string name="theme_system_body">Suit le mode sombre du téléphone : nuit quand il est activé, papier sinon.</string>
+    <string name="theme_dark_body">Vert profond, texte crème et or.</string>
+    <string name="theme_paper_body">Papier chaud au lieu du blanc, encre sombre, vert et ocre, comme un muṣḥaf imprimé.</string>
     <string name="settings_reading">Lecture</string>
     <string name="settings_arabic_size">Taille du texte coranique</string>
     <string name="settings_arabic_size_body">Taille du texte arabe dans la lecture</string>
@@ -293,4 +293,5 @@
     <string name="offline_save">Enregistrer hors ligne</string>
     <string name="quran_reciter_suras">%1$d sourates sur %2$d</string>
     <string name="quran_reciter_instead">%1$s (pas %2$s ici)</string>
+    <string name="sleep_chip_end">Arrêt à la fin</string>
 </resources>

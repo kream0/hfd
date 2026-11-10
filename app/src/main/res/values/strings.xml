@@ -13,7 +13,7 @@
     <string name="settings_diagnostics_body">What the Recite mode hears and does, and playback errors, go to the developer to fix problems. Never audio or location. Session %1$s</string>
     <string name="settings_recordings">Send recordings</string>
     <string name="settings_recordings_body">Only to debug Recite: the first few things you recite in each run of the app go to the developer as audio.</string>
-    <string name="settings_about_body">HFD %1$s\nLearn the verses with established virtues, by ear.\nFonts: Doto, Space Grotesk, Space Mono (OFL) · Playback: AndroidX Media3</string>
+    <string name="settings_about_body">HFD %1$s\nLearn the verses with established virtues, by ear.\nFonts: Source Serif 4, Source Sans 3, Amiri Quran (OFL) · Playback: AndroidX Media3</string>
 
     <string name="update_test_build">test build #%1$d</string>
     <string name="update_unreachable">Couldn\'t reach GitHub</string>
@@ -67,14 +67,14 @@
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_language">Language</string>
-    <string name="settings_language_body">The app\'s language. SYSTEM follows the phone\'s.</string>
-    <string name="language_system">SYSTEM</string>
-    <string name="theme_system">SYSTEM</string>
-    <string name="theme_dark">DARK</string>
-    <string name="theme_paper">PAPER</string>
-    <string name="theme_system_body">Follows the phone\'s dark mode: black when it\'s on, paper when it\'s off.</string>
-    <string name="theme_dark_body">Black, like Nothing OS.</string>
-    <string name="theme_paper_body">Warm paper instead of white, with black ink, like a printed muṣḥaf.</string>
+    <string name="settings_language_body">The app\'s language. System follows the phone\'s.</string>
+    <string name="language_system">System</string>
+    <string name="theme_system">System</string>
+    <string name="theme_dark">Night</string>
+    <string name="theme_paper">Paper</string>
+    <string name="theme_system_body">Follows the phone\'s dark mode: night when it\'s on, paper when it\'s off.</string>
+    <string name="theme_dark_body">Deep green, cream text and gold.</string>
+    <string name="theme_paper_body">Warm paper instead of white, dark ink, green and ochre, like a printed muṣḥaf.</string>
     <string name="settings_reading">Reading</string>
     <string name="settings_arabic_size">Qur\'an text size</string>
     <string name="settings_arabic_size_body">Size of the Arabic text in the reading view</string>
@@ -292,4 +292,5 @@
     <string name="offline_save">Save offline</string>
     <string name="quran_reciter_suras">%1$d sūras of %2$d</string>
     <string name="quran_reciter_instead">%1$s (not %2$s here)</string>
+    <string name="sleep_chip_end">Stops at the end</string>
 </resources>

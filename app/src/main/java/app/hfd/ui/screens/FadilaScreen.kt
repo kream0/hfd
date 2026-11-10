@@ -21,7 +21,7 @@ import app.hfd.core.progress.Stats
 import app.hfd.core.srs.Rating
 import app.hfd.ui.AppViewModel
 import app.hfd.ui.components.KeepScreenOn
-import app.hfd.ui.components.DotRing
+import app.hfd.ui.components.ProgressRing
 import app.hfd.ui.components.PillButton
 import app.hfd.ui.components.PillStyle
 import app.hfd.ui.components.StrengthRing
@@ -53,7 +53,7 @@ import app.hfd.core.fadail.Fadila
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.SubRange
 import app.hfd.ui.components.Chip
-import app.hfd.ui.components.DotLoader
+import app.hfd.ui.components.Loader
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.IconBtn
 import app.hfd.ui.components.LocalSheets
@@ -132,7 +132,7 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
                 IconBtn(Ic.Back, onBack, contentDescription = stringResource(R.string.detail_back))
             }
             if (c == null || f == null) {
-                Box(Modifier.fillMaxSize()) { DotLoader(Modifier.align(Alignment.Center)) }
+                Box(Modifier.fillMaxSize()) { Loader(Modifier.align(Alignment.Center)) }
                 return@Column
             }
             val title = f.title.text
@@ -225,7 +225,7 @@ private fun Intro(f: Fadila, app: AppViewModel) {
         Spacer(Modifier.height(4.dp))
         Text(f.title.text, style = Type.titleLarge, color = P.text, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(6.dp))
-        Text(rangesLabel(f).uppercase(), style = Type.label, color = P.textDim, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Text(rangesLabel(f), style = Type.label, color = P.textDim, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(12.dp))
         if (f.isLong) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Chip(stringResource(R.string.label_long)) }
@@ -234,13 +234,13 @@ private fun Intro(f: Fadila, app: AppViewModel) {
         // Memorisation: progress, next review, and the practice flows.
         Spacer(Modifier.height(16.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            DotRing(p.fraction, Modifier.size(34.dp), color = P.saveColor(p.fraction))
+            ProgressRing(p.fraction, Modifier.size(34.dp), color = P.saveColor(p.fraction))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.progress_memorised, p.memorised, p.total), style = Type.title, color = P.text)
                 p.nextDue?.let { d ->
                     Text(
-                        stringResource(R.string.progress_next_due, if (d <= now) stringResource(R.string.due_now) else stringResource(R.string.due_in, formatInterval(d - now, lang))).uppercase(),
+                        stringResource(R.string.progress_next_due, if (d <= now) stringResource(R.string.due_now) else stringResource(R.string.due_in, formatInterval(d - now, lang))),
                         style = Type.label,
                         color = P.textDim,
                     )

@@ -68,6 +68,7 @@ import app.hfd.ui.components.IconBtn
 import app.hfd.ui.components.PillButton
 import app.hfd.ui.components.PillStyle
 import app.hfd.ui.components.SectionLabel
+import app.hfd.ui.components.card
 import app.hfd.ui.text
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
@@ -108,7 +109,7 @@ fun ReciteScreen(onClose: () -> Unit) {
             IconBtn(Ic.Close, onClose, contentDescription = stringResource(R.string.close))
             Text(
                 f?.let { stringResource(R.string.recite_title, it.title.text) }.orEmpty(),
-                style = Type.title,
+                style = Type.name,
                 color = P.text,
                 maxLines = 1,
                 modifier = Modifier.weight(1f).padding(start = 4.dp),
@@ -132,7 +133,7 @@ fun ReciteScreen(onClose: () -> Unit) {
         }
         if (ui.muffled && ui.listening) {
             Text(
-                stringResource(R.string.recite_muffled), style = Type.label, color = P.accent, textAlign = TextAlign.Center,
+                stringResource(R.string.recite_muffled), style = Type.label, color = P.saveOrange, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
             )
         }
@@ -186,7 +187,7 @@ private fun statusLine(ui: ReciteUi, s: ReciteSession): String {
         ui.pending > 0 -> stringResource(R.string.recite_recognising)
         ui.listening -> stringResource(R.string.recite_listening)
         else -> stringResource(R.string.recite_position, next.first + 1, s.targets.size, s.targets[next.first].ref.toString())
-    }.uppercase()
+    }
 }
 
 /** Download card until the speech model is on the phone. */
@@ -195,14 +196,14 @@ private fun ModelCard(model: ModelState) {
     if (model is ModelState.Ready) return
     val mb = (Graph.speech.model.bytes / 1_000_000).toInt()
     Column(
-        Modifier.fillMaxWidth().padding(16.dp).clip(RoundedCornerShape(20.dp)).background(P.surface).padding(16.dp),
+        Modifier.fillMaxWidth().padding(16.dp).card().padding(16.dp),
     ) {
         Text(stringResource(R.string.recite_model_needed, mb), style = Type.body, color = P.text)
         Spacer(Modifier.height(10.dp))
         when (model) {
             is ModelState.Downloading -> Text(stringResource(R.string.recite_downloading, (model.progress * 100).toInt()), style = Type.labelBold, color = P.textDim)
             is ModelState.Failed -> {
-                Text(stringResource(R.string.recite_download_failed, model.message), style = Type.label, color = P.accent)
+                Text(stringResource(R.string.recite_download_failed, model.message), style = Type.label, color = P.error)
                 Spacer(Modifier.height(8.dp))
                 PillButton(stringResource(R.string.recite_download, mb), { Graph.speech.download() }, style = PillStyle.Accent)
             }
@@ -213,14 +214,13 @@ private fun ModelCard(model: ModelState) {
 
 /**
  * An āya's words, right to left: dim until recited (or hidden, without [showText]), then in full
- * colour; mistakes in red, hints in yellow. The next word to say is a little brighter, and
- * breathes while listening.
+ * colour; mistakes in red, hints in yellow. The word to say next is in the marker's turquoise.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, showText: Boolean, size: Int) {
     val style = Type.quran(size)
-    // The word to say next: electric blue on a pill of the same blue, as the word being recited
+    // The word to say next: turquoise on a pill of the same colour, as the word being recited
     // while listening (QuranText); hidden text keeps the pill only.
     val mark = P.wordMark
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
@@ -239,7 +239,7 @@ private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, 
                     else -> when (st) {
                         WordStatus.PENDING -> P.textFaint
                         WordStatus.OK -> P.text
-                        WordStatus.WRONG, WordStatus.MISSED -> P.accent
+                        WordStatus.WRONG, WordStatus.MISSED -> P.error
                         WordStatus.HINTED -> P.saveYellow
                     }
                 }
@@ -285,7 +285,7 @@ private fun Summary(results: List<AyahResult>, onAgain: () -> Unit, onClose: () 
             Text(
                 stringResource(R.string.recite_result, r.ref.toString(), r.words - r.mistakes.size, r.words),
                 style = Type.title,
-                color = if (r.mistakes.isEmpty()) P.text else P.accent,
+                color = if (r.mistakes.isEmpty()) P.text else P.error,
             )
             val words = targets.firstOrNull { it.ref == r.ref }?.words.orEmpty()
             if (r.mistakes.isNotEmpty()) {
@@ -311,7 +311,7 @@ private fun Summary(results: List<AyahResult>, onAgain: () -> Unit, onClose: () 
  */
 @Composable
 private fun Waveform(wave: Wave, modifier: Modifier = Modifier) {
-    val voice = P.text
+    val voice = P.accent
     val room = P.textFaint
     Canvas(modifier.fillMaxWidth().height(40.dp)) {
         val bar = 3.dp.toPx()
@@ -339,15 +339,15 @@ private fun MicButton(listening: Boolean, level: Float, enabled: Boolean, onClic
         Modifier
             .size(76.dp)
             .clip(CircleShape)
-            .border(ring, if (listening) P.accent else P.outline, CircleShape)
-            .background(if (listening) P.accent else if (enabled) P.inverse else P.surfaceHigh)
+            .border(ring, if (listening) P.accent.copy(alpha = 0.45f) else if (enabled) P.primary else P.outline, CircleShape)
+            .background(if (listening) P.accent else if (enabled) P.primary else P.surfaceHigh)
             .clickable(enabled = enabled || listening, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             if (listening) Ic.Stop else Ic.Mic,
             contentDescription = stringResource(if (listening) R.string.recite_stop else R.string.recite_start),
-            tint = if (listening) Color.White else if (enabled) P.onInverse else P.textFaint,
+            tint = if (listening) P.background else if (enabled) P.onPrimary else P.textFaint,
             modifier = Modifier.size(32.dp),
         )
     }

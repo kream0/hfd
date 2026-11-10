@@ -43,7 +43,7 @@ import app.hfd.data.Content
 import app.hfd.playback.PlaySession
 import app.hfd.ui.components.KeepScreenOn
 import app.hfd.ui.components.ChoiceButton
-import app.hfd.ui.components.DotLoader
+import app.hfd.ui.components.Loader
 import app.hfd.ui.components.EmptyState
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.IconBtn
@@ -104,14 +104,14 @@ fun LearnScreen(onClose: () -> Unit) {
             IconBtn(Ic.Close, close, contentDescription = stringResource(R.string.close))
             Text(
                 f?.let { stringResource(R.string.learn_title, it.title.text) }.orEmpty(),
-                style = Type.title,
+                style = Type.name,
                 color = P.text,
                 maxLines = 1,
                 modifier = Modifier.weight(1f).padding(start = 4.dp),
             )
         }
         if (c == null || s == null || f == null) {
-            Box(Modifier.fillMaxSize()) { DotLoader(Modifier.align(Alignment.Center)) }
+            Box(Modifier.fillMaxSize()) { Loader(Modifier.align(Alignment.Center)) }
             return@Column
         }
         LearnBody(c, f, s, settings.arabicSize, if (settings.showTranslation) translations[lang] else null, np, progress, settings.learnRepeats, close)
@@ -190,7 +190,7 @@ private fun LearnBody(
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(horizontal = 20.dp)) {
             Text(
-                stringResource(R.string.learn_position, s.index - s.from + 1, s.to - s.from + 1, ref.toString()).uppercase(),
+                stringResource(R.string.learn_position, s.index - s.from + 1, s.to - s.from + 1, ref.toString()),
                 style = Type.label,
                 color = P.textDim,
             )

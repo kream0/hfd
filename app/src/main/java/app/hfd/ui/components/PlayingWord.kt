@@ -83,8 +83,8 @@ fun rememberPlayingWord(): PlayingWord {
 
 /**
  * Qur'an [text] (and [end], the āya-end marker) with its [word] (counted as [Arabic.words] does) in
- * electric blue on a pill of the same blue: the word being recited while listening (red stays for
- * mistakes). The text itself is untouched.
+ * the marker's turquoise on a pill of the same colour: the word being recited while listening (red
+ * stays for mistakes). The text itself is untouched.
  */
 @Composable
 fun QuranText(

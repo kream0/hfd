@@ -44,7 +44,7 @@ import app.hfd.data.Content
 import app.hfd.data.TestState
 import app.hfd.playback.PlaySession
 import app.hfd.ui.components.KeepScreenOn
-import app.hfd.ui.components.DotLoader
+import app.hfd.ui.components.Loader
 import app.hfd.ui.components.EmptyState
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.IconBtn
@@ -110,14 +110,14 @@ fun ReviewScreen(testOf: String?, only: List<AyahRef>?, onClose: () -> Unit) {
             IconBtn(Ic.Close, close, contentDescription = stringResource(R.string.close))
             Text(
                 if (test != null) stringResource(R.string.test_title, test.title.text) else stringResource(R.string.review_title),
-                style = Type.title,
+                style = Type.name,
                 color = P.text,
                 maxLines = 1,
                 modifier = Modifier.weight(1f).padding(start = 4.dp),
             )
         }
         if (c == null || queue == null) {
-            Box(Modifier.fillMaxSize()) { DotLoader(Modifier.align(Alignment.Center)) }
+            Box(Modifier.fillMaxSize()) { Loader(Modifier.align(Alignment.Center)) }
             return@Column
         }
         if (queue.isEmpty()) {
@@ -183,7 +183,7 @@ private fun ReviewCard(
 
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(horizontal = 20.dp)) {
-            Text(stringResource(R.string.review_position, position + 1, total).uppercase(), style = Type.label, color = P.textDim)
+            Text(stringResource(R.string.review_position, position + 1, total), style = Type.label, color = P.textDim)
             Spacer(Modifier.height(8.dp))
             if (total <= 40) StepDots(total, position)
             Spacer(Modifier.height(12.dp))

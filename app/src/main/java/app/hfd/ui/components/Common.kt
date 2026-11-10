@@ -50,9 +50,7 @@ fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, actio
         modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.size(width = 120.dp, height = 60.dp)) {
-            DotGrid(Modifier.fillMaxSize(), color = P.outline, spacing = 12.dp, radius = 2.dp)
-        }
+        Star(Modifier.size(44.dp), color = P.outline, outline = true)
         Spacer(Modifier.height(18.dp))
         Text(title, style = Type.displaySmall, color = P.text, textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
