@@ -151,7 +151,7 @@ class SegmenterTest {
     @Test
     fun anUtteranceTheReadingsStallInIsEndedAtItsPause() {
         val s = Segmenter()
-        val stall = Stall()
+        val stall = Stall(Stall.AFTER)
         s.feedAll(frames(1.0, 0f))
         // 2 s of voice, 0.26 s of pause (too short to end the utterance), 3 s of voice.
         val audio = frames(2.0, 0.01f) + frames(0.26, 0f) + frames(3.0, 0.01f)
@@ -175,12 +175,12 @@ class SegmenterTest {
         assertEquals(listOf(1), rest.filter { it.final }.map { it.id })
         assertTrue("rest ${rest.last().seconds}", rest.last().seconds in 2.9f..3.9f)
         // Not while the readings move, nor at the utterance's whole reading.
-        assertEquals(null, Stall().heard(Utterance(0, FloatArray(Segmenter.RATE * 5), final = true, pauses = intArrayOf(32_000, 36_000)), 3))
+        assertEquals(null, Stall(Stall.AFTER).heard(Utterance(0, FloatArray(Segmenter.RATE * 5), final = true, pauses = intArrayOf(32_000, 36_000)), 3))
     }
 
     @Test
     fun aPauseWithLittleSaidAfterItIsNotAStall() {
-        val stall = Stall()
+        val stall = Stall(Stall.AFTER)
         val pauses = intArrayOf(2 * Segmenter.RATE, (2.3 * Segmenter.RATE).toInt())
         fun u(seconds: Double) = Utterance(4, FloatArray((seconds * Segmenter.RATE).toInt()), final = false, pauses = pauses)
         assertEquals(null, stall.heard(u(2.1), 7))

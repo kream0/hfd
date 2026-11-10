@@ -36,12 +36,11 @@ jobs:
         # job adds the parts up.
         shard: ['0/4', '1/4', '2/4', '3/4']
         config:
-          - { name: 'app: tiny, greedy, bonus 6, mistakes checked at 3 nats', key: app, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '20', stall: '1200', rules: '1', only: '' }
-          # 2.0.1: no utterance ended where the readings stall (Stall), and a word read right only
-          # while it was being said kept right against the whole reading (Follower.finalRules);
-          # then the stall rule alone. The rest as the app: the same run, so the same machines' noise.
-          - { name: '2.0.1: no stall rule, edge words kept right', key: v201, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '20', stall: '0', rules: '0', only: '' }
-          - { name: 'the stall rule alone', key: stallonly, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '20', stall: '1200', rules: '0', only: '' }
+          # The stall rule (Stall) and its companion (Follower.finalRules) are off since 2.1.0:
+          # 10 Nov, one run: this 94.5 % (wrong 42, missed 19, pending 52, red shown 9, swaps
+          # caught 4/5); stall '1200' 94.5 % (34, 6, 72, 19, 3/5); with rules '1' 93.9 % (47, 6,
+          # 72, 20, 4/5).
+          - { name: 'app: tiny, greedy, bonus 6, mistakes checked at 3 nats', key: app, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '20', stall: '0', rules: '0', only: '' }
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:

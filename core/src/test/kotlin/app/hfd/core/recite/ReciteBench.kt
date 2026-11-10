@@ -561,9 +561,9 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         /** Going back to an āya's start on a tie (Tracker.ayaStartTies); HFD_AYA_START_TIES=0: the latest end (1.15.5). */
         val AYA_START_TIES = System.getenv("HFD_AYA_START_TIES") != "0"
         /** A word the whole utterance's reading reads differently isn't kept right by earlier readings (Follower.finalRules); HFD_FINAL_RULES=0: it is (2.0.1). */
-        val FINAL_RULES = System.getenv("HFD_FINAL_RULES") != "0"
+        val FINAL_RULES = System.getenv("HFD_FINAL_RULES") == "1"
         /** Voice after a pause with no reading moving the recitation that ends the utterance there (Stall), in ms; HFD_STALL_MS=0: never (2.0.1). */
-        val STALL_AFTER = System.getenv("HFD_STALL_MS")?.toIntOrNull()?.let { it * Segmenter.RATE / 1000 } ?: Stall.AFTER
+        val STALL_AFTER = System.getenv("HFD_STALL_MS")?.toIntOrNull()?.let { it * Segmenter.RATE / 1000 } ?: Stall.DEFAULT
 
         /**
          * The phone's time for a reading of [seconds] of audio: with the encoder on the NPU (1.15.2,

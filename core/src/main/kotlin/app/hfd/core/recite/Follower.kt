@@ -18,7 +18,7 @@ class Follower(
     private val steersPrevious: Boolean = true,
     ayaStartTies: Boolean = true,
     /** A word only read right while it was the last one read isn't kept right against the whole utterance's reading ([keepStable]). */
-    private val finalRules: Boolean = true,
+    private val finalRules: Boolean = false,
 ) {
     val tracker = Tracker(targets, ayaStartTies)
     /** The utterance being followed, and the tracker before it. */

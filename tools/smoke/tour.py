@@ -163,11 +163,15 @@ def recite():
             failures.append("recite: the model didn't download")
             shot("recite-missing")
             return
-    mic = find(is_("Commencer à réciter"))
-    if not mic:
-        failures.append("recite: nothing to start it")
-        return
-    tap(mic)
+    heard = None
+    for _ in range(3):  # a tap as the download's card goes can be lost
+        mic = find(is_("Commencer à réciter"))
+        if not mic:
+            break
+        tap(mic)
+        heard = wait(lambda t: t.startswith("À l") or t.startswith("Chargement") or t.startswith("La reconnaissance vocale n"), 8)
+        if heard:
+            break
     heard = wait(lambda t: t.startswith("À l") or t.startswith("La reconnaissance vocale n"), 240)
     shot("reciting")
     listening = bool(heard) and find(starts("À l")) is not None

@@ -124,7 +124,10 @@
   "Cache not found"): the bench has no "OWNER'S SESSION" until new ones come. diag.yml's two-hourly
   schedule had not fired once in its first hours (10 Nov): don't count on it, read the diagnostics
   when the owner says they recited.
-- An utterance the readings stall in (2.1.0, `Stall`): at a short pause the model stops reading
+- An utterance the readings stall in (`Stall`, **off**: `Stall.DEFAULT` 0, with `Follower.finalRules`
+  false; the whole bench, 10 Nov, one run: as 2.0.1 94.5 % (wrong 42, missed 19, pending 52, red
+  shown 9, swaps caught 4/5); stall 1200 ms 94.5 % (34, 6, 72, 19, 3/5); with finalRules 93.9 %
+  (47, 6, 72, 20, 4/5): no gain overall, so 2.1.0 reads as 2.0.1). What it is: at a short pause the model stops reading
   while the reciter goes on, and the words after it wait for the utterance's end or are lost and
   counted as skipped (al-Fātiḥa by Muʿayqilī: 1:5, said in the utterance of 1:3–4, never read: 24
   of 29 words, lag p90 3.5 s). When readings stop moving the recitation while 1.2 s are said past
@@ -261,6 +264,44 @@
 - `LogReplayTest` replays the owner's logged readings (`core/src/test/resources/recite/*.log`,
   from `recite.partial` / `recite.heard`) through `Follower`: add a log there when a session goes
   wrong, to reproduce it without audio.
+
+## A CTC recogniser (10 Nov, the owner: test other models, don't hold back)
+- `mrmuminov/quran-fastconformer-ctc-ar` (Hugging Face, CC-BY-4.0, from NVIDIA's Arabic
+  FastConformer; 109 M parameters, int8 ONNX 174 MB; Uthmani characters with their signs in
+  Tanzil's order, 25 frames a second, blank last; no language model) read through the bench in
+  place of whisper.cpp (free greedy text, no steering; the check as a forced alignment's mean loss
+  per frame × 4): **97.2 %** (1995/2052; wrong 32, missed 13, pending 12; lag p90 0.4 s; swaps
+  caught 4/5; said again 165/209) against 94.5 %. Muffled, noisy and pocket cases gain most
+  (fatiha-husary-pocket 25/29, whisper: 0–1 words). Per āya, letters wrong: flow 2.0 % vs 4.5,
+  muffled 5.8 vs 40.4, noisy 3.3 vs 17.1, pocket 34.6 vs 91.2.
+- Speed (`ctcspeed.yml`, Neoverse N2, ONNX Runtime): 3 s of audio in 93 ms on one thread, 57 on
+  two; 20 s in 246 ms on four. whisper.cpp tiny on the same machine: 420–500 ms whatever the
+  length (1.4 s on one thread). So faster on a plain CPU than whisper on the owner's NPU (127 ms).
+- `:core` `ctc/` (outside the Recite bench's trigger paths): `Mel` (NeMo's front end; the filters
+  are Slaney's, computed, equal to the model's fb.bin), `Ctc.greedy`, `Ctc.forced` (Viterbi: per
+  word the mean loss, the worst character, its frames). `CtcTest` pins them to the reference
+  (numpy + ONNX Runtime) on the reference clip. The signs' order matters: compare with Tanzil's
+  text, never retyped Arabic.
+- **ONNX Runtime for Android phones home from 1.29.0** (a `TelemetryInitializer` provider, an
+  HTTP client, `mobile.events.data.microsoft.com/OneCollector` in the library; INTERNET in its
+  manifest). 1.28.0 is the last without: pin it, and check any other version's AAR the same way
+  before using it.
+- Gated and not used (their authors approve each request; never worked around):
+  `Quran-Lab/zipformer_p-arabic-v3` (phonemes, streaming, 73 MB) and `Muno459/fastconformer-quran`
+  (trained on phone recordings). Only the owner can ask for access.
+
+## The smoke test (10 Nov)
+- `.github/workflows/smoke.yml` (on pushes touching it, `tools/smoke/**`, the app's build files):
+  the release APK, plain and with R8 (`-Phfd.minify=true`, names kept), on one Android 16
+  emulator (Google's x86_64 image runs the arm64 libraries). `tools/smoke/tour.py` installs,
+  times cold starts (first frame; "fully drawn" = the text loaded, `ReportDrawnWhen`), walks the
+  screens by their French labels, plays a sūra, starts Recite, scrolls al-Baqara, and fails on a
+  crash or a lost class. Read the "SMOKE" lines; screenshots are the run's artifact (`gh api
+  …/artifacts/<id>/zip` works here). Runners differ too much to compare two jobs, and one
+  emulator's starts vary ±300 ms: R8's effect on the start can't be read there (plain 2.0–2.3 s,
+  R8 1.8–2.1 s). What R8 gives for sure: APK 19.8 → 12.4 MB, dex 27 → 4.7 MB.
+- Found there: the first start after an install showed in the phone's language (fixed:
+  `AppLocale.wrap` on every Android version).
 
 ## The Qur'an section and the look
 - Reciting a sūra (2.1.0): the sūra panel's Recite chip opens the passages' `ReciteSession` with

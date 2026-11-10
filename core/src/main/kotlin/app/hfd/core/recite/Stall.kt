@@ -8,10 +8,11 @@ package app.hfd.core.recite
  * voice better and a muffled one worse (its fragments are too short to make out). So only there:
  * when readings of an utterance stop moving the recitation while the voice goes on past a pause,
  * the utterance is ended at that pause ([Segmenter.splitAt]) and what follows starts a new one.
+ * Not in use ([DEFAULT]).
  */
 class Stall(
     /** Voice after the pause, with no reading moving the recitation, that makes it a stall (samples). */
-    private val after: Int = AFTER,
+    private val after: Int = DEFAULT,
 ) {
     private var id = -1
     private var position = -1
@@ -44,6 +45,12 @@ class Stall(
     companion object {
         /** 1.2 s said after a pause and not read: words wait that long for nothing. */
         const val AFTER = (1.2 * Segmenter.RATE).toInt()
+        /**
+         * Off (0): on the whole bench (10 Nov, 58 cases, one run) it read as many words right as
+         * without it (94.5 %), with fewer missed (19 → 6) and wrong (42 → 34) but more never
+         * decided (52 → 72), twice the red flashes shown (9 → 19) and a swapped word less caught.
+         */
+        const val DEFAULT = 0
         /** The reading that last moved the recitation had heard up to its end: the pause is at most this before it. */
         private const val BEFORE = (0.8 * Segmenter.RATE).toInt()
     }
