@@ -166,6 +166,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
     implementation(libs.work.runtime)
+    implementation(libs.profileinstaller)
     // QNN's runtime (Qualcomm, Maven Central): the encoder on the NPU. The same version as the
     // SDK that compiles it (npu.yml) and whose headers build.yml fetches.
     implementation(libs.qnn.runtime)

@@ -193,7 +193,13 @@ def recite(name="reciting"):
 def compile_with_profile():
     # What Android does on its own some hours after an install (a sideloaded app's profile is
     # written by ProfileInstaller on its first run, then compiled while the phone charges).
-    print(sh(f"am broadcast -a androidx.profileinstaller.action.INSTALL_PROFILE {PKG}/androidx.profileinstaller.ProfileInstallReceiver").strip()[-200:], flush=True)
+    sent = sh(f"am broadcast -a androidx.profileinstaller.action.INSTALL_PROFILE {PKG}/androidx.profileinstaller.ProfileInstallReceiver")
+    # 1: installed, 2: already there; 3: this Android's profile format is unknown to the library.
+    result = re.search(r"result=(\d+)", sent)
+    report["profile installer"] = int(result.group(1)) if result else None
+    print(f"SMOKE profile installer: result={report['profile installer']}", flush=True)
+    if report["profile installer"] not in (1, 2):
+        failures.append("the baseline profile wasn't installed")
     print(sh(f"cmd package compile -f -m speed-profile {PKG}", timeout=600).strip()[-200:], flush=True)
     status = re.search(r"\[status=([^\]]+)\]", sh(f"dumpsys package dexopt | grep -A3 '\\[{PKG}\\]'"))
     report["compiled"] = status.group(1) if status else None
