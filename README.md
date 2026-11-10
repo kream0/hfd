@@ -45,7 +45,10 @@ that the app updates itself from new releases. Android 8.0 or newer.
   at-Takāthur, al-ʿAṣr ×2, Quraysh, al-Māʿūn, al-Kawthar ×3, al-Kāfirūn ×4, an-Naṣr ×4,
   al-Ikhlāṣ ×3, al-Falaq, an-Nās, and the closing (al-Fātiḥa and al-Baqara 1–5). A `:core`
   test pins this list. The reference's recitation counts (×7…) are kept in the data only: the
-  app is for learning the passages, not for reciting the daily wird.
+  app is for learning the passages, not for reciting the daily wird. Any passage can be left
+  out of your own list (Settings, or the tune button of the passages' tab): it is then neither
+  listed, offered to learn, reviewed nor played with the others, and what was learnt of it is
+  kept for when it comes back.
 - **Narrations:** `fadail.json` still holds, per passage, the ḥadīth about it with verified
   sources and gradings, but since 1.6.0 the app doesn't show them: it is for memorising, and a
   passage shows its text and translation only.
@@ -103,10 +106,15 @@ that the app updates itself from new releases. Android 8.0 or newer.
 - **Review:** everything due today across all faḍāʾil, in muṣḥaf order: text hidden, recite,
   reveal (the āya plays), rate. A full test of a faḍīla is suggested once all its āyāt are
   memorised, then every 30 days.
-- **Recite** (Tarteel-style, on every passage): recite from memory into the microphone and the
+- **Recite** (Tarteel-style, on every passage, and on any sūra from the Qur'an section, from its
+  start or from the āya on screen; a sūra's recitation isn't part of the learning log): recite
+  from memory into the microphone and the
   app follows along live, lighting up each word once said (the text shows dim by default; the
   eye button hides it), marking skipped (struck through) and wrong words, with *Hint* for the
-  next word (counted as a mistake). The microphone is cut into utterances at short pauses
+  next word (counted as a mistake). The word being said stays in view down a long āya, an āya's
+  end turns gold once recited whole (red with a mistake), a bar counts the words and the
+  mistakes so far, and when two phrases in a row follow nothing the screen says to take it up
+  again at the marked word. The microphone is cut into utterances at short pauses
   (`:core` `Segmenter`); while one goes on, what was said so far is recognised again every
   second, each reading replacing the last (`Follower`), so the text keeps up without waiting
   for a pause. Speech is recognised **on the phone** by [whisper.cpp](https://github.com/ggml-org/whisper.cpp) with

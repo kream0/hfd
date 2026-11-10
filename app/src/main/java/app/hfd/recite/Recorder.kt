@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /** The last few seconds of the microphone, as bars: each one's level (0…1) and whether it was voice. */
 class Wave(val levels: FloatArray, val voiced: BooleanArray) {
@@ -64,6 +65,14 @@ class Recorder(private val audio: AudioManager? = null) {
 
     /** Drops what is being said and starts a new utterance (after a hint). */
     fun restart() = restartRequested.set(true)
+
+    private val splitRequested = AtomicReference<Pair<Int, Int>?>(null)
+
+    /**
+     * Ends utterance [id] (as [utterances] numbers them) at [sample], if it is still being heard:
+     * the recogniser stalled at a pause there ([app.hfd.core.recite.Stall]).
+     */
+    fun splitAt(id: Int, sample: Int) = splitRequested.set(id to sample)
 
     /** Opens and starts [source] (an Android audio source) on [device] if given, or null if the phone refuses. */
     @SuppressLint("MissingPermission")
@@ -146,7 +155,9 @@ class Recorder(private val audio: AudioManager? = null) {
                     capturedSize += n
                 }
                 if (restartRequested.getAndSet(false)) seg.restart()
-                val out = seg.feed(FloatArray(n) { frame[it] / 32768f })
+                val split = splitRequested.getAndSet(null)?.let { (id, sample) -> seg.splitAt(id, sample) }
+                if (split != null) Diag.log("mic.split", "id" to split.id, "seconds" to split.seconds)
+                val out = listOfNotNull(split) + seg.feed(FloatArray(n) { frame[it] / 32768f })
                 // −60 dB → 0, −15 dB → 1: phone microphones for speech recognition are quiet.
                 _level.value = ((dB(seg.rms) + 60f) / 45f).coerceIn(0f, 1f)
                 _speaking.value = seg.inSpeech

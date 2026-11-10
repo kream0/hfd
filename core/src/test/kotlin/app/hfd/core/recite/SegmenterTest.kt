@@ -142,4 +142,53 @@ class SegmenterTest {
         assertTrue((0..1).all { t.statusOf(1, it) == WordStatus.OK })
         assertTrue(t.done)
     }
+
+    /**
+     * The recogniser stalls at a short pause (Stall): a phrase, a quarter-second pause, a second
+     * phrase; the readings stay where the first phrase left the recitation while the second is
+     * said. The utterance is then ended at the pause, and the second phrase starts the next one.
+     */
+    @Test
+    fun anUtteranceTheReadingsStallInIsEndedAtItsPause() {
+        val s = Segmenter()
+        val stall = Stall()
+        s.feedAll(frames(1.0, 0f))
+        // 2 s of voice, 0.26 s of pause (too short to end the utterance), 3 s of voice.
+        val audio = frames(2.0, 0.01f) + frames(0.26, 0f) + frames(3.0, 0.01f)
+        val got = ArrayList<Utterance>()
+        var position = 0
+        var split: Utterance? = null
+        for (f in audio) {
+            for (u in s.feed(f)) {
+                got += u
+                // The readings follow the first phrase (word after word), then nothing more.
+                if (!u.final && u.seconds < 2.2f) position = (u.seconds * 2).toInt()
+                if (split == null) stall.heard(u, position)?.let { sample -> split = s.splitAt(u.id, sample) }
+            }
+        }
+        val first = split
+        assertTrue("not split", first != null)
+        // The first phrase, whole: its 2 s with the pre-roll before it, cut within the pause.
+        assertTrue("first ${first!!.seconds}", first.final && first.id == 0 && first.seconds in 2.2f..2.6f)
+        // The second phrase goes on as the next utterance, from the pause.
+        val rest = s.feedAll(frames(1.0, 0f))
+        assertEquals(listOf(1), rest.filter { it.final }.map { it.id })
+        assertTrue("rest ${rest.last().seconds}", rest.last().seconds in 2.9f..3.9f)
+        // Not while the readings move, nor at the utterance's whole reading.
+        assertEquals(null, Stall().heard(Utterance(0, FloatArray(Segmenter.RATE * 5), final = true, pauses = intArrayOf(32_000, 36_000)), 3))
+    }
+
+    @Test
+    fun aPauseWithLittleSaidAfterItIsNotAStall() {
+        val stall = Stall()
+        val pauses = intArrayOf(2 * Segmenter.RATE, (2.3 * Segmenter.RATE).toInt())
+        fun u(seconds: Double) = Utterance(4, FloatArray((seconds * Segmenter.RATE).toInt()), final = false, pauses = pauses)
+        assertEquals(null, stall.heard(u(2.1), 7))
+        // Half a second after the pause: the next word may only be on its way.
+        assertEquals(null, stall.heard(u(2.8), 7))
+        // 1.2 s after it and still nothing read: ended in the middle of the pause.
+        assertEquals((2.15 * Segmenter.RATE).toInt(), stall.heard(u(3.6), 7))
+        // A reading that moves the recitation starts the wait again.
+        assertEquals(null, stall.heard(u(3.9), 9))
+    }
 }

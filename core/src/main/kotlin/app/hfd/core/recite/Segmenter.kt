@@ -2,8 +2,12 @@ package app.hfd.core.recite
 
 import kotlin.math.sqrt
 
-/** Speech for the recogniser: utterance [id] so far ([final] false), or whole ([final] true). */
-class Utterance(val id: Int, val pcm: FloatArray, val final: Boolean) {
+/**
+ * Speech for the recogniser: utterance [id] so far ([final] false), or whole ([final] true).
+ * [pauses]: the short pauses within it (too short to end it), each as the samples where the voice
+ * stopped and where it took up again, one after the other ([Stall] looks at them).
+ */
+class Utterance(val id: Int, val pcm: FloatArray, val final: Boolean, val pauses: IntArray = IntArray(0)) {
     val seconds: Float get() = pcm.size / Segmenter.RATE.toFloat()
 }
 
@@ -40,6 +44,9 @@ class Segmenter(
     private val pre = ArrayDeque<FloatArray>()
     private val chunk = ArrayList<FloatArray>()
     private val chunkRms = ArrayList<Float>()
+    private val chunkVoiced = ArrayList<Boolean>()
+    /** The short pauses within the utterance so far: frames where the voice stopped, and took up again. */
+    private val pauses = ArrayList<Int>()
     private var silentFrames = 0
     private var voicedFrames = 0
     private var sizeAtPartial = 0
@@ -74,7 +81,12 @@ class Segmenter(
             return emptyList()
         }
         add(frame)
-        if (voiced) { silentFrames = 0; voicedFrames++ } else silentFrames++
+        if (voiced) {
+            // The voice again after a short pause: where it was (a frame is already in the chunk).
+            if (silentFrames >= INNER_PAUSE_FRAMES) { pauses += chunk.size - 1 - silentFrames; pauses += chunk.size - 1 }
+            silentFrames = 0
+            voicedFrames++
+        } else silentFrames++
         val n = chunk.size
         return when {
             silentFrames >= pauseFrames -> listOfNotNull(finish())
@@ -83,7 +95,7 @@ class Segmenter(
             n - sizeAtPartial >= partialFrames && voicedFrames > voicedAtPartial && voicedFrames >= MIN_VOICED_FRAMES -> {
                 sizeAtPartial = n
                 voicedAtPartial = voicedFrames
-                listOf(Utterance(id, join(chunk), final = false))
+                listOf(Utterance(id, join(chunk), final = false, pauses = IntArray(pauses.size) { pauses[it] * FRAME }))
             }
             else -> emptyList()
         }
@@ -101,6 +113,8 @@ class Segmenter(
         if (sizeAtPartial > 0) id++
         chunk.clear()
         chunkRms.clear()
+        chunkVoiced.clear()
+        pauses.clear()
         silentFrames = 0
         voicedFrames = 0
         sizeAtPartial = 0
@@ -110,12 +124,26 @@ class Segmenter(
     private fun add(frame: FloatArray) {
         chunk += frame
         chunkRms += rmsOf(frame)
+        chunkVoiced += voiced
+    }
+
+    /**
+     * Ends utterance [utterance] at [sample] (within one of its short pauses) if it is still the
+     * one being heard: what is before is handed over whole, and what is after goes on as the next
+     * utterance. For [Stall]: the recogniser stopped reading at that pause while the reciter went on.
+     */
+    fun splitAt(utterance: Int, sample: Int): Utterance? {
+        val q = sample / FRAME
+        if (!inSpeech || utterance != id || q < MIN_VOICED_FRAMES || q >= chunk.size) return null
+        return cut(q)
     }
 
     private fun finish(): Utterance? {
         val u = if (voicedFrames >= MIN_VOICED_FRAMES) Utterance(id++, join(chunk), final = true) else null
         chunk.clear()
         chunkRms.clear()
+        chunkVoiced.clear()
+        pauses.clear()
         inSpeech = false
         silentFrames = 0
         voicedFrames = 0
@@ -129,13 +157,23 @@ class Segmenter(
         val from = chunk.size - SPLIT_SEARCH_FRAMES
         var q = from
         for (i in from until chunk.size) if (chunkRms[i] < chunkRms[q]) q = i
+        return cut(q)
+    }
+
+    /** The utterance up to frame [q], whole; the frames from there go on as the next one. */
+    private fun cut(q: Int): Utterance {
         val u = Utterance(id++, join(chunk.subList(0, q)), final = true)
         val rest = chunk.subList(q, chunk.size).toList()
         val restRms = chunkRms.subList(q, chunkRms.size).toList()
+        val restVoiced = chunkVoiced.subList(q, chunkVoiced.size).toList()
         chunk.clear(); chunk += rest
         chunkRms.clear(); chunkRms += restRms
-        voicedFrames = rest.size
-        silentFrames = 0
+        chunkVoiced.clear(); chunkVoiced += restVoiced
+        // The pauses after the cut, counted from it.
+        val later = pauses.chunked(2).filter { it[0] >= q }.flatten().map { it - q }
+        pauses.clear(); pauses += later
+        voicedFrames = restVoiced.count { it }
+        silentFrames = restVoiced.size - 1 - restVoiced.indexOfLast { it }
         sizeAtPartial = 0
         voicedAtPartial = 0
         return u
@@ -150,6 +188,7 @@ class Segmenter(
         // longer stretch the model sometimes drops words it had heard).
         const val PAUSE_FRAMES = 20
         private const val SHORT_PAUSE_FRAMES = 10 // 200 ms, enough to end a long one
+        private const val INNER_PAUSE_FRAMES = 8 // 160 ms: a pause within an utterance (Stall may end it there)
         private const val MIN_VOICED_FRAMES = 10 // at least 200 ms of voice
         /**
          * The audio so far, handed over again after this much more (300 ms). The recogniser takes

@@ -13,6 +13,7 @@ import app.hfd.core.recite.Level
 import app.hfd.core.recite.MuffledWarning
 import app.hfd.core.recite.ReciteTarget
 import app.hfd.core.recite.Segmenter
+import app.hfd.core.recite.Stall
 import app.hfd.core.recite.Utterance
 import app.hfd.core.recite.WordStatus
 import app.hfd.diag.Diag
@@ -81,6 +82,9 @@ class ReciteSession(
     private val wake = Channel<Unit>(Channel.CONFLATED)
     /** The last utterance the recorder handed over. */
     private var lastId = -1
+    /** What the recorder's own numbering of utterances starts from, this time it listens. */
+    private var idBase = 0
+    private val stall = Stall()
     private var whisper: Whisper? = null
     private var listenJob: Job? = null
     private val consumer: Job
@@ -152,6 +156,12 @@ class ReciteSession(
                     }
                     if (u.final) _ui.value = _ui.value.copy(pending = (_ui.value.pending - 1).coerceAtLeast(0))
                     val moved = if (text != null) onHeard(u.id, text, u.final, check = u.takeIf { it.final }) else 0
+                    // The readings stopped moving the text while the voice went on past a pause: the
+                    // utterance is ended at that pause, and what was said after it read on its own.
+                    if (text != null) stall.heard(u, tracker.position)?.let { sample ->
+                        Diag.log("recite.stall", "id" to u.id, "at" to sample / Segmenter.RATE.toFloat(), "seconds" to u.seconds)
+                        recorder.splitAt(u.id - idBase, sample)
+                    }
                     if (u.final) {
                         val warn = muffledWarning.heard(muffled, u.pcm.size / Segmenter.RATE.toFloat(), moved)
                         if (warn != _ui.value.muffled) _ui.value = _ui.value.copy(muffled = warn)
@@ -209,7 +219,8 @@ class ReciteSession(
                 // The recorder counts utterances from 0 each time it starts: they go on after this
                 // session's (the follower ignores ids it is done with).
                 val base = lastId + 1
-                recorder.utterances(capture, headset()).collect { offer(Utterance(base + it.id, it.pcm, it.final)) }
+                idBase = base
+                recorder.utterances(capture, headset()).collect { offer(Utterance(base + it.id, it.pcm, it.final, it.pauses)) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

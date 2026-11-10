@@ -306,6 +306,9 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private var finals = 0
     private val muffledWarning = MuffledWarning()
     private var warned = 0
+    private val stall = Stall(STALL_AFTER)
+    private var segmenter: Segmenter? = null
+    private var splits = 0
     private val queue = ArrayDeque<Utterance>()
     private var inFlight: Triple<Utterance, String, Double>? = null
     /** A whole utterance's mistakes being read again (Follower.Check), and when that reading ends. */
@@ -329,6 +332,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             System.getenv("HFD_PARTIAL_FRAMES")?.toIntOrNull() ?: Segmenter.PARTIAL_FRAMES,
             System.getenv("HFD_PAUSE_FRAMES")?.toIntOrNull() ?: Segmenter.PAUSE_FRAMES,
         )
+        segmenter = seg
         val frame = Segmenter.FRAME
         var t = 0.0
         var i = 0
@@ -372,6 +376,13 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         inFlight?.let { (u, text, at) ->
             if (t >= at) {
                 val moved = follower.heard(u.id, text, u.final)
+                // As the app: an utterance the readings stall in is ended at its pause (Stall).
+                stall.heard(u, tracker.position)?.let { sample ->
+                    segmenter?.splitAt(u.id, sample)?.let { split ->
+                        splits++
+                        offer(split)
+                    }
+                }
                 if (u.final && muffledWarning.heard(Clarity.isMuffled(u.pcm), u.seconds, moved)) warned++
                 readings.append(String.format(Locale.US, "      %6.1f s  #%d %s %4.1f s: %s\n", at, u.id, if (u.final) "final  " else "partial", u.seconds, text))
                 inFlight = null
@@ -549,6 +560,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         val STEER_PREVIOUS = System.getenv("HFD_STEER_PREVIOUS") != "0"
         /** Going back to an āya's start on a tie (Tracker.ayaStartTies); HFD_AYA_START_TIES=0: the latest end (1.15.5). */
         val AYA_START_TIES = System.getenv("HFD_AYA_START_TIES") != "0"
+        /** Voice after a pause with no reading moving the recitation that ends the utterance there (Stall), in ms; HFD_STALL_MS=0: never (2.0.1). */
+        val STALL_AFTER = System.getenv("HFD_STALL_MS")?.toIntOrNull()?.let { it * Segmenter.RATE / 1000 } ?: Stall.AFTER
 
         /**
          * The phone's time for a reading of [seconds] of audio: with the encoder on the NPU (1.15.2,

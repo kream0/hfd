@@ -36,12 +36,12 @@ jobs:
         # job adds the parts up.
         shard: ['0/4', '1/4', '2/4', '3/4']
         config:
-          - { name: 'app: tiny, greedy, bonus 6, mistakes checked at 3 nats', key: app, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '20', only: '' }
-          # An utterance ended at a shorter pause (the model stops reading at a pause while the
-          # reciter goes on: the words after it wait for the utterance's end, or are lost), the rest
+          - { name: 'app: tiny, greedy, bonus 6, mistakes checked at 3 nats', key: app, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '20', stall: '1200', only: '' }
+          # 2.0.1: an utterance the readings stall in isn't ended at its pause (Stall), the rest
           # as the app: the same run, so the same machines' noise.
-          - { name: 'a 300 ms pause ends an utterance', key: pause15, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '15', only: '' }
-          - { name: 'a 240 ms pause ends an utterance', key: pause12, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '12', only: '' }
+          - { name: '2.0.1: no utterance ended where the readings stall', key: nostall, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '20', stall: '0', only: '' }
+          # Sooner: 0.8 s said past the pause.
+          - { name: 'a stall after 0.8 s', key: stall800, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '20', stall: '800', only: '' }
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -92,6 +92,7 @@ jobs:
           HFD_STEER_PREVIOUS: ${{ matrix.config.previous }}
           HFD_AYA_START_TIES: ${{ matrix.config.ties }}
           HFD_PAUSE_FRAMES: ${{ matrix.config.pause }}
+          HFD_STALL_MS: ${{ matrix.config.stall }}
           HFD_BIAS_BONUS: ${{ matrix.config.bonus }}
           HFD_BEAM: ${{ matrix.config.beam }}
           HFD_BENCH_ONLY: ${{ matrix.config.only }}

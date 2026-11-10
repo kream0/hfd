@@ -43,7 +43,8 @@
   `projectDir = /home/user/hfd/core`, the version catalog from `gradle/libs.versions.toml`, and
   the Maven Central mirror `https://maven-central.storage-download.googleapis.com/maven2` for
   plugins and dependencies; run with the system `gradle` (`gradle -q :core:test`).
-- The sandbox also can't reach tanzil.net, sunnah.com, dorar.net or everyayah.com.
+- The sandbox also can't reach tanzil.net, sunnah.com, dorar.net (everyayah.com and mp3quran.net
+  answer since 10 Nov: the Recite bench and align.py run here, below).
   `.github/workflows/data.yml` runs on pushes touching `tools/**` or `fadail.json`:
   `fetch` downloads the Tanzil text/metadata/translations and commits them (pull before your
   next push), `verify` prints what each cited source says (read it with `get_job_logs`).
@@ -116,7 +117,27 @@
   session there, from diag.yml's large-v3 transcription). `HFD_BENCH_ONLY` (a regular
   expression) picks cases for a quick local run (`gradle :core:cleanTest :core:test --tests
   …ReciteBench` with HFD_BENCH, HFD_DECODER, HFD_MODEL: whisper.cpp and the model build and
-  download here; EveryAyah doesn't, so use the reference clip or darkened copies of it).
+  download here, and since 10 Nov EveryAyah too: `prepare.py <dir>` makes the 58 cases in 2 min,
+  a 30 s case then runs in about a minute with `HFD_BENCH_FREE=0`; one gradle run at a time).
+  Iterate here, then confirm on CI (a full run takes over an hour).
+- The owner's kept sessions are gone from the Actions cache (not read for a week: 12 Oct → 10 Nov,
+  "Cache not found"): the bench has no "OWNER'S SESSION" until new ones come. diag.yml's two-hourly
+  schedule had not fired once in its first hours (10 Nov): don't count on it, read the diagnostics
+  when the owner says they recited.
+- An utterance the readings stall in (2.1.0, `Stall`): at a short pause the model stops reading
+  while the reciter goes on, and the words after it wait for the utterance's end or are lost and
+  counted as skipped (al-Fātiḥa by Muʿayqilī: 1:5, said in the utterance of 1:3–4, never read: 24
+  of 29 words, lag p90 3.5 s). When readings stop moving the recitation while 1.2 s are said past
+  a pause of 160 ms or more, the utterance is ended at that pause (`Segmenter.splitAt`; the app:
+  `recite.stall`, `mic.split`). Ending every utterance at a shorter pause was measured and not
+  kept (`HFD_PAUSE_FRAMES`, one run, 58 cases): 400 ms 94.5 % (wrong 42, missed 19, lag p90
+  0.3 s), 300 ms 93.8 % (47, 20, 0.1 s), 240 ms 93.1 % (63, 29, 0.1 s): words show sooner but a
+  muffled voice's fragments are too short to make out (al-Baqara 1–5 muffled: 33 → 28 of 36).
+  Tried here and not kept (10 Nov): the isti'ādha and basmala at a higher cost inside a sūra, and
+  a continuation's first letter left out at no cost in bias.h (ٱلْحَمْدُ still read أَمْ أُلِ after a
+  pause; free decoding reads it حَمْدُ). Wrong words on the bench are 2 % of āyāt' first words, 3 %
+  of middle ones, 7.5 % of last ones; a clean reciter's wrong word costs the check 7–13 nats, as
+  a real mistake does (9.7): the tolerance can't tell them apart.
 - Steered recognition (2 Oct): the app's tiny model misreads the owner's dark voice (large-v3
   reads the same sessions word for word). `app/src/main/cpp/bias.h` (one header for the JNI and
   the bench's decoder) filters whisper.cpp's logits: when the model's best token takes what was
@@ -236,6 +257,19 @@
   wrong, to reproduce it without audio.
 
 ## The Qur'an section and the look
+- Reciting a sūra (2.1.0): the sūra panel's Recite chip opens the passages' `ReciteSession` with
+  the sūra's id (`AppViewModel.reciteSura`, from its start or the āya at the top of the screen);
+  nothing goes to the progress log. `Tracker.stretch` looks for words said again among the last
+  `LOOK_BACK` words and the text's opening, not the whole text (a reading cost the text so far;
+  `TrackerLongTextTest` follows al-Baqara in under a second). Recite's screen keeps the marked word
+  in view (`BringIntoViewRequester`), and says "lost" after two whole utterances that followed
+  nothing (`ReciteUi.lost`).
+- The passages shown (2.1.0, the owner: "I should be able to remove some, al-Kahf for example"):
+  `AppSettings.hiddenFadail` → `Content.fadail` is the list shown, `allFadail` the reference list
+  (still pinned by `FadailDatasetTest`), `fadila(id)` only finds a shown one, `shownAyat` limits
+  what is due or counted as memorised (`Graph.hideFadila`, `FadailEditScreen`). Progress is kept.
+- A plan item's id holds its place in the plan (`2:255:1#1@12`, 2.1.0): playing every passage, an
+  āya comes twice (al-Kahf's end, the closing), and its first place was taken: the plan never ended.
 - Qur'an section (1.16.0): a sūra is a `PlaySession` whose id is `QuranListening.id(n)` ("sura:2");
   it plays through once whatever the passages' settings, and `PlaybackEngine.onEnded` loads the
   next (`continueQuran`; next / previous cross sūras). Its reciter is `AppSettings.quranChoice`;

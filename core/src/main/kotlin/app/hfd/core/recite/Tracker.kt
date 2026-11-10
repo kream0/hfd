@@ -51,6 +51,14 @@ class Tracker(
     private val starts: IntArray = IntArray(targets.size + 1).also { s ->
         for (i in targets.indices) s[i + 1] = s[i] + targets[i].words.size
     }
+    /** Whether a word starts an āya (or is the end of the text). */
+    private val ayaStart: BooleanArray = BooleanArray(flat.size + 1).also { a -> for (i in starts) a[i] = true }
+
+    /** A table of [cols] columns over a shared array. */
+    private class Grid(val cells: IntArray, val cols: Int) {
+        operator fun get(i: Int, j: Int): Int = cells[i * cols + j]
+        operator fun set(i: Int, j: Int, v: Int) { cells[i * cols + j] = v }
+    }
 
     val status: Array<WordStatus> = Array(flat.size) { WordStatus.PENDING }
 
@@ -177,7 +185,7 @@ class Tracker(
         // Ending after the last word recited (or on it, once said): the voice is at the position.
         if (s.lastWord >= position - (if (final) 1 else 0)) return null
         // An āya said again from its start shows from its first word (a phrase anywhere: three words).
-        val least = if (starts.contains(s.first)) VOICE_START_LETTERS else VOICE_MIN_LETTERS
+        val least = if (ayaStart[s.first]) VOICE_START_LETTERS else VOICE_MIN_LETTERS
         if (s.same < least || s.same < JUMP_MATCH_FRACTION * s.letters || s.same < JUMP_MATCH_FRACTION * s.span) return null
         // A word still being said (the chunk ends inside it) is where the voice is.
         return s.cut ?: if (final) s.lastWord + 1 else s.lastWord
@@ -196,6 +204,8 @@ class Tracker(
         val owner: List<Int>, val matched: BooleanArray, val touched: BooleanArray,
         /** The last word, if the chunk ends inside it (its last letters not reached). */
         val cut: Int?,
+        /** The alignment's score. */
+        val score: Int,
     )
 
     /**
@@ -205,28 +215,48 @@ class Tracker(
      * same as لَآ إِلَٰهَ إِلَّا after it, and the owner saying 3:2 again went back onto إِلَّا (12 Oct).
      */
     private fun stretch(hWords: List<String>): Stretch? {
+        val end = minOf(flat.size, position + maxOf(MIN_WINDOW, hWords.size * 3))
+        // On a long text (a whole sūra) not all of it at every reading: from the āya [LOOK_BACK]
+        // words back, and the text's opening (started over from the top). The better match of the
+        // two; equal, the nearer.
+        val from = if (position > LOOK_BACK) starts[locate(position - LOOK_BACK).first] else 0
+        val near = stretchIn(hWords, from, end)
+        if (from == 0) return near
+        val head = stretchIn(hWords, 0, minOf(from, HEAD_WORDS))
+        return if (head != null && (near == null || head.score > near.score)) head else near
+    }
+
+    /** The alignment table, kept from a reading to the next (one every 0.3 s, over hundreds of letters). */
+    private var table = IntArray(0)
+
+    private fun table(cells: Int): IntArray {
+        if (table.size < cells) table = IntArray(cells)
+        return table
+    }
+
+    /** [stretch] among words [from] until [end]. */
+    private fun stretchIn(hWords: List<String>, from: Int, end: Int): Stretch? {
         val h = hWords.joinToString("")
         val e = StringBuilder()
         val owner = ArrayList<Int>()
-        val end = minOf(flat.size, position + maxOf(MIN_WINDOW, hWords.size * 3))
-        for (w in 0 until end) {
+        for (w in from until end) {
             e.append(skel[w])
             repeat(skel[w].length) { owner += w }
         }
         val n = e.length
         val m = h.length
         if (n == 0 || m == 0) return null
-        val d = Array(n + 1) { IntArray(m + 1) }
-        for (j in 0..m) d[0][j] = -j * GAP
+        val d = Grid(table((n + 1) * (m + 1)), m + 1)
+        for (j in 0..m) d[0, j] = -j * GAP
         for (i in 1..n) {
-            d[i][0] = 0
+            d[i, 0] = 0
             for (j in 1..m) {
-                val diag = d[i - 1][j - 1] + if (e[i - 1] == h[j - 1]) MATCH else -MISMATCH
-                d[i][j] = maxOf(diag, d[i - 1][j] - GAP, d[i][j - 1] - GAP)
+                val diag = d[i - 1, j - 1] + if (e[i - 1] == h[j - 1]) MATCH else -MISMATCH
+                d[i, j] = maxOf(diag, d[i - 1, j] - GAP, d[i, j - 1] - GAP)
             }
         }
         var best = 1
-        for (i in 1..n) if (d[i][m] >= d[best][m]) best = i
+        for (i in 1..n) if (d[i, m] >= d[best, m]) best = i
         /** Where the stretch ending at letter [end] starts (a letter index). */
         fun startOf(end: Int): Int {
             var i = end
@@ -234,16 +264,16 @@ class Tracker(
             while (i > 0 && j > 0) {
                 val eq = e[i - 1] == h[j - 1]
                 when {
-                    d[i][j] == d[i - 1][j - 1] + (if (eq) MATCH else -MISMATCH) -> { i--; j-- }
-                    d[i][j] == d[i - 1][j] - GAP -> i--
+                    d[i, j] == d[i - 1, j - 1] + (if (eq) MATCH else -MISMATCH) -> { i--; j-- }
+                    d[i, j] == d[i - 1, j] - GAP -> i--
                     else -> j--
                 }
             }
             return i
         }
-        fun startsAya(end: Int) = startOf(end).let { it < n && starts.contains(owner[it]) }
-        if (ayaStartTies && d[best][m] > 0 && !startsAya(best)) {
-            for (i in best - 1 downTo 1) if (d[i][m] == d[best][m] && startsAya(i)) { best = i; break }
+        fun startsAya(end: Int) = startOf(end).let { it < n && ayaStart[owner[it]] }
+        if (ayaStartTies && d[best, m] > 0 && !startsAya(best)) {
+            for (i in best - 1 downTo 1) if (d[i, m] == d[best, m] && startsAya(i)) { best = i; break }
         }
         val matched = BooleanArray(n)
         val touched = BooleanArray(n)
@@ -253,19 +283,19 @@ class Tracker(
         while (i > 0 && j > 0) {
             val eq = e[i - 1] == h[j - 1]
             when {
-                d[i][j] == d[i - 1][j - 1] + (if (eq) MATCH else -MISMATCH) -> {
+                d[i, j] == d[i - 1, j - 1] + (if (eq) MATCH else -MISMATCH) -> {
                     touched[i - 1] = true
                     if (eq) { matched[i - 1] = true; same++ }
                     i--; j--
                 }
-                d[i][j] == d[i - 1][j] - GAP -> i--
+                d[i, j] == d[i - 1, j] - GAP -> i--
                 else -> j--
             }
         }
         val span = best - i
         if (span <= 0) return null
         val cut = owner[best - 1].takeIf { best < n && owner[best] == it }
-        return Stretch(owner[i], owner[best - 1], same, span, m, owner, matched, touched, cut)
+        return Stretch(owner[i], owner[best - 1], same, span, m, owner, matched, touched, cut, d[best, m])
     }
 
     private fun statusOf(idx: List<Int>, matched: BooleanArray, touched: BooleanArray, w: Int): WordStatus {
@@ -297,13 +327,13 @@ class Tracker(
         // shows up as a gap rather than the chunk being cut short against a wrong word; passing
         // over words before the chunk's start costs a quarter of a gap (nothing for those already
         // recited).
-        val d = Array(n + 1) { IntArray(m + 1) }
-        for (j in 0..m) d[0][j] = -j * GAP
+        val d = Grid(table((n + 1) * (m + 1)), m + 1)
+        for (j in 0..m) d[0, j] = -j * GAP
         for (i in 1..n) {
-            d[i][0] = d[i - 1][0] - if (i - 1 < p) 0 else SKIP
+            d[i, 0] = d[i - 1, 0] - if (i - 1 < p) 0 else SKIP
             for (j in 1..m) {
-                val diag = d[i - 1][j - 1] + if (e[i - 1] == h[j - 1]) MATCH else -MISMATCH
-                d[i][j] = maxOf(diag, d[i - 1][j] - GAP, d[i][j - 1] - GAP)
+                val diag = d[i - 1, j - 1] + if (e[i - 1] == h[j - 1]) MATCH else -MISMATCH
+                d[i, j] = maxOf(diag, d[i - 1, j] - GAP, d[i, j - 1] - GAP)
             }
         }
         // The best end among the words not recited yet; on a tie the fewest words, never running
@@ -312,10 +342,10 @@ class Tracker(
         // isn't enough: al-Fātiḥa's 1:3 (ٱلرَّحْمَٰنِ ٱلرَّحِيمِ) is also 1:1's end, and heard with a
         // letter wrong after 1:2 it is 1:3 (Recite bench, 2 Oct).
         var best = -1
-        for (i in p + 1..n) if (best < 0 || d[i][m] > d[best][m]) best = i
-        var again = d[0][m]
-        for (i in 1..p) again = maxOf(again, d[i][m])
-        if (best < 0 || d[best][m] + MATCH <= again) return 0
+        for (i in p + 1..n) if (best < 0 || d[i, m] > d[best, m]) best = i
+        var again = d[0, m]
+        for (i in 1..p) again = maxOf(again, d[i, m])
+        if (best < 0 || d[best, m] + MATCH <= again) return 0
         // Trace back: which expected letters were matched, substituted, or skipped.
         val matched = BooleanArray(n)
         val touched = BooleanArray(n)
@@ -325,12 +355,12 @@ class Tracker(
         while (i > 0 && j > 0) {
             val eq = e[i - 1] == h[j - 1]
             when {
-                d[i][j] == d[i - 1][j - 1] + (if (eq) MATCH else -MISMATCH) -> {
+                d[i, j] == d[i - 1, j - 1] + (if (eq) MATCH else -MISMATCH) -> {
                     touched[i - 1] = true
                     if (eq) { matched[i - 1] = true; same++ }
                     i--; j--
                 }
-                d[i][j] == d[i - 1][j] - GAP -> i--
+                d[i, j] == d[i - 1, j] - GAP -> i--
                 else -> j--
             }
         }
@@ -372,6 +402,9 @@ class Tracker(
         const val SKIP_WORDS = 40
         /** Words already recited that a chunk may say again first. */
         const val BACK_WORDS = 8
+        /** Words before the position a chunk said again is looked for among (from their āya's start), and at the text's opening. */
+        const val LOOK_BACK = 250
+        const val HEAD_WORDS = 60
         /** Letters a chunk must match to take the recitation further back than [BACK_WORDS]. */
         const val BACK_MIN_LETTERS = 8
         /** Letters a chunk saying words already recited must match for the next-word marker to go there ([voiceAt]). */
