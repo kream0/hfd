@@ -270,7 +270,7 @@ fun PlayerPanel(f: Fadila, modifier: Modifier = Modifier) {
  * the section's reciter and the timer. No repeats nor pauses: a sūra plays through, then the next.
  */
 @Composable
-fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifier) {
+fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifier, onRecite: (() -> Unit)? = null) {
     val sheets = LocalSheets.current
     val context = LocalContext.current
     val np by Graph.nowPlaying.collectAsStateWithLifecycle()
@@ -348,6 +348,8 @@ fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifie
             SettingChip(speedLabel(settings.speed), { sheets(speedSheet(context)) }, settings.speed != 1f)
             val sleep = if (isThis) np?.sleep else null
             SettingChip(sleepLabel(sleep), { sheets(sleepSheet(context, context.getString(R.string.sleep_end_sura))) }, sleep != null, icon = Ic.Moon)
+            // Reciting the sūra aloud, the microphone following (Recite).
+            if (onRecite != null) SettingChip(stringResource(R.string.recite), onRecite, icon = Ic.Mic)
         }
     }
 }

@@ -277,6 +277,8 @@
         <item quantity="other">%1$d / %2$d words · %3$d mistakes</item>
     </plurals>
     <string name="recite_total">%1$d / %2$d words right · %3$d %%</string>
+    <string name="recite_from_aya">From āya %1$d</string>
+    <string name="recite_from_start">From the start of the sūra</string>
     <string name="recite_again">Again</string>
     <string name="stats_recited">Recited aloud</string>
     <string name="stats_recited_value">%1$d recitations · %2$d%% of words right</string>

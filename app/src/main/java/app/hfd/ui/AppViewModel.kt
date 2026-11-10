@@ -117,6 +117,14 @@ class AppViewModel : ViewModel() {
         flow = PracticeFlow.Recite(f.id)
     }
 
+    /** Recite sūra [sura] of the Qur'an section aloud, from āya [from] to its end. */
+    fun reciteSura(sura: Int, from: Int = 1) {
+        val meta = Graph.content.content.value?.suras?.getOrNull(sura - 1) ?: return
+        val id = QuranListening.id(sura)
+        Graph.openRecite(id, QuranListening.ayat(sura, meta.ayas).drop((from - 1).coerceIn(0, meta.ayas - 1)))
+        flow = PracticeFlow.Recite(id)
+    }
+
     fun test(f: Fadila) {
         startTest(f)
         flow = PracticeFlow.Test(f.id)

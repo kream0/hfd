@@ -85,16 +85,24 @@ object Graph {
     /** The recitation in progress (Recite mode), if any. */
     val recite: StateFlow<ReciteSession?> = _recite.asStateFlow()
 
-    /** Starts reciting [refs] of passage [fadilaId] aloud; replaces any recitation in progress. */
+    /**
+     * Starts reciting [refs] aloud: of passage [fadilaId], or of a sūra of the Qur'an section (its
+     * id there, [QuranListening.id]). Replaces any recitation in progress. A passage's āyāt go to
+     * the progress log with their mistakes; a sūra's don't: the Qur'an section is outside what is
+     * being learnt (as listening there is).
+     */
     fun openRecite(fadilaId: String, refs: List<AyahRef>) {
         closeRecite()
         val c = content.content.value ?: return
+        // What plays would be heard by the microphone.
+        if (player.state.value.playWhenReady) player.pause()
+        val learnt = QuranListening.suraOf(fadilaId) == null
         _recite.value = ReciteSession(
             fadilaId,
             ReciteSession.targets(refs) { c.quran.text(it) },
             scope,
             model = { (speech.state.value as? ModelState.Ready)?.file },
-            record = { progress.record(it) },
+            record = { if (learnt) progress.record(it) },
         )
     }
 

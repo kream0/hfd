@@ -203,7 +203,8 @@ class ReciteSession(
                     // e.g. session-imran-opening-3_1-3_9-213243 (several in a run don't overwrite each other).
                     val range = listOfNotNull(targets.firstOrNull()?.ref, targets.lastOrNull()?.ref).joinToString("-") { "${it.sura}_${it.aya}" }
                     val time = java.text.SimpleDateFormat("HHmmss", java.util.Locale.ROOT).format(java.util.Date())
-                    Diag.attach("session-$fadilaId-$range-$time", pcm, true)
+                    // (A sūra's id, "sura:18", without its colon: a file's name.)
+                    Diag.attach("session-${fadilaId.replace(":", "")}-$range-$time", pcm, true)
                 } else null
                 // The recorder counts utterances from 0 each time it starts: they go on after this
                 // session's (the follower ignores ids it is done with).

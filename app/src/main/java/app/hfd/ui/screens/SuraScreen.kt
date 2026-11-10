@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -44,6 +45,9 @@ import app.hfd.core.playback.QuranListening
 import app.hfd.core.quran.AyahRef
 import app.hfd.core.quran.SuraMeta
 import app.hfd.ui.components.Loader
+import app.hfd.ui.components.LocalSheets
+import app.hfd.ui.components.SheetAction
+import app.hfd.ui.components.SheetSpec
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.IconBtn
 import app.hfd.ui.components.KeepScreenOn
@@ -67,7 +71,7 @@ private fun asPassage(s: SuraMeta): Fadila =
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun SuraScreen(sura: Int, onOpen: (Int) -> Unit, onBack: () -> Unit) {
+fun SuraScreen(sura: Int, onOpen: (Int) -> Unit, onRecite: (from: Int) -> Unit, onBack: () -> Unit) {
     KeepScreenOn()
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
@@ -171,7 +175,29 @@ fun SuraScreen(sura: Int, onOpen: (Int) -> Unit, onBack: () -> Unit) {
             }
         }
         if (f != null) {
-            SuraPlayerPanel(sura, f.ayat, Modifier.align(Alignment.BottomCenter).onSizeChanged { panelPx = it.height })
+            val sheets = LocalSheets.current
+            val context = LocalContext.current
+            SuraPlayerPanel(
+                sura, f.ayat, Modifier.align(Alignment.BottomCenter).onSizeChanged { panelPx = it.height },
+                // Reciting it aloud, checked by the microphone: from its start, or from the āya at the
+                // top of the screen (the first one wholly under the title).
+                onRecite = {
+                    val top = listState.layoutInfo.let { info ->
+                        info.visibleItemsInfo.firstOrNull { it.offset >= info.viewportStartOffset && (it.key as? String)?.startsWith("a-") == true }
+                            ?.let { AyahRef.parse((it.key as String).removePrefix("a-"))?.aya }
+                    }
+                    if (top == null || top <= 1) onRecite(1)
+                    else sheets(
+                        SheetSpec(
+                            title = context.getString(R.string.recite),
+                            actions = listOf(
+                                SheetAction(context.getString(R.string.recite_from_aya, top), Ic.Mic) { onRecite(top) },
+                                SheetAction(context.getString(R.string.recite_from_start)) { onRecite(1) },
+                            ),
+                        ),
+                    )
+                },
+            )
         }
     }
 }
