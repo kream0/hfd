@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.0
+Recite follows better and shows more, any sūra can be recited, and the list of passages is yours to trim.
+- **Recite, following.** After a short pause the recogniser sometimes stopped reading while you went on: the words after it showed late, or were lost and counted as skipped. When that happens the phrase is now cut at the pause and what follows is read on its own (on the test bench, an āya lost that way is followed again, and its words show 3 s sooner). A word that was only heard right while you were still saying it no longer hides a different word said in its place.
+- **Recite, on screen.** The word being said stays in view down a long āya (it used to slip under the screen). Words light up smoothly; an āya's number turns gold once recited whole, red with a mistake; a bar counts the words and mistakes so far; the summary gives the total. If two phrases in a row match nothing, the screen says to take it up again at the marked word.
+- **Recite any sūra.** In the Qur'an section, a sūra's panel has a Recite button: from its start, or from the āya on screen. These recitations stay out of the learning program and its statistics.
+- **Your list of passages.** Settings → Passages shown (or the tune button of the Faḍāʾil tab): switch any passage off, al-Kahf for instance. It is then neither listed, offered to learn, reviewed nor played with the others; what you learnt of it is kept and comes back with it.
+- **Review:** the card shows the last words of the āya before as a cue.
+- **Fixes:** "Play all" never ended and could jump to another passage (āyāt that are in two passages); Play after the end restarts from the first āya; a passage's Play no longer replays the single āya a lesson had played; Next during the basmala goes to its āya; "stop at the end of the sūra" also holds when skipping to the end; Learn starts on the range you chose; the review opened from its reminder no longer says "nothing to review".
+
 ## 2.0.1
 Badr at-Turkī now recites the whole Qur'an in the Qur'an section, all 114 sūras.
 - His recitation is published as whole sūras; every āya of the 114 is now cut out of them (6,236 āyāt, each cut listened to by the speech model), so no other reciter takes over any more and the text follows him āya by āya everywhere.
