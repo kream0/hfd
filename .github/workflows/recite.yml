@@ -36,11 +36,12 @@ jobs:
         # job adds the parts up.
         shard: ['0/4', '1/4', '2/4', '3/4']
         config:
-          - { name: 'app: tiny, greedy, bonus 6, mistakes checked at 3 nats', key: app, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', only: '' }
-          # The āya before not steered to (1.15.5's continuations), the rest as the app: the same run, so the same machines' noise.
-          - { name: 'the āya before not steered to', key: noprev, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '0', ties: '1', only: '' }
-          # 1.15.5: neither, nor a going back kept, nor an āya's start preferred on a tie.
-          - { name: '1.15.5', key: v1155, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '0', previous: '0', ties: '0', only: '' }
+          - { name: 'app: tiny, greedy, bonus 6, mistakes checked at 3 nats', key: app, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '20', only: '' }
+          # An utterance ended at a shorter pause (the model stops reading at a pause while the
+          # reciter goes on: the words after it wait for the utterance's end, or are lost), the rest
+          # as the app: the same run, so the same machines' noise.
+          - { name: 'a 300 ms pause ends an utterance', key: pause15, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '15', only: '' }
+          - { name: 'a 240 ms pause ends an utterance', key: pause12, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '12', only: '' }
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -90,6 +91,7 @@ jobs:
           HFD_KEEP_BACK: ${{ matrix.config.back }}
           HFD_STEER_PREVIOUS: ${{ matrix.config.previous }}
           HFD_AYA_START_TIES: ${{ matrix.config.ties }}
+          HFD_PAUSE_FRAMES: ${{ matrix.config.pause }}
           HFD_BIAS_BONUS: ${{ matrix.config.bonus }}
           HFD_BEAM: ${{ matrix.config.beam }}
           HFD_BENCH_ONLY: ${{ matrix.config.only }}

@@ -52,7 +52,8 @@ class ReciteBench {
                 println(r.line())
                 // As it goes: a job stopped by its time limit still says what it did.
                 File(dir, "report.txt").writeText(report.toString())
-                if (c.owner || COMPARED.any { it in c.id } || c.id.startsWith("fatiha-") && c.id.endsWith("-flow")) {
+                // HFD_BENCH_FREE=0: not (a quick local run).
+                if (System.getenv("HFD_BENCH_FREE") != "0" && (c.owner || COMPARED.any { it in c.id } || c.id.startsWith("fatiha-") && c.id.endsWith("-flow"))) {
                     val p = Simulation(c, pcm, decoder, steer = false).run()
                     if (!c.owner) { steeredTotals += r; freeTotals += p }
                     val line = "free   " + p.line()
@@ -324,7 +325,10 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                 last = tracker.status.copyOf()
             }
         }
-        val seg = Segmenter(System.getenv("HFD_PARTIAL_FRAMES")?.toIntOrNull() ?: Segmenter.PARTIAL_FRAMES)
+        val seg = Segmenter(
+            System.getenv("HFD_PARTIAL_FRAMES")?.toIntOrNull() ?: Segmenter.PARTIAL_FRAMES,
+            System.getenv("HFD_PAUSE_FRAMES")?.toIntOrNull() ?: Segmenter.PAUSE_FRAMES,
+        )
         val frame = Segmenter.FRAME
         var t = 0.0
         var i = 0

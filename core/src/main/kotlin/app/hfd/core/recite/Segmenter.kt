@@ -16,7 +16,11 @@ class Utterance(val id: Int, val pcm: FloatArray, val final: Boolean) {
  * 10 s, or at its quietest moment of the last two seconds at [MAX_FRAMES] (the model reads 30 s
  * windows and slips beyond ~25 s).
  */
-class Segmenter(private val partialFrames: Int = PARTIAL_FRAMES) {
+class Segmenter(
+    private val partialFrames: Int = PARTIAL_FRAMES,
+    /** Frames of silence that end an utterance ([PAUSE_FRAMES]; the bench compares others). */
+    private val pauseFrames: Int = PAUSE_FRAMES,
+) {
     /**
      * The room's noise level (RMS): down at once to a quieter moment, up slowly — five times
      * slower during speech, or the soft sounds of a slow recitation (a ghunna, a madd) would
@@ -73,8 +77,8 @@ class Segmenter(private val partialFrames: Int = PARTIAL_FRAMES) {
         if (voiced) { silentFrames = 0; voicedFrames++ } else silentFrames++
         val n = chunk.size
         return when {
-            silentFrames >= PAUSE_FRAMES -> listOfNotNull(finish())
-            n >= SOFT_MAX_FRAMES && silentFrames >= SHORT_PAUSE_FRAMES -> listOfNotNull(finish())
+            silentFrames >= pauseFrames -> listOfNotNull(finish())
+            n >= SOFT_MAX_FRAMES && silentFrames >= minOf(pauseFrames, SHORT_PAUSE_FRAMES) -> listOfNotNull(finish())
             n >= MAX_FRAMES -> listOfNotNull(split())
             n - sizeAtPartial >= partialFrames && voicedFrames > voicedAtPartial && voicedFrames >= MIN_VOICED_FRAMES -> {
                 sizeAtPartial = n
@@ -144,7 +148,7 @@ class Segmenter(private val partialFrames: Int = PARTIAL_FRAMES) {
         private const val PRE_ROLL_FRAMES = 15 // 300 ms kept before the voice starts
         // 400 ms of silence ends an utterance: short ones, an āya or less, are read best (on a
         // longer stretch the model sometimes drops words it had heard).
-        private const val PAUSE_FRAMES = 20
+        const val PAUSE_FRAMES = 20
         private const val SHORT_PAUSE_FRAMES = 10 // 200 ms, enough to end a long one
         private const val MIN_VOICED_FRAMES = 10 // at least 200 ms of voice
         /**
