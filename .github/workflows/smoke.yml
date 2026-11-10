@@ -11,6 +11,7 @@ on:
     paths:
       - '.github/workflows/smoke.yml'
       - 'tools/smoke/**'
+      - 'app/src/main/java/app/hfd/data/AppLocale.kt'
       - 'app/build.gradle.kts'
       - 'app/proguard-rules.pro'
       - 'gradle/libs.versions.toml'

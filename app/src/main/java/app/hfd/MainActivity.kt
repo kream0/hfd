@@ -39,8 +39,10 @@ class MainActivity : ComponentActivity() {
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
-    /** Below Android 13, the app's language comes with the activity's context ([AppLocale]). */
+    /** The app's language comes with the activity's context ([AppLocale]). */
     override fun attachBaseContext(newBase: Context) {
+        // Changed in Android's settings while the app was open: the activity comes back in it.
+        AppLocale.adopt(newBase, Graph.settings.current.language)?.let { chosen -> Graph.settings.update { it.copy(language = chosen) } }
         super.attachBaseContext(AppLocale.wrap(newBase, Graph.settings.current.language))
     }
 

@@ -9,8 +9,8 @@ import android.os.LocaleList
 /**
  * The app's language: French by default (the owner's), English, or the phone's. From Android 13
  * it is the system's per-app language (the whole app follows it: screens, notifications, and
- * Android's own Settings → Apps → HFD → Language, which [adopt] reads back); below, each activity
- * is given it ([wrap]).
+ * Android's own Settings → Apps → HFD → Language, which [adopt] reads back); each activity is
+ * also given it ([wrap]).
  */
 object AppLocale {
     private fun list(language: AppLanguage): LocaleList =
@@ -38,9 +38,13 @@ object AppLocale {
         return chosen.takeIf { it != current }
     }
 
-    /** Below Android 13: [base] with its resources in [language]. */
+    /**
+     * [base] with its resources in [language]. Below Android 13 it is the only way; from 13 it
+     * covers the very first start, whose activity Android creates in the phone's language before
+     * [apply] has taken effect (an English phone showed the first run in English: smoke.yml).
+     */
     fun wrap(base: Context, language: AppLanguage): Context {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU || language.tag.isEmpty()) return base
+        if (language.tag.isEmpty() || base.resources.configuration.locales.get(0)?.language == language.tag) return base
         val config = Configuration(base.resources.configuration)
         config.setLocales(list(language))
         return base.createConfigurationContext(config)

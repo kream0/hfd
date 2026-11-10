@@ -154,6 +154,35 @@ def frames(name):
     print(f"SMOKE frames {name}: {stats}", flush=True)
 
 
+def recite():
+    """The speech model: downloaded, loaded through the JNI, listening (to the emulator's silence)."""
+    download = find(starts("Télécharger"))
+    if download:
+        tap(download)
+        if not wait(is_("Commencer à réciter"), 300):
+            failures.append("recite: the model didn't download")
+            shot("recite-missing")
+            return
+    mic = find(is_("Commencer à réciter"))
+    if not mic:
+        failures.append("recite: nothing to start it")
+        return
+    tap(mic)
+    heard = wait(lambda t: t.startswith("À l") or t.startswith("La reconnaissance vocale n"), 240)
+    shot("reciting")
+    listening = bool(heard) and find(starts("À l")) is not None
+    report["recite"] = "listening" if listening else "not listening"
+    print(f"SMOKE recite: {report['recite']}", flush=True)
+    for line in sh("logcat -d -s Diag:D").splitlines():
+        if re.search(r"whisper\.(library|load|init)|npu\.(init|skipped)|recite\.start", line):
+            print("   " + line[-220:], flush=True)
+    if not listening:
+        failures.append("recite: the model didn't load")
+    stop = find(is_("Arrêter"))
+    if stop:
+        tap(stop)
+
+
 def compile_with_profile():
     # What Android does on its own some hours after an install (a sideloaded app's profile is
     # written by ProfileInstaller on its first run, then compiled while the phone charges).
@@ -195,13 +224,24 @@ size = re.search(r"(\d+)x(\d+)", sh("wm size"))
 W, H = (int(size.group(1)), int(size.group(2))) if size else (1080, 2400)
 if step("passages", is_("Faḍāʾil"), is_("Āyat al-Kursī")):
     if step("passage", is_("Āyat al-Kursī"), is_("Réciter")):
-        step("recite", is_("Réciter"), lambda t: t.startswith("Télécharger") or t.startswith("Commencer"))
+        if step("recite", is_("Réciter"), lambda t: t.startswith("Télécharger") or t.startswith("Commencer")):
+            recite()
         sh("input keyevent 4")
         time.sleep(1.0)
     sh("input keyevent 4")
     time.sleep(1.0)
 if step("quran", is_("Coran"), starts("Al-Baqara")):
     if step("sura", starts("Al-Baqara"), lambda t: "ذَٰلِكَ" in t, seconds=40):
+        # Playing: the media service, its session, the stream.
+        if step("playing", is_("Lire"), is_("Pause")):
+            time.sleep(6)
+            session = sh("dumpsys media_session")
+            state = re.search(r"package=" + re.escape(PKG) + r".*?state=PlaybackState \{state=(\w+)", session, re.S)
+            report["playback"] = state.group(1) if state else None
+            print(f"SMOKE playback state: {report['playback']}", flush=True)
+            pause = find(is_("Pause"))
+            if pause:
+                tap(pause)
         sh(f"dumpsys gfxinfo {PKG} reset")
         for _ in range(12):
             sh(f"input swipe {W // 2} {int(H * 0.72)} {W // 2} {int(H * 0.28)} 220")
