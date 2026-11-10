@@ -288,6 +288,7 @@
     <string name="sura_meccan">Meccan</string>
     <string name="sura_medinan">Medinan</string>
     <string name="sleep_end_sura">End of the sūra</string>
+    <string name="quran_reciter_body_all">For the Qur’an section; the passages’ reciter is set apart.</string>
     <string name="quran_reciter">Qur’an reciter</string>
     <string name="offline_save">Save offline</string>
     <string name="quran_reciter_suras">%1$d sūras of %2$d</string>

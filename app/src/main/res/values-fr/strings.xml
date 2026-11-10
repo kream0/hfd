@@ -289,6 +289,7 @@
     <string name="sura_meccan">Mecquoise</string>
     <string name="sura_medinan">Médinoise</string>
     <string name="sleep_end_sura">Fin de la sourate</string>
+    <string name="quran_reciter_body_all">Pour la section Coran ; celui des passages se règle à part.</string>
     <string name="quran_reciter">Récitateur du Coran</string>
     <string name="offline_save">Enregistrer hors ligne</string>
     <string name="quran_reciter_suras">%1$d sourates sur %2$d</string>

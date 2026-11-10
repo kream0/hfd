@@ -441,15 +441,17 @@ fun reciterSheet(context: android.content.Context, current: String) = SheetSpec(
  */
 fun quranReciterSheet(context: android.content.Context, current: String): SheetSpec {
     val sizes = Graph.content.content.value?.suras?.map { it.ayas }.orEmpty()
+    // How many sūras a whole-sūra recitation is cut into āyāt for: said only while some are missing.
+    val cut = Reciters.ALL.filter { it.timings != null }.associateWith { r ->
+        val t = Graph.timings.of(r)
+        sizes.indices.count { i -> QuranListening.has(r, t, QuranListening.ayat(i + 1, sizes[i])) }
+    }.filterValues { it < sizes.size }
     return SheetSpec(
         title = context.getString(R.string.reciter),
-        subtitle = context.getString(R.string.quran_reciter_body, QuranListening.FALLBACK.short),
+        subtitle = if (cut.isEmpty()) context.getString(R.string.quran_reciter_body_all)
+        else context.getString(R.string.quran_reciter_body, QuranListening.FALLBACK.short),
         actions = Reciters.ALL.map { r ->
-            val partial = r.timings?.let {
-                val t = Graph.timings.of(r)
-                val suras = sizes.indices.count { i -> QuranListening.has(r, t, QuranListening.ayat(i + 1, sizes[i])) }
-                " · " + context.getString(R.string.quran_reciter_suras, suras, sizes.size)
-            }.orEmpty()
+            val partial = cut[r]?.let { " · " + context.getString(R.string.quran_reciter_suras, it, sizes.size) }.orEmpty()
             SheetAction(
                 label = "${r.name} · ${r.style}$partial",
                 icon = if (r.id == current) Ic.Check else null,
