@@ -1,0 +1,51 @@
+name: CTC model
+
+# The CTC recogniser's model (mrmuminov/quran-fastconformer-ctc-ar on Hugging Face, CC-BY-4.0,
+# fine-tuned from NVIDIA's stt_ar_fastconformer_hybrid_large_pcd_v1.0, CC-BY-4.0): its int8 ONNX
+# file copied, unchanged and checked against the checksum the app pins (SpeechModel.CTC), to the
+# "speech-model" pre-release the app downloads its models from, with its attribution beside it.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - '.github/workflows/ctcmodel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FILE: quran-fastconformer-ctc-ar-int8.onnx
+      SHA256: acfecea696b8ab2e99cf40cd7463bc3a4e323a4771dd7e54db372d076d51a97c
+    steps:
+      - name: Fetch and check
+        run: |
+          curl -sSfL -o "$FILE" https://huggingface.co/mrmuminov/quran-fastconformer-ctc-ar/resolve/main/onnx/model_int8.onnx
+          ls -l "$FILE"
+          echo "$SHA256  $FILE" | sha256sum -c -
+          cat > quran-fastconformer-ctc-ar.NOTICE.txt <<'TXT'
+          quran-fastconformer-ctc-ar-int8.onnx
+
+          "Quranic character-level CTC (FastConformer, Uthmani with diacritics)" by mrmuminov,
+          https://huggingface.co/mrmuminov/quran-fastconformer-ctc-ar, licensed CC BY 4.0
+          (https://creativecommons.org/licenses/by/4.0/). The file here is the author's
+          onnx/model_int8.onnx, unchanged.
+
+          It is fine-tuned from the encoder of NVIDIA's stt_ar_fastconformer_hybrid_large_pcd_v1.0,
+          https://huggingface.co/nvidia/stt_ar_fastconformer_hybrid_large_pcd_v1.0, licensed CC BY 4.0.
+
+          The author's note: it is a transcription model trained on professional recitations, not a
+          mispronunciation or tajweed detector; its output is no verdict on a recitation.
+          TXT
+      - name: Publish (pre-release "speech-model")
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view speech-model >/dev/null
+          gh release upload speech-model "$FILE" quran-fastconformer-ctc-ar.NOTICE.txt --clobber
+          gh release view speech-model --json assets --jq '.assets[] | [.name, .size] | @tsv'
