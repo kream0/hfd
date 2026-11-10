@@ -96,7 +96,7 @@ fun ReviewScreen(testOf: String?, only: List<AyahRef>?, onClose: () -> Unit) {
             // A passage that no longer exists (saved before the list changed): nothing to test.
             testOf != null -> c.fadila(testOf)?.ayat ?: emptyList()
             only != null -> only
-            else -> Stats.due(Graph.progress.state.value, System.currentTimeMillis(), Graph.progress.zone)
+            else -> Stats.due(Graph.progress.state.value, System.currentTimeMillis(), Graph.progress.zone, c.shownAyat)
         }
     }
     var reviewIndex by rememberSaveable { mutableIntStateOf(0) }

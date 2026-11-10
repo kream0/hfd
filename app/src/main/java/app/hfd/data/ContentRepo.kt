@@ -26,10 +26,25 @@ import java.security.MessageDigest
 class Content(
     val suras: List<SuraMeta>,
     val quran: QuranText,
-    val fadail: List<Fadila>,
+    /** The reference list, whole and in its order. */
+    val allFadail: List<Fadila>,
+    /** Ids of the passages the owner took out of it (Settings: which passages show). */
+    val hidden: Set<String> = emptySet(),
 ) {
+    /**
+     * The passages the app shows, learns and reviews: the reference list without the hidden ones.
+     * A hidden passage is nowhere (lists, learning path, reviews, playing them all, [fadila]) but
+     * in the settings' list, where it can be shown again; its progress is kept.
+     */
+    val fadail: List<Fadila> = if (hidden.isEmpty()) allFadail else allFadail.filter { it.id !in hidden }
     private val byId = fadail.associateBy { it.id }
     fun fadila(id: String): Fadila? = byId[id]
+    /**
+     * The shown passages' āyāt (keys), for what counts as due or memorised; null when nothing is
+     * hidden. An āya of a hidden passage that a shown one also holds (al-Kahf's last four) stays.
+     */
+    val shownAyat: Set<String>? = if (hidden.isEmpty()) null else fadail.flatMapTo(HashSet()) { f -> f.ayat.map { it.key } }
+    fun hiding(ids: Set<String>): Content = if (ids == hidden) this else Content(suras, quran, allFadail, ids)
     fun sura(index: Int): SuraMeta = suras[index - 1]
     fun text(ref: AyahRef): String = quran.text(ref).orEmpty()
 }
@@ -44,7 +59,7 @@ enum class TranslationLang(val asset: String, val code: String) {
  * is parsed once into a compact JSON cache (rebuilt whenever the bundled file changes), which is
  * what later launches read.
  */
-class ContentRepo(private val context: Context, scope: CoroutineScope) {
+class ContentRepo(private val context: Context, scope: CoroutineScope, private val hidden: () -> Set<String> = { emptySet() }) {
     private val _content = MutableStateFlow<Content?>(null)
     val content: StateFlow<Content?> = _content.asStateFlow()
 
@@ -56,8 +71,13 @@ class ContentRepo(private val context: Context, scope: CoroutineScope) {
 
     init {
         scope.launch {
-            _content.value = withContext(Dispatchers.IO) { load() }
+            _content.value = withContext(Dispatchers.IO) { load() }.hiding(hidden())
         }
+    }
+
+    /** The passages taken out of the list changed ([Content.hidden]). */
+    fun hide(ids: Set<String>) {
+        _content.value = _content.value?.hiding(ids)
     }
 
     /** Loads a translation (once) so the reading view can show it under each āya. */

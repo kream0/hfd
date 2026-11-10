@@ -241,6 +241,12 @@
     <string name="time_title">Time</string>
     <string name="offline_partial">%d%% offline · save all</string>
     <string name="notifications_denied">Notifications are off for HFD: reminders can\'t show.</string>
+    <string name="fadail_edit_title">Passages shown</string>
+    <string name="fadail_edit_body">A hidden passage is no longer listed, offered to learn, reviewed or played with the others. What you learnt of it is kept and comes back with it.</string>
+    <string name="fadail_edit_count">%1$d passages of %2$d</string>
+    <string name="fadail_edit_all">Show all</string>
+    <string name="fadail_edit_choose">Choose</string>
+    <string name="fadail_edit_last">Keep at least one passage.</string>
     <string name="fadail_count">%1$d passages</string>
     <string name="stats_none">Nothing learnt yet: open a passage and tap Learn.</string>
     <string name="recite">Recite</string>

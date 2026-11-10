@@ -38,6 +38,9 @@ class AppViewModel : ViewModel() {
     private var _fadila by mutableStateOf<String?>(null)
     private var _flow by mutableStateOf<PracticeFlow?>(null)
 
+    /** The list of which passages show is open (Settings, or the passages' tab). */
+    var editingFadail by mutableStateOf(false)
+
     var tab: Tab
         get() = _tab
         set(v) {

@@ -67,7 +67,7 @@ import java.text.DateFormat
 import java.util.Date
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(onEditFadail: () -> Unit) {
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
 
     Column(
@@ -82,6 +82,12 @@ fun SettingsScreen() {
 
         SettingsSection(stringResource(R.string.settings_progress)) {
             ProgressSection(settings)
+            // Which passages of the list show (FadailEditScreen).
+            val content by Graph.content.content.collectAsStateWithLifecycle()
+            SettingLine(
+                stringResource(R.string.fadail_edit_title),
+                content?.let { stringResource(R.string.fadail_edit_count, it.fadail.size, it.allFadail.size) },
+            ) { PillButton(stringResource(R.string.fadail_edit_choose), onEditFadail) }
         }
 
         SettingsSection(stringResource(R.string.settings_listening)) {

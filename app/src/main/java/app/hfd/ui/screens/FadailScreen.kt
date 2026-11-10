@@ -22,6 +22,7 @@ import app.hfd.playback.PlaySession
 import app.hfd.ui.components.Loader
 import app.hfd.ui.components.FadilaRow
 import app.hfd.ui.components.Ic
+import app.hfd.ui.components.IconBtn
 import app.hfd.ui.components.PillButton
 import app.hfd.ui.components.PillStyle
 import app.hfd.ui.components.ScreenHeader
@@ -30,7 +31,7 @@ import app.hfd.ui.uiLanguage
 
 /** Every passage, in the reference list's order, with its progress; and all of them to listen to in a row. */
 @Composable
-fun FadailScreen(onOpen: (String) -> Unit) {
+fun FadailScreen(onOpen: (String) -> Unit, onEdit: () -> Unit) {
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val progress by Graph.progress.state.collectAsStateWithLifecycle()
     val np by Graph.nowPlaying.collectAsStateWithLifecycle()
@@ -45,10 +46,19 @@ fun FadailScreen(onOpen: (String) -> Unit) {
             return@Box
         }
         LazyColumn(Modifier.fillMaxSize()) {
-            item { ScreenHeader(stringResource(R.string.tab_fadail)) }
+            item {
+                ScreenHeader(stringResource(R.string.tab_fadail)) {
+                    // Which passages show (some may be left out of the list).
+                    IconBtn(Ic.Tune, onEdit, size = 48.dp, contentDescription = stringResource(R.string.fadail_edit_title))
+                }
+            }
             item {
                 Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 6.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    SectionLabel(stringResource(R.string.fadail_count, c.fadail.size), Modifier.weight(1f))
+                    SectionLabel(
+                        if (c.hidden.isEmpty()) stringResource(R.string.fadail_count, c.fadail.size)
+                        else stringResource(R.string.fadail_edit_count, c.fadail.size, c.allFadail.size),
+                        Modifier.weight(1f),
+                    )
                     val playingAll = np?.session?.fadilaId == PlaySession.ALL && ui.playWhenReady
                     PillButton(
                         stringResource(if (playingAll) R.string.play_all_pause else R.string.play_all),

@@ -36,8 +36,10 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -63,7 +65,7 @@ object Graph {
 
     val settings: Settings by lazy { Settings(app) }
     val updater: Updater by lazy { Updater(app, http, settings, scope) }
-    val content: ContentRepo by lazy { ContentRepo(app, scope) }
+    val content: ContentRepo by lazy { ContentRepo(app, scope) { settings.current.hiddenFadail } }
     val audio: AudioStore by lazy { AudioStore(app, scope, timings) }
     val timings: TimingsRepo by lazy { TimingsRepo(app) }
     val words: WordsRepo by lazy { WordsRepo(app) }
@@ -94,6 +96,23 @@ object Graph {
             model = { (speech.state.value as? ModelState.Ready)?.file },
             record = { progress.record(it) },
         )
+    }
+
+    /**
+     * Takes passage [id] out of the list ([hide]) or puts it back. Hidden, it is neither listed,
+     * offered to learn, reviewed nor played with the others; what was learnt of it is kept. What
+     * was in progress with it stops: listening, the lesson or the test to resume.
+     */
+    fun hideFadila(id: String, hide: Boolean) {
+        settings.update { it.copy(hiddenFadail = if (hide) it.hiddenFadail + id else it.hiddenFadail - id) }
+        content.hide(settings.current.hiddenFadail)
+        if (!hide) return
+        nowPlaying.value?.session?.let { s -> if (s.fadilaId == id || s.fadilaId == PlaySession.ALL) player.pause() }
+        sessions.session.value?.let { s ->
+            if (s.learn?.fadilaId == id || s.test?.fadilaId == id || s.openFadila == id) sessions.update {
+                it.copy(learn = it.learn?.takeIf { l -> l.fadilaId != id }, test = it.test?.takeIf { t -> t.fadilaId != id }, openFadila = it.openFadila?.takeIf { o -> o != id })
+            }
+        }
     }
 
     /** Every faḍīla, one after the other in the reference list's order, as one playlist. */
@@ -181,6 +200,8 @@ object Graph {
             }.getOrNull()
         }
         content.content // start loading the text in the background right away
+        // The passages shown follow the setting however it changes (a backup read back too).
+        scope.launch { settings.state.map { it.hiddenFadail }.distinctUntilChanged().collect { content.hide(it) } }
         audio.files // and indexing the āya files on the phone
         progress.state // and rebuilding progress from its log
     }

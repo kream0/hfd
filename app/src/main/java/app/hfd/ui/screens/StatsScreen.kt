@@ -69,7 +69,7 @@ fun StatsScreen(onOpen: (String) -> Unit) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BigNumber(streak.current.toString(), stringResource(R.string.stats_streak), Modifier.weight(1f))
             BigNumber(streak.best.toString(), stringResource(R.string.stats_best), Modifier.weight(1f))
-            BigNumber(Stats.memorisedCount(progress).toString(), stringResource(R.string.stats_memorised), Modifier.weight(1f))
+            BigNumber(Stats.memorisedCount(progress, content?.shownAyat).toString(), stringResource(R.string.stats_memorised), Modifier.weight(1f))
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

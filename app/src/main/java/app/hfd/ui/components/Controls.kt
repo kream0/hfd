@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.hfd.ui.theme.P
@@ -130,9 +132,9 @@ fun Segmented(
     }
 }
 
-/** A switch: an outlined pill, filled when on. */
+/** A switch: an outlined pill, filled when on. Without [onCheckedChange] it only shows (its row is the switch). */
 @Composable
-fun Toggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+fun Toggle(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier) {
     val x by animateDpAsState(if (checked) 22.dp else 3.dp, label = "switch")
     Box(
         modifier
@@ -140,7 +142,7 @@ fun Toggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modif
             .clip(CircleShape)
             .background(if (checked) P.primary else Color.Transparent)
             .border(1.dp, if (checked) P.primary else P.outline, CircleShape)
-            .clickable { onCheckedChange(!checked) },
+            .then(if (onCheckedChange != null) Modifier.toggleable(checked, role = Role.Switch, onValueChange = onCheckedChange) else Modifier),
     ) {
         Box(
             Modifier

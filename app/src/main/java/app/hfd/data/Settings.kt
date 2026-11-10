@@ -65,6 +65,8 @@ data class AppSettings(
     /** The review reminder; its time in minutes after midnight. */
     val remindReviews: Boolean = false,
     val reviewsAt: Int = 19 * 60,
+    /** Passages of the reference list the owner doesn't want shown (ids; [app.hfd.data.Content.hidden]). */
+    val hiddenFadail: Set<String> = emptySet(),
 ) {
     val reminders: ReminderConfig
         get() = ReminderConfig(reviews = remindReviews, reviewsAt = LocalTime.of(reviewsAt / 60, reviewsAt % 60))
@@ -139,6 +141,7 @@ class Settings(context: Context) {
             reciteHeadset = prefs.getBoolean("reciteHeadset", d.reciteHeadset),
             remindReviews = prefs.getBoolean("remindReviews", d.remindReviews),
             reviewsAt = prefs.getInt("reviewsAt", d.reviewsAt).coerceIn(0, 24 * 60 - 1),
+            hiddenFadail = prefs.getStringSet("hiddenFadail", null)?.toSet() ?: d.hiddenFadail,
         )
     }
 
@@ -166,6 +169,7 @@ class Settings(context: Context) {
             .putBoolean("reciteHeadset", s.reciteHeadset)
             .putBoolean("remindReviews", s.remindReviews)
             .putInt("reviewsAt", s.reviewsAt)
+            .putStringSet("hiddenFadail", s.hiddenFadail)
             // Settings of removed features (1.6.0: passage reminders, the location they needed).
             .remove("showWeak").remove("remindKursi").remove("remindMulk").remove("mulkAt")
             .remove("remindKahf").remove("kahfAt").remove("latitude").remove("longitude").remove("prayerMethod")

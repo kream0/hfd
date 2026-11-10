@@ -86,7 +86,8 @@ fun HomeScreen(app: AppViewModel) {
         val goalMs = settings.dailyGoalMin * 60_000L
         val todayMs = progress.days[today]?.practiceMs ?: 0
         val streak = remember(progress, goalMs, today) { Stats.streak(progress.days, goalMs, today) }
-        val due = remember(progress) { Stats.due(progress, now, zone) }
+        // (Of the passages shown: a hidden one's āyāt aren't asked for.)
+        val due = remember(progress, c.shownAyat) { Stats.due(progress, now, zone, c.shownAyat) }
 
         // Today: goal ring, streak, and what's due.
         Row(

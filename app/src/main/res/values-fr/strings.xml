@@ -243,6 +243,12 @@
     <string name="offline_partial">%d %% hors ligne · tout enregistrer</string>
     <string name="notifications_denied">Notifications de HFD désactivées : les rappels ne peuvent pas s\'afficher.</string>
     <string name="fadail_count">%1$d passages</string>
+    <string name="fadail_edit_title">Passages affichés</string>
+    <string name="fadail_edit_body">Un passage masqué n\'est plus listé, proposé à l\'apprentissage, révisé ni joué avec les autres. Ce que vous en avez appris est conservé et revient avec lui.</string>
+    <string name="fadail_edit_count">%1$d passages sur %2$d</string>
+    <string name="fadail_edit_all">Tout afficher</string>
+    <string name="fadail_edit_choose">Choisir</string>
+    <string name="fadail_edit_last">Gardez au moins un passage.</string>
     <string name="stats_none">Rien d\'appris pour l\'instant : ouvrez un passage et touchez Apprendre.</string>
     <string name="recite">Réciter</string>
     <string name="recite_title">Réciter · %1$s</string>

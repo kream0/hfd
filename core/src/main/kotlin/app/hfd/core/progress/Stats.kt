@@ -80,7 +80,9 @@ object Stats {
         return FadilaProgress(memorised, started, ayat.size, nextDue, if (started == 0) 0f else (strength / started).toFloat())
     }
 
-    fun memorisedCount(state: ProgressState): Int = state.ayat.values.count { it.memorised }
+    /** Āyāt memorised ([within]: among these keys only, the passages shown). */
+    fun memorisedCount(state: ProgressState, within: Set<String>? = null): Int =
+        state.ayat.count { (k, p) -> p.memorised && (within == null || k in within) }
 
     fun totalListenMs(state: ProgressState): Long = state.days.values.sumOf { it.listenMs }
 

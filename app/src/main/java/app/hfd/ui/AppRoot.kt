@@ -64,6 +64,7 @@ import app.hfd.ui.screens.FadilaScreen
 import app.hfd.ui.screens.HomeScreen
 import app.hfd.ui.screens.LearnScreen
 import app.hfd.ui.screens.QuranScreen
+import app.hfd.ui.screens.FadailEditScreen
 import app.hfd.ui.screens.ReciteScreen
 import app.hfd.ui.screens.ReviewScreen
 import app.hfd.ui.screens.StatsScreen
@@ -104,10 +105,10 @@ fun AppRoot(app: AppViewModel) {
                 Box(Modifier.weight(1f)) {
                     when (app.tab) {
                         Tab.HOME -> HomeScreen(app)
-                        Tab.FADAIL -> FadailScreen(onOpen = app::openFadila)
+                        Tab.FADAIL -> FadailScreen(onOpen = app::openFadila, onEdit = { app.editingFadail = true })
                         Tab.QURAN -> QuranScreen(onOpen = app::openSura)
                         Tab.STATS -> StatsScreen(onOpen = app::openFadila)
-                        Tab.SETTINGS -> SettingsScreen()
+                        Tab.SETTINGS -> SettingsScreen(onEditFadail = { app.editingFadail = true })
                     }
                     FadilaOverlay(app)
                 }
@@ -119,6 +120,9 @@ fun AppRoot(app: AppViewModel) {
                 BottomNav(tab = app.tab, onTab = app::selectTab)
             }
             FlowOverlay(app)
+            AnimatedVisibility(app.editingFadail, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
+                FadailEditScreen(onClose = { app.editingFadail = false })
+            }
             ToastHost(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 6.dp))
             SheetHost(sheet, onShow = { sheet = it }) { sheet = null }
         }

@@ -124,7 +124,10 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         // The reminder may have been switched off since it was planned.
         if (!Graph.settings.current.reminders.reviews) return Result.success()
         withTimeoutOrNull(10_000) { Graph.progress.loaded.first { it } }
-        val due = Stats.due(Graph.progress.state.value, System.currentTimeMillis(), Graph.progress.zone).size
+        // Only the passages shown are reviewed (some may be hidden: the list is needed to tell).
+        val shown = if (Graph.settings.current.hiddenFadail.isEmpty()) null
+        else withTimeoutOrNull(10_000) { Graph.content.content.first { it != null } }?.shownAyat
+        val due = Stats.due(Graph.progress.state.value, System.currentTimeMillis(), Graph.progress.zone, shown).size
         if (due > 0) Reminders.notify(applicationContext, due)
         return Result.success()
     }
