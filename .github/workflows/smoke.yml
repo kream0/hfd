@@ -2,8 +2,9 @@ name: Smoke test
 
 # The release APK on a real Android 16 (an emulator): installs, starts (timed), every main screen
 # comes, a long sūra scrolls, nothing crashes and nothing the code needs was removed. Built both
-# plain and with R8 (-Phfd.minify=true), to compare them before R8 becomes what is released.
-# Read the "SMOKE" lines of each job's log; the screenshots are in the run's artifacts.
+# plain and with R8 (-Phfd.minify=true) and run on the same emulator, to compare them before R8
+# becomes what is released. Read the "SMOKE" lines of the log; the screenshots are in the run's
+# artifacts.
 on:
   push:
     branches: ['**']
@@ -24,15 +25,12 @@ concurrency:
 
 jobs:
   smoke:
-    name: smoke (${{ matrix.label }})
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { label: plain, minify: 'false' }
-          - { label: r8, minify: 'true' }
+    timeout-minutes: 75
+    env:
+      # Above any release: the updater has nothing to offer the build under test.
+      HFD_VERSION_NAME: 0.smoke
+      HFD_VERSION_CODE: 999000000
     steps:
       - uses: actions/checkout@v6
 
@@ -63,19 +61,22 @@ jobs:
           fi
           echo "QNN_INCLUDE=$PWD/qnn-include" >> "$GITHUB_ENV"
 
-      - name: Release APK
+      - name: Release APKs, plain and with R8
         run: |
           set -o pipefail
-          ./gradlew --no-daemon :app:assembleRelease -Phfd.minify=${{ matrix.minify }} 2>&1 | tee build.log | tail -40
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk dist/hfd.apk
-          ls -l dist/hfd.apk
-          unzip -l dist/hfd.apk | grep -E 'classes[0-9]*\.dex|baseline'
+          for kind in plain r8; do
+            minify=false; if [ $kind = r8 ]; then minify=true; fi
+            ./gradlew --no-daemon :app:assembleRelease -Phfd.minify=$minify 2>&1 | tee build-$kind.log | tail -15
+            cp app/build/outputs/apk/release/app-release.apk dist/$kind.apk
+            ls -l dist/$kind.apk
+            unzip -l dist/$kind.apk | grep -E 'classes[0-9]*\.dex|baseline'
+          done
 
       - name: Show build errors
         if: failure()
         run: |
-          grep -nE "^e: |error:|FAILED|Missing class|R8" build.log | head -80 || true
+          grep -nE "^e: |error:|FAILED|Missing class|R8" build-*.log | head -80 || true
 
       - name: Let the emulator use KVM
         run: |
@@ -83,7 +84,9 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Google's image: it runs arm64 code (the app's native libraries are arm64 only).
+      # Google's image: it runs arm64 code (the app's native libraries are arm64 only). Both
+      # builds on the same emulator, then their starts once more each (runners differ too much
+      # to compare two jobs).
       - name: The app on Android 16
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -94,11 +97,19 @@ jobs:
           ram-size: 4096M
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: python3 tools/smoke/tour.py dist/hfd.apk smoke-out ${{ matrix.label }}
+          script: |
+            python3 tools/smoke/tour.py dist/plain.apk smoke-out plain; echo $? > smoke-out/plain.exit
+            python3 tools/smoke/tour.py dist/r8.apk smoke-out r8; echo $? > smoke-out/r8.exit
+            python3 tools/smoke/tour.py dist/plain.apk smoke-out plain starts
+            python3 tools/smoke/tour.py dist/r8.apk smoke-out r8 starts
+            python3 tools/smoke/tour.py dist/plain.apk smoke-out plain starts
+            python3 tools/smoke/tour.py dist/r8.apk smoke-out r8 starts
+            test "$(cat smoke-out/plain.exit)" = 0
+            test "$(cat smoke-out/r8.exit)" = 0
 
       - uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: smoke-${{ matrix.label }}
+          name: smoke
           path: smoke-out
           retention-days: 7

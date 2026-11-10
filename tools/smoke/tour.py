@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""The release APK on a real Android (smoke.yml's emulator): tour.py <apk> <out dir> [label]
+"""The release APK on a real Android (smoke.yml's emulator): tour.py <apk> <out dir> <label> [starts]
 
 Installs the APK, times cold starts ("am start -W" and the app's own "fully drawn", once its text
 is loaded) as installed and again once ART has compiled it with its baseline profile, then walks
 the main screens through the accessibility tree (French labels), scrolls a long sūra for the frame
 times, and takes a screenshot of each screen. Fails on a crash, on a screen that doesn't come, or
-on a class / method / serializer the build lost (what R8 could break).
+on a class / method / serializer the build lost (what R8 could break). With "starts", only the
+compiled starts are timed again (two builds compared on one emulator, one after the other).
 """
 import json, os, re, statistics, subprocess, sys, time
 import xml.etree.ElementTree as ET
@@ -14,6 +15,7 @@ PKG = "app.hfd"
 ACTIVITY = PKG + "/.MainActivity"
 apk, out = sys.argv[1], sys.argv[2]
 label = sys.argv[3] if len(sys.argv) > 3 else "apk"
+starts_only = len(sys.argv) > 4 and sys.argv[4] == "starts"
 os.makedirs(out, exist_ok=True)
 failures, report = [], {"label": label, "apk_bytes": os.path.getsize(apk)}
 
@@ -79,6 +81,9 @@ def shot(name):
 
 def step(name, want, then=None, seconds=25):
     """Taps the node [want] finds, waits for [then], takes the screen's picture."""
+    later = find(is_("Plus tard"))  # the update sheet, should a newer release be out
+    if later:
+        tap(later)
     box = wait(want, seconds)
     if not box:
         failures.append(f"{name}: nothing to tap")
@@ -149,7 +154,18 @@ def frames(name):
     print(f"SMOKE frames {name}: {stats}", flush=True)
 
 
+def compile_with_profile():
+    # What Android does on its own some hours after an install (a sideloaded app's profile is
+    # written by ProfileInstaller on its first run, then compiled while the phone charges).
+    print(sh(f"am broadcast -a androidx.profileinstaller.action.INSTALL_PROFILE {PKG}/androidx.profileinstaller.ProfileInstallReceiver").strip()[-200:], flush=True)
+    print(sh(f"cmd package compile -f -m speed-profile {PKG}", timeout=600).strip()[-200:], flush=True)
+    status = re.search(r"\[status=([^\]]+)\]", sh(f"dumpsys package dexopt | grep -A3 '\\[{PKG}\\]'"))
+    report["compiled"] = status.group(1) if status else None
+    print(f"SMOKE compiled: {report['compiled']}", flush=True)
+
+
 # ------------------------------------------------------------------ install
+adb("uninstall", PKG)
 print(adb("install", "-r", apk, timeout=600).strip(), flush=True)
 if PKG not in sh(f"pm list packages {PKG}"):
     print("SMOKE FAILED: the APK didn't install (see above)")
@@ -157,6 +173,13 @@ if PKG not in sh(f"pm list packages {PKG}"):
 sh(f"pm grant {PKG} android.permission.POST_NOTIFICATIONS")
 sh(f"pm grant {PKG} android.permission.RECORD_AUDIO")
 sh("settings put global window_animation_scale 1; settings put global transition_animation_scale 1; settings put global animator_duration_scale 1")
+
+if starts_only:
+    cold_start()
+    time.sleep(8)  # ProfileInstaller writes the profile a few seconds into the first run
+    compile_with_profile()
+    starts_report("compiled with its profile, again", n=9)
+    sys.exit(1 if failures else 0)
 
 # ------------------------------------------------------------------ starts
 first = cold_start()
@@ -197,13 +220,7 @@ step("settings", is_("Réglages"))
 step("home-again", is_("Accueil"))
 
 # ------------------------------------------------------------------ compiled with its baseline profile
-# What Android does on its own some hours after an install (a sideloaded app's profile is written
-# by ProfileInstaller on its first run, then compiled while the phone charges).
-print(sh(f"am broadcast -a androidx.profileinstaller.action.INSTALL_PROFILE {PKG}/androidx.profileinstaller.ProfileInstallReceiver").strip()[-200:], flush=True)
-print(sh(f"cmd package compile -f -m speed-profile {PKG}", timeout=600).strip()[-200:], flush=True)
-status = re.search(r"\[status=([^\]]+)\]", sh(f"dumpsys package dexopt | grep -A3 '\\[{PKG}\\]'"))
-report["compiled"] = status.group(1) if status else None
-print(f"SMOKE compiled: {report['compiled']}", flush=True)
+compile_with_profile()
 starts_report("compiled with its profile")
 
 # ------------------------------------------------------------------ verdict
