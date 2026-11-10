@@ -168,6 +168,9 @@ dependencies {
     // QNN's runtime (Qualcomm, Maven Central): the encoder on the NPU. The same version as the
     // SDK that compiles it (npu.yml) and whose headers build.yml fetches.
     implementation(libs.qnn.runtime)
+    // ONNX Runtime: the CTC recogniser's model (core/ctc). The version is pinned for a reason
+    // (libs.versions.toml: newer ones phone home).
+    implementation(libs.onnxruntime.android)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

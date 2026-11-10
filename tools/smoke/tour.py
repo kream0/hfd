@@ -6,7 +6,8 @@ is loaded) as installed and again once ART has compiled it with its baseline pro
 the main screens through the accessibility tree (French labels), scrolls a long sūra for the frame
 times, and takes a screenshot of each screen. Fails on a crash, on a screen that doesn't come, or
 on a class / method / serializer the build lost (what R8 could break). With "starts", only the
-compiled starts are timed again (two builds compared on one emulator, one after the other).
+compiled starts are timed again (two builds compared on one emulator, one after the other);
+with "update", an old build must be offered the latest release by its updater.
 """
 import json, os, re, statistics, subprocess, sys, time
 import xml.etree.ElementTree as ET
@@ -154,34 +155,36 @@ def frames(name):
     print(f"SMOKE frames {name}: {stats}", flush=True)
 
 
-def recite():
-    """The speech model: downloaded, loaded through the JNI, listening (to the emulator's silence)."""
+def recite(name="reciting"):
+    """The speech model: downloaded, loaded (ONNX Runtime or the JNI), listening (to the emulator's silence)."""
     download = find(starts("Télécharger"))
     if download:
         tap(download)
-        if not wait(is_("Commencer à réciter"), 300):
-            failures.append("recite: the model didn't download")
-            shot("recite-missing")
+        # The card goes once the model is on the phone (the microphone is there before, switched off).
+        end = time.time() + 600
+        while time.time() < end and find(starts("Télécharg")):
+            time.sleep(2)
+        if find(starts("Télécharg")):
+            failures.append(f"{name}: the model didn't download")
+            shot(name + "-missing")
             return
-    heard = None
-    for _ in range(3):  # a tap as the download's card goes can be lost
-        mic = find(is_("Commencer à réciter"))
-        if not mic:
-            break
-        tap(mic)
-        heard = wait(lambda t: t.startswith("À l") or t.startswith("Chargement") or t.startswith("La reconnaissance vocale n"), 8)
-        if heard:
-            break
+    sh("logcat -c")
+    mic = find(is_("Commencer à réciter"))
+    if not mic:
+        failures.append(f"{name}: nothing to start it")
+        return
+    tap(mic)
     heard = wait(lambda t: t.startswith("À l") or t.startswith("La reconnaissance vocale n"), 240)
-    shot("reciting")
+    time.sleep(3)
+    shot(name)
     listening = bool(heard) and find(starts("À l")) is not None
-    report["recite"] = "listening" if listening else "not listening"
-    print(f"SMOKE recite: {report['recite']}", flush=True)
+    report[name] = "listening" if listening else "not listening"
+    print(f"SMOKE {name}: {report[name]}", flush=True)
     for line in sh("logcat -d -s Diag:D").splitlines():
-        if re.search(r"whisper\.(library|load|init)|npu\.(init|skipped)|recite\.start", line):
-            print("   " + line[-220:], flush=True)
+        if re.search(r"(whisper|ctc)\.(library|load|cpu|selftest|text)|model\.|npu\.(init|skipped)|recite\.(start|noModel)", line):
+            print("   " + line[-260:], flush=True)
     if not listening:
-        failures.append("recite: the model didn't load")
+        failures.append(f"{name}: the model didn't load")
     stop = find(is_("Arrêter"))
     if stop:
         tap(stop)
@@ -206,6 +209,18 @@ if PKG not in sh(f"pm list packages {PKG}"):
 sh(f"pm grant {PKG} android.permission.POST_NOTIFICATIONS")
 sh(f"pm grant {PKG} android.permission.RECORD_AUDIO")
 sh("settings put global window_animation_scale 1; settings put global transition_animation_scale 1; settings put global animator_duration_scale 1")
+
+if len(sys.argv) > 4 and sys.argv[4] == "update":
+    # A build older than the latest release: the updater finds it, downloads it and checks it
+    # (version.json read, the APK's checksum), then offers it. Not installed here.
+    cold_start()
+    offered = wait(starts("Mise à jour prête"), 240)
+    shot("update")
+    print(f"SMOKE update offered: {bool(offered)}", flush=True)
+    for line in sh("logcat -d -s Diag:D").splitlines():
+        if re.search(r"update\.", line):
+            print("   " + line[-220:], flush=True)
+    sys.exit(0 if offered else 1)
 
 if starts_only:
     cold_start()
@@ -260,7 +275,21 @@ if step("quran", is_("Coran"), starts("Al-Baqara")):
         time.sleep(0.5)
     frames("sura list scrolled")
 step("stats", is_("Stats"))
-step("settings", is_("Réglages"))
+if step("settings", is_("Réglages")):
+    # Tarteel's Whisper kept as the recogniser (Settings → Reciting aloud): Recite reads with it too.
+    for _ in range(12):
+        if find(starts("Tarteel ·")):
+            break
+        sh(f"input swipe {W // 2} {int(H * 0.7)} {W // 2} {int(H * 0.35)} 300")
+        time.sleep(0.8)
+    if step("settings-whisper", starts("Tarteel ·")):
+        if step("passages-2", is_("Faḍāʾil"), is_("Āyat al-Kursī")) and step("passage-2", is_("Āyat al-Kursī"), is_("Réciter")):
+            if step("recite-whisper", is_("Réciter"), lambda t: t.startswith("Télécharger") or t.startswith("Commencer")):
+                recite("reciting-whisper")
+            sh("input keyevent 4")
+            time.sleep(1.0)
+            sh("input keyevent 4")
+            time.sleep(1.0)
 step("home-again", is_("Accueil"))
 
 # ------------------------------------------------------------------ compiled with its baseline profile

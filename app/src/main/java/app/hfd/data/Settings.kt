@@ -8,6 +8,7 @@ import app.hfd.core.playback.Reciter
 import app.hfd.core.playback.Reciters
 import app.hfd.core.progress.LearnOrder
 import app.hfd.core.reminders.ReminderConfig
+import app.hfd.recite.ReciteEngine
 import kotlinx.serialization.Serializable
 import java.time.LocalTime
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,6 +63,8 @@ data class AppSettings(
     val reciteShowText: Boolean = true,
     /** Recite listens with connected earbuds' microphone (off: the phone's). */
     val reciteHeadset: Boolean = true,
+    /** Recite's recogniser: the CTC model once downloaded, or Tarteel's Whisper kept. */
+    val reciteEngine: ReciteEngine = ReciteEngine.BEST,
     /** The review reminder; its time in minutes after midnight. */
     val remindReviews: Boolean = false,
     val reviewsAt: Int = 19 * 60,
@@ -148,6 +151,7 @@ class Settings(context: Context) {
             sendRecordings = prefs.getBoolean("sendRecordings", d.sendRecordings),
             reciteShowText = prefs.getBoolean("reciteShowText", d.reciteShowText),
             reciteHeadset = prefs.getBoolean("reciteHeadset", d.reciteHeadset),
+            reciteEngine = enumOr(prefs.getString("reciteEngine", null), d.reciteEngine),
             remindReviews = prefs.getBoolean("remindReviews", d.remindReviews),
             reviewsAt = prefs.getInt("reviewsAt", d.reviewsAt).coerceIn(0, 24 * 60 - 1),
             hiddenFadail = prefs.getStringSet("hiddenFadail", null)?.toSet() ?: d.hiddenFadail,
@@ -176,6 +180,7 @@ class Settings(context: Context) {
             .putBoolean("sendRecordings", s.sendRecordings)
             .putBoolean("reciteShowText", s.reciteShowText)
             .putBoolean("reciteHeadset", s.reciteHeadset)
+            .putString("reciteEngine", s.reciteEngine.name)
             .putBoolean("remindReviews", s.remindReviews)
             .putInt("reviewsAt", s.reviewsAt)
             .putStringSet("hiddenFadail", s.hiddenFadail)

@@ -52,6 +52,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.BuildConfig
 import app.hfd.diag.Diag
+import app.hfd.recite.ReciteEngine
+import app.hfd.recite.SpeechModel
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.ui.components.Toggle
@@ -134,6 +136,19 @@ fun SettingsScreen(onEditFadail: () -> Unit) {
 
         SettingsSection(stringResource(R.string.settings_reading)) {
             ReadingSection(settings)
+        }
+
+        SettingsSection(stringResource(R.string.settings_recite)) {
+            SettingBlock(stringResource(R.string.settings_recite_engine), stringResource(R.string.settings_recite_engine_body)) {
+                Segmented(
+                    options = listOf(
+                        stringResource(R.string.settings_recite_engine_new, (SpeechModel.CTC.bytes / 1_000_000).toInt()),
+                        stringResource(R.string.settings_recite_engine_whisper, (SpeechModel.DEFAULT.bytes / 1_000_000).toInt()),
+                    ),
+                    selected = settings.reciteEngine.ordinal,
+                    onSelect = { i -> Graph.settings.update { it.copy(reciteEngine = ReciteEngine.entries[i]) } },
+                )
+            }
         }
 
         SettingsSection(stringResource(R.string.settings_controls)) {

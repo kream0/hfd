@@ -87,6 +87,31 @@ class CtcTest {
     }
 
     @Test
+    fun theVocabularyIsTheModels() {
+        assertEquals(vocabulary.characters, CtcVocabulary.QURAN.characters)
+        assertEquals(62, CtcVocabulary.QURAN.blank)
+    }
+
+    @Test
+    fun theRecogniserSpeaksTheFollowersProtocol() {
+        // The model's answer for the clip, whatever it is given.
+        val recognizer = CtcRecognizer({ output })
+        assertEquals(aya, recognizer.transcribe(clip))
+        assertEquals("", CtcRecognizer({ error("too short to run") }).transcribe(FloatArray(800)))
+        // Asked to check a text: the reading, a tab, each word's cost.
+        val right = recognizer.transcribe(clip, "?\n$aya")
+        assertEquals(aya, right.substringBefore('\t'))
+        assertEquals(listOf(0f, 0f, 0f, 0f), app.hfd.core.recite.Follower.Check.costs(right))
+        val wrong = aya.split(' ').take(3).joinToString(" ") + " " + Assets.quran.text(AyahRef(112, 2))!!.split(' ').last()
+        val costs = app.hfd.core.recite.Follower.Check.costs(recognizer.transcribe(clip, "?\n$wrong"))!!
+        // «ٱلصَّمَدُ» where «أَحَدٌ» was said: far over the follower's tolerance.
+        assertTrue(costs.take(3).all { it == 0f } && costs[3] > 3 * app.hfd.core.recite.Follower.CHECK_TOLERANCE)
+        // A text the utterance has no room for: every word failed.
+        val long = (1..40).joinToString(" ") { aya }
+        assertTrue(app.hfd.core.recite.Follower.Check.costs(recognizer.transcribe(clip, "?\n$long"))!!.all { it == CtcRecognizer.FAILED })
+    }
+
+    @Test
     fun aTextLongerThanTheUtteranceHasNoAlignment() {
         val long = (1..40).joinToString(" ") { aya }
         assertNull(Ctc.forced(output, vocabulary, long))

@@ -310,4 +310,12 @@
     <string name="quran_reciter_suras">%1$d sūras of %2$d</string>
     <string name="quran_reciter_instead">%1$s (not %2$s here)</string>
     <string name="sleep_chip_end">Stops at the end</string>
+    <string name="recite_model_ctc_needed">Reciting aloud uses a Qur\'an recognition model (FastConformer, %1$d MB), downloaded once. It runs on the phone: your voice is neither recorded nor sent.</string>
+    <string name="recite_model_upgrade">New recognition model: it follows a muffled voice or noise better, and answers sooner. %1$d MB, downloaded once; the current model is used until then.</string>
+    <string name="recite_model_keep">Keep the current model</string>
+    <string name="settings_recite">Reciting aloud</string>
+    <string name="settings_recite_engine">Recognition model</string>
+    <string name="settings_recite_engine_body">The new one (mrmuminov\'s Qur\'an FastConformer, CC BY 4.0, from NVIDIA\'s Arabic model) follows a muffled voice or noise better and answers sooner; it is used once downloaded, from the Recite screen. Tarteel\'s (Whisper) stays available. Neither judges pronunciation: they recognise the words.</string>
+    <string name="settings_recite_engine_new">New · %1$d MB</string>
+    <string name="settings_recite_engine_whisper">Tarteel · %1$d MB</string>
 </resources>

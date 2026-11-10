@@ -13,6 +13,7 @@ on:
       - 'tools/smoke/**'
       - 'app/src/main/java/app/hfd/data/AppLocale.kt'
       - 'app/build.gradle.kts'
+      - 'app/src/main/java/app/hfd/recite/**'
       - 'app/proguard-rules.pro'
       - 'gradle/libs.versions.toml'
   workflow_dispatch:
@@ -72,7 +73,20 @@ jobs:
             cp app/build/outputs/apk/release/app-release.apk dist/$kind.apk
             ls -l dist/$kind.apk
             unzip -l dist/$kind.apk | grep -E 'classes[0-9]*\.dex|baseline'
+            # ONNX Runtime's Android library phones home from 1.29.0: none of that in the APK.
+            if [ "$(unzip -p dist/$kind.apk 'lib/arm64-v8a/libonnxruntime.so' | strings -n 12 | grep -c OneCollector || true)" != 0 ]; then echo "::error::ONNX Runtime with telemetry in the APK"; exit 1; fi
+            if [ "$(unzip -p dist/$kind.apk 'classes*.dex' | strings -n 12 | grep -c TelemetryInitializer || true)" != 0 ]; then echo "::error::ONNX Runtime's telemetry provider in the APK"; exit 1; fi
           done
+
+      # The same, older than any release: its updater must find, fetch and check the latest one.
+      - name: An old build with R8, for the updater
+        env:
+          HFD_VERSION_NAME: 0.old
+          HFD_VERSION_CODE: 1
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon :app:assembleRelease -Phfd.minify=true 2>&1 | tee build-old.log | tail -5
+          cp app/build/outputs/apk/release/app-release.apk dist/r8-old.apk
 
       - name: Show build errors
         if: failure()
@@ -105,7 +119,9 @@ jobs:
             python3 tools/smoke/tour.py dist/r8.apk smoke-out r8 starts
             python3 tools/smoke/tour.py dist/plain.apk smoke-out plain starts
             python3 tools/smoke/tour.py dist/r8.apk smoke-out r8 starts
+            python3 tools/smoke/tour.py dist/r8-old.apk smoke-out r8-old update; echo $? > smoke-out/update.exit
             test "$(cat smoke-out/plain.exit)" = 0
+            test "$(cat smoke-out/update.exit)" = 0
             test "$(cat smoke-out/r8.exit)" = 0
 
       - uses: actions/upload-artifact@v6

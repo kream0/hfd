@@ -60,8 +60,8 @@ data class ReciteUi(
 
 /**
  * Reciting [targets] aloud from memory, Tarteel-style: the microphone is cut into utterances
- * ([Recorder]), each recognised on the phone (whisper.cpp, Tarteel's model) again and again as
- * it grows, so the text follows the reciter as they go ([Follower]), word by word on screen. The
+ * ([Recorder]), each recognised on the phone (the CTC model, or whisper.cpp with Tarteel's:
+ * [ReciteModels]) again and again as it grows, so the text follows the reciter as they go ([Follower]), word by word on screen. The
  * reciter may go back (start an āya over, say a phrase again) without it counting as a mistake:
  * the āyāt finished are written to the progress log ([record]) with their mistakes and the
  * rating that follows only at the end, as they stand then. Main-thread API.
@@ -70,7 +70,7 @@ class ReciteSession(
     val fadilaId: String,
     val targets: List<ReciteTarget>,
     private val scope: CoroutineScope,
-    private val model: () -> File?,
+    private val models: () -> ReciteModels,
     private val record: (Event) -> Unit,
 ) {
     private val follower = Follower(targets)
@@ -86,6 +86,9 @@ class ReciteSession(
     private var idBase = 0
     private val stall = Stall()
     private var whisper: Whisper? = null
+    private var ctc: CtcEngine? = null
+    /** The CTC model didn't load or misread the reference clip: this session reads with Whisper. */
+    private var ctcFailed = false
     private var listenJob: Job? = null
     private val consumer: Job
     private var heardChunks = 0
@@ -152,7 +155,7 @@ class ReciteSession(
                                 "zcr" to st.zcr, "bands" to st.bands.joinToString("/"),
                             )
                         }
-                        loadedWhisper()?.transcribe(pcm, expected)
+                        reader()?.invoke(pcm, expected)
                     }
                     if (u.final) _ui.value = _ui.value.copy(pending = (_ui.value.pending - 1).coerceAtLeast(0))
                     val moved = if (text != null) onHeard(u.id, text, u.final, check = u.takeIf { it.final }) else 0
@@ -191,13 +194,16 @@ class ReciteSession(
     /** Starts listening (the caller has the microphone permission). */
     fun start() {
         if (listenJob?.isActive == true || tracker.done) return
-        val file = model()
-        Diag.log("recite.start", "fadila" to fadilaId, "ayat" to targets.size, "from" to targets.firstOrNull()?.ref?.key, "model" to file?.length(), "done" to tracker.done)
-        if (file == null) return
-        _ui.value = _ui.value.copy(listening = true, error = null, loading = whisper == null)
+        val m = models()
+        Diag.log(
+            "recite.start", "fadila" to fadilaId, "ayat" to targets.size, "from" to targets.firstOrNull()?.ref?.key,
+            "model" to m.whisper?.length(), "ctc" to m.ctc?.length(), "done" to tracker.done,
+        )
+        if (m.whisper == null && m.ctc == null) return
+        _ui.value = _ui.value.copy(listening = true, error = null, loading = whisper == null && ctc == null)
         // Load the model now rather than on the first chunk.
         scope.launch {
-            val w = withContext(recognizer) { loadedWhisper() }
+            val w = withContext(recognizer) { reader() }
             _ui.value = _ui.value.copy(loading = false, error = if (w == null) ERROR_MODEL else _ui.value.error)
             if (w == null) {
                 Diag.log("recite.noModel")
@@ -286,7 +292,7 @@ class ReciteSession(
     private suspend fun onHeard(id: Int, text: String, final: Boolean, check: Utterance?): Int {
         val moved = follow(id, text, final)
         if (check != null) follower.toCheck(id)?.let { c ->
-            val again = withContext(recognizer) { loadedWhisper()?.transcribe(Clarity.prepare(check.pcm), c.expected) }
+            val again = withContext(recognizer) { reader()?.invoke(Clarity.prepare(check.pcm), c.expected) }
             val costs = again?.let(Follower.Check::costs)
             if (costs != null) {
                 val right = follower.checked(c, costs)
@@ -317,6 +323,8 @@ class ReciteSession(
             whisper?.let(::selfTest)
             whisper?.close()
             whisper = null
+            ctc?.close()
+            ctc = null
         }.invokeOnCompletion { recognizer.close() }
     }
 
@@ -396,11 +404,37 @@ class ReciteSession(
         return base.copy(status = status, next = if (next >= tracker.size) null else tracker.locate(next))
     }
 
-    /** On the recognition thread only. */
-    private fun loadedWhisper(): Whisper? {
-        whisper?.let { return it }
-        val file = model() ?: return null
-        return Whisper.load(file.path)?.also { whisper = it; npuOn(it) }
+    /**
+     * What reads an utterance (its sound, and what the follower expects or wants checked), loaded
+     * at first use: the CTC model when it is on the phone and reads the reference clip right, else
+     * Whisper. On the recognition thread only.
+     */
+    private fun reader(): ((FloatArray, String) -> String?)? {
+        ctc?.let { return it::transcribe }
+        whisper?.let { w -> return { pcm, expected -> w.transcribe(pcm, expected) } }
+        val m = models()
+        if (m.ctc != null && !ctcFailed) {
+            val engine = CtcEngine.load(m.ctc.path)
+            if (engine != null && ctcReads(engine)) {
+                ctc = engine
+                return engine::transcribe
+            }
+            engine?.close()
+            ctcFailed = true
+        }
+        val file = m.whisper ?: return null
+        val w = Whisper.load(file.path)?.also { whisper = it; npuOn(it) } ?: return null
+        return { pcm, expected -> w.transcribe(pcm, expected) }
+    }
+
+    /** The CTC model on the reference clip (al-Ikhlāṣ 112:1): used only if it reads it as it is. */
+    private fun ctcReads(engine: CtcEngine): Boolean {
+        val pcm = referenceClip() ?: return true
+        val started = System.currentTimeMillis()
+        val text = engine.transcribe(pcm)
+        val right = text != null && Arabic.skeleton(text) == Arabic.skeleton(REFERENCE_TEXT)
+        Diag.log("ctc.selftest", "text" to text, "right" to right, "ms" to System.currentTimeMillis() - started)
+        return right
     }
 
     /**

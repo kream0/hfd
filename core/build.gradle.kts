@@ -18,6 +18,10 @@ kotlin {
 
 dependencies {
     api(libs.kotlinx.serialization.json)
+    // The CTC recogniser's model runs in ONNX Runtime: its Java API to compile against; the app
+    // brings the Android library, the tests (the Recite bench) the JVM's.
+    compileOnly(libs.onnxruntime.jvm)
+    testImplementation(libs.onnxruntime.jvm)
     testImplementation(libs.junit)
 }
 

@@ -23,6 +23,9 @@ import app.hfd.playback.WordsRepo
 import app.hfd.playback.PlayerConnection
 import app.hfd.recite.ModelState
 import app.hfd.recite.ModelStore
+import app.hfd.recite.ReciteEngine
+import app.hfd.recite.ReciteModels
+import app.hfd.recite.SpeechModel
 import app.hfd.recite.NpuEncoder
 import app.hfd.recite.ReciteSession
 import app.hfd.recite.Whisper
@@ -78,6 +81,14 @@ object Graph {
     val sessions: SessionStore by lazy { SessionStore(app) }
     /** Speech model for the Recite mode (downloaded once). */
     val speech: ModelStore by lazy { ModelStore(app, http, scope) }
+    /** The CTC recogniser's model (2.2.0), preferred once it is on the phone. */
+    val speechCtc: ModelStore by lazy { ModelStore(app, http, scope, SpeechModel.CTC) }
+
+    /** The models a Recite session may read with, as the settings and the downloads stand. */
+    fun reciteModels(): ReciteModels = ReciteModels(
+        ctc = (speechCtc.state.value as? ModelState.Ready)?.file?.takeIf { settings.current.reciteEngine == ReciteEngine.BEST },
+        whisper = (speech.state.value as? ModelState.Ready)?.file,
+    )
     /** Recite's encoder compiled for this phone's NPU, if there is a build for it. */
     val npu: NpuEncoder by lazy { NpuEncoder(app, http) }
 
@@ -101,7 +112,7 @@ object Graph {
             fadilaId,
             ReciteSession.targets(refs) { c.quran.text(it) },
             scope,
-            model = { (speech.state.value as? ModelState.Ready)?.file },
+            models = ::reciteModels,
             record = { if (learnt) progress.record(it) },
         )
     }

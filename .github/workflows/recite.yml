@@ -40,7 +40,10 @@ jobs:
           # 10 Nov, one run: this 94.5 % (wrong 42, missed 19, pending 52, red shown 9, swaps
           # caught 4/5); stall '1200' 94.5 % (34, 6, 72, 19, 3/5); with rules '1' 93.9 % (47, 6,
           # 72, 20, 4/5).
-          - { name: 'app: tiny, greedy, bonus 6, mistakes checked at 3 nats', key: app, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '20', stall: '0', rules: '0', only: '' }
+          - { name: 'app: tiny, greedy, bonus 6, mistakes checked at 3 nats', key: app, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '20', stall: '0', rules: '0', only: '', ctc: '', read: '' }
+          # The CTC recogniser (2.2.0: the app's once its model is on the phone), in process:
+          # CtcRecognizer over ONNX Runtime, its reading time as on an ARM CPU (ctcspeed.yml).
+          - { name: 'ctc: FastConformer, read freely, mistakes checked at 3', key: ctc, model: model.bin, factor: '1', bonus: '6', beam: '0', partial: '15', check: '3', hold: '1', back: '1', previous: '1', ties: '1', pause: '20', stall: '0', rules: '0', only: '', ctc: 'ctc.onnx', read: '30,26' }
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -66,6 +69,10 @@ jobs:
           cmake --build whisper.cpp/build -j"$(nproc)" --config Release --target whisper >/dev/null
           curl -sSfL -o model.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-tiny-ar-quran-q8_0.bin
           echo "ef01ab441b004f9e6f1ea98d397b43452b3a45efab7c3928ab37af655dde8b52  model.bin" | sha256sum -c
+          if [ -n "${{ matrix.config.ctc }}" ]; then
+            curl -sSfL -o ctc.onnx https://github.com/kream0/hfd/releases/download/speech-model/quran-fastconformer-ctc-ar-int8.onnx
+            echo "acfecea696b8ab2e99cf40cd7463bc3a4e323a4771dd7e54db372d076d51a97c  ctc.onnx" | sha256sum -c
+          fi
           gcc -O2 -o decoder ../tools/recite/decoder.c -I../app/src/main/cpp -Iwhisper.cpp/include -Iwhisper.cpp/ggml/include \
             whisper.cpp/build/src/libwhisper.so -Wl,-rpath,$PWD/whisper.cpp/build/src:$PWD/whisper.cpp/build/ggml/src -lm
       - name: The owner's Recite sessions (kept by diag.yml)
@@ -83,6 +90,8 @@ jobs:
           HFD_BENCH: ${{ github.workspace }}/work/bench
           HFD_DECODER: ${{ github.workspace }}/work/decoder
           HFD_MODEL: ${{ github.workspace }}/work/${{ matrix.config.model }}
+          HFD_CTC: ${{ matrix.config.ctc && format('{0}/work/{1}', github.workspace, matrix.config.ctc) || '' }}
+          HFD_READ_MS: ${{ matrix.config.read }}
           HFD_PHONE_FACTOR: ${{ matrix.config.factor }}
           HFD_PARTIAL_FRAMES: ${{ matrix.config.partial }}
           HFD_CHECK_TOLERANCE: ${{ matrix.config.check }}

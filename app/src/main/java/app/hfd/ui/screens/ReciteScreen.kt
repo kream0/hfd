@@ -70,6 +70,8 @@ import app.hfd.core.recite.AyahResult
 import app.hfd.core.recite.ReciteTarget
 import app.hfd.core.recite.WordStatus
 import app.hfd.recite.ModelState
+import app.hfd.recite.ModelStore
+import app.hfd.recite.ReciteEngine
 import app.hfd.recite.ReciteSession
 import app.hfd.recite.ReciteUi
 import app.hfd.recite.Wave
@@ -97,7 +99,11 @@ fun ReciteScreen(onClose: () -> Unit) {
     val ui by s.ui.collectAsStateWithLifecycle()
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
-    val model by Graph.speech.state.collectAsStateWithLifecycle()
+    val whisperModel by Graph.speech.state.collectAsStateWithLifecycle()
+    val ctcModel by Graph.speechCtc.state.collectAsStateWithLifecycle()
+    // The CTC model is the one to have unless the owner keeps to Whisper; Whisper reads until it is there.
+    val best = settings.reciteEngine == ReciteEngine.BEST
+    val ready = whisperModel is ModelState.Ready || (best && ctcModel is ModelState.Ready)
     val level by s.level.collectAsStateWithLifecycle()
     val wave by s.wave.collectAsStateWithLifecycle()
     val listeningWith by s.mic.collectAsStateWithLifecycle()
@@ -130,7 +136,11 @@ fun ReciteScreen(onClose: () -> Unit) {
         }
         Text(statusLine(ui, s), style = Type.label, color = P.textDim, modifier = Modifier.padding(horizontal = 20.dp))
         ProgressLine(ui, Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-        ModelCard(model)
+        when {
+            !best -> ModelCard(Graph.speech, whisperModel, R.string.recite_model_needed)
+            whisperModel is ModelState.Ready -> ModelCard(Graph.speechCtc, ctcModel, R.string.recite_model_upgrade, keepOld = true)
+            else -> ModelCard(Graph.speechCtc, ctcModel, R.string.recite_model_ctc_needed)
+        }
 
         val list = rememberLazyListState()
         // The āya being recited comes into view when it isn't (its word then keeps itself there,
@@ -189,7 +199,7 @@ fun ReciteScreen(onClose: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             IconBtn(Ic.Hint, { s.hint() }, bordered = true, size = 48.dp, contentDescription = stringResource(R.string.recite_hint))
-            MicButton(listening = ui.listening, level = level, enabled = model is ModelState.Ready && !ui.done) {
+            MicButton(listening = ui.listening, level = level, enabled = ready && !ui.done) {
                 if (ui.listening) s.stop() else listen()
             }
             IconBtn(
@@ -214,24 +224,31 @@ private fun statusLine(ui: ReciteUi, s: ReciteSession): String {
     }
 }
 
-/** Download card until the speech model is on the phone. */
+/**
+ * Download card until [store]'s speech model is on the phone ([state]). With [keepOld] the model
+ * is an upgrade (Whisper reads meanwhile): the card also offers to keep to Whisper.
+ */
 @Composable
-private fun ModelCard(model: ModelState) {
-    if (model is ModelState.Ready) return
-    val mb = (Graph.speech.model.bytes / 1_000_000).toInt()
+private fun ModelCard(store: ModelStore, state: ModelState, text: Int, keepOld: Boolean = false) {
+    if (state is ModelState.Ready) return
+    val mb = (store.model.bytes / 1_000_000).toInt()
     Column(
         Modifier.fillMaxWidth().padding(16.dp).card().padding(16.dp),
     ) {
-        Text(stringResource(R.string.recite_model_needed, mb), style = Type.body, color = P.text)
+        Text(stringResource(text, mb), style = Type.body, color = P.text)
         Spacer(Modifier.height(10.dp))
-        when (model) {
-            is ModelState.Downloading -> Text(stringResource(R.string.recite_downloading, (model.progress * 100).toInt()), style = Type.labelBold, color = P.textDim)
-            is ModelState.Failed -> {
-                Text(stringResource(R.string.recite_download_failed, model.message), style = Type.label, color = P.error)
+        if (state is ModelState.Downloading) {
+            Text(stringResource(R.string.recite_downloading, (state.progress * 100).toInt()), style = Type.labelBold, color = P.textDim)
+        } else {
+            if (state is ModelState.Failed) {
+                Text(stringResource(R.string.recite_download_failed, state.message), style = Type.label, color = P.error)
                 Spacer(Modifier.height(8.dp))
-                PillButton(stringResource(R.string.recite_download, mb), { Graph.speech.download() }, style = PillStyle.Accent)
             }
-            else -> PillButton(stringResource(R.string.recite_download, mb), { Graph.speech.download() }, style = PillStyle.Accent)
+            PillButton(stringResource(R.string.recite_download, mb), { store.download() }, style = PillStyle.Accent)
+            if (keepOld) {
+                Spacer(Modifier.height(8.dp))
+                PillButton(stringResource(R.string.recite_model_keep), { Graph.settings.update { it.copy(reciteEngine = ReciteEngine.WHISPER) } })
+            }
         }
     }
 }

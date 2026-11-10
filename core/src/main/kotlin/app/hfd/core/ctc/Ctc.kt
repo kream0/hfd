@@ -28,6 +28,15 @@ class CtcVocabulary(val characters: List<String>) {
     private val index = HashMap<Char, Int>().apply { characters.forEachIndexed { i, c -> if (c.length == 1) put(c[0], i) } }
     val blank: Int get() = characters.size
     fun indexOf(c: Char): Int? = index[c]
+
+    companion object {
+        /**
+         * The Uthmani script's characters as Tanzil writes them, sorted by code point: the space,
+         * the letters, the vowel signs, shadda and sukūn, the small signs. The vocabulary of
+         * mrmuminov/quran-fastconformer-ctc-ar (its vocab.json: CtcTest).
+         */
+        val QURAN = CtcVocabulary("\u0020\u0621\u0623\u0624\u0625\u0626\u0627\u0628\u0629\u062A\u062B\u062C\u062D\u062E\u062F\u0630\u0631\u0632\u0633\u0634\u0635\u0636\u0637\u0638\u0639\u063A\u0640\u0641\u0642\u0643\u0644\u0645\u0646\u0647\u0648\u0649\u064A\u064B\u064C\u064D\u064E\u064F\u0650\u0651\u0652\u0653\u0654\u0670\u0671\u06DC\u06DF\u06E0\u06E2\u06E3\u06E5\u06E6\u06E7\u06E8\u06EA\u06EB\u06EC\u06ED".map { it.toString() })
+    }
 }
 
 object Ctc {

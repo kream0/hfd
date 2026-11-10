@@ -19,20 +19,50 @@ import java.io.IOException
 import java.security.MessageDigest
 
 /**
- * Tarteel's Qur'an-tuned Whisper (huggingface.co/tarteel-ai, Apache-2.0), converted to
- * whisper.cpp's format by .github/workflows/model.yml and published on the "speech-model"
- * pre-release. Checked against [sha256] after download.
+ * A recognition model on the "speech-model" pre-release, checked against [sha256] after download
+ * and kept in its own folder ([dir]) on the phone.
  */
-data class SpeechModel(val file: String, val sha256: String, val bytes: Long) {
+data class SpeechModel(val file: String, val sha256: String, val bytes: Long, val dir: String = "models") {
     val url: String get() = "https://github.com/kream0/hfd/releases/download/speech-model/$file"
 
     companion object {
+        /**
+         * Tarteel's Qur'an-tuned Whisper (huggingface.co/tarteel-ai, Apache-2.0), converted to
+         * whisper.cpp's format by .github/workflows/model.yml.
+         */
         val DEFAULT = SpeechModel(
             file = "ggml-tiny-ar-quran-q8_0.bin",
             sha256 = "ef01ab441b004f9e6f1ea98d397b43452b3a45efab7c3928ab37af655dde8b52",
             bytes = 43_500_000,
         )
+
+        /**
+         * The CTC recogniser's: mrmuminov's Qur'an FastConformer (huggingface.co/mrmuminov/
+         * quran-fastconformer-ctc-ar, CC BY 4.0, from NVIDIA's Arabic FastConformer), its int8
+         * ONNX file as published (.github/workflows/ctcmodel.yml copies it).
+         */
+        val CTC = SpeechModel(
+            file = "quran-fastconformer-ctc-ar-int8.onnx",
+            sha256 = "acfecea696b8ab2e99cf40cd7463bc3a4e323a4771dd7e54db372d076d51a97c",
+            bytes = 173_847_393,
+            dir = "models-ctc",
+        )
     }
+}
+
+/**
+ * The models a Recite session may read with, those on the phone: the CTC model ([SpeechModel.CTC],
+ * preferred unless the owner keeps to Whisper) and Tarteel's Whisper (also what a session falls
+ * back on if the CTC model doesn't load).
+ */
+class ReciteModels(val ctc: File?, val whisper: File?)
+
+/** Which recogniser Recite reads with. */
+enum class ReciteEngine {
+    /** The CTC model once it is on the phone, Whisper until then. */
+    BEST,
+    /** Tarteel's Whisper, as before 2.2.0. */
+    WHISPER,
 }
 
 sealed interface ModelState {
@@ -42,11 +72,10 @@ sealed interface ModelState {
     data class Failed(val message: String) : ModelState
 }
 
-/** The speech model on the phone: downloaded once (outside the backup), then used offline. */
-class ModelStore(context: Context, private val http: OkHttpClient, private val scope: CoroutineScope) {
-    val model = SpeechModel.DEFAULT
+/** A speech model on the phone: downloaded once (outside the backup), then used offline. */
+class ModelStore(context: Context, private val http: OkHttpClient, private val scope: CoroutineScope, val model: SpeechModel = SpeechModel.DEFAULT) {
     // noBackupFilesDir: tens of MB that Android's backup shouldn't carry.
-    private val dir = File(context.noBackupFilesDir, "models")
+    private val dir = File(context.noBackupFilesDir, model.dir)
     private val target = File(dir, model.file)
     private val _state = MutableStateFlow<ModelState>(if (target.isFile) ModelState.Ready(target) else ModelState.Missing)
     val state: StateFlow<ModelState> = _state.asStateFlow()

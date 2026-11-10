@@ -42,7 +42,7 @@ class ReciteBench {
         val freeTotals = Totals()
         val steeredTotals = Totals()
         val owners = ArrayList<String>()
-        Decoder(System.getenv("HFD_DECODER"), System.getenv("HFD_MODEL")).use { decoder ->
+        Decoder.open().use { decoder ->
             for (c in cases) {
                 val pcm = Wav.read(File(dir, c.wav))
                 val r = Simulation(c, pcm, decoder).run()
@@ -570,7 +570,11 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
          * the owner's 240 readings of 11 Oct), 87 ms + 26 ms per second (127 ms at 0-3 s, 365 at
          * 9-12 s). On the CPU it was 570 ms + 18 ms per second (1.14.3).
          */
-        fun readingTime(seconds: Float): Double = (0.087 + 0.0264 * seconds) * PHONE_FACTOR
+        fun readingTime(seconds: Float): Double = (READ_BASE + READ_PER_SECOND * seconds) * PHONE_FACTOR
+        /** HFD_READ_MS "base,per second of audio": another recogniser's time on the phone (the CTC model on its CPU). */
+        private val READ = System.getenv("HFD_READ_MS")?.split(',')?.mapNotNull { it.trim().toDoubleOrNull() }?.takeIf { it.size == 2 }
+        private val READ_BASE = (READ?.get(0) ?: 87.0) / 1000
+        private val READ_PER_SECOND = (READ?.get(1) ?: 26.4) / 1000
     }
 }
 
@@ -578,12 +582,30 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
  * The app's decoding, as a process: 4-byte little-endian sample count, float32 samples, 4-byte
  * prompt length and its UTF-8 bytes, 4-byte length and UTF-8 bytes of the expected text → a line of text.
  */
-private class Decoder(exe: String, model: String) : AutoCloseable {
+private interface Decoder : AutoCloseable {
+    fun transcribe(pcm: FloatArray, prompt: String = "", expected: String = ""): String
+
+    companion object {
+        /** HFD_CTC (the CTC model's ONNX file): that recogniser, in process; else whisper.cpp's decoder (HFD_DECODER, HFD_MODEL). */
+        fun open(): Decoder = System.getenv("HFD_CTC")?.takeIf { it.isNotBlank() }?.let(::CtcDecoder)
+            ?: ProcessDecoder(System.getenv("HFD_DECODER"), System.getenv("HFD_MODEL"))
+    }
+}
+
+/** The CTC recogniser as the app runs it: [app.hfd.core.ctc.CtcRecognizer] over ONNX Runtime. */
+private class CtcDecoder(model: String) : Decoder {
+    private val ort = app.hfd.core.ctc.OrtCtcModel(model, System.getenv("HFD_CTC_THREADS")?.toIntOrNull() ?: 4)
+    private val recognizer = app.hfd.core.ctc.CtcRecognizer(ort)
+    override fun transcribe(pcm: FloatArray, prompt: String, expected: String): String = recognizer.transcribe(pcm, expected)
+    override fun close() = ort.close()
+}
+
+private class ProcessDecoder(exe: String, model: String) : Decoder {
     private val process = ProcessBuilder(exe, model).redirectError(ProcessBuilder.Redirect.DISCARD).start()
     private val out = BufferedOutputStream(process.outputStream)
     private val input = process.inputStream.bufferedReader(Charsets.UTF_8)
 
-    fun transcribe(pcm: FloatArray, prompt: String = "", expected: String = ""): String {
+    override fun transcribe(pcm: FloatArray, prompt: String, expected: String): String {
         val text = prompt.toByteArray(Charsets.UTF_8)
         val exp = expected.toByteArray(Charsets.UTF_8)
         val buf = ByteBuffer.allocate(4 + 4 * pcm.size + 4 + text.size + 4 + exp.size).order(ByteOrder.LITTLE_ENDIAN)

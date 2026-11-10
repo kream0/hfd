@@ -311,4 +311,12 @@
     <string name="quran_reciter_suras">%1$d sourates sur %2$d</string>
     <string name="quran_reciter_instead">%1$s (pas %2$s ici)</string>
     <string name="sleep_chip_end">Arrêt à la fin</string>
+    <string name="recite_model_ctc_needed">La récitation à voix haute utilise un modèle de reconnaissance coranique (FastConformer, %1$d Mo), téléchargé une fois. Il fonctionne sur le téléphone : votre voix n\'est ni enregistrée ni envoyée.</string>
+    <string name="recite_model_upgrade">Nouveau modèle de reconnaissance : il suit mieux une voix étouffée ou du bruit, et répond plus vite. %1$d Mo, téléchargé une fois ; le modèle actuel sert d\'ici là.</string>
+    <string name="recite_model_keep">Garder le modèle actuel</string>
+    <string name="settings_recite">Récitation à voix haute</string>
+    <string name="settings_recite_engine">Modèle de reconnaissance</string>
+    <string name="settings_recite_engine_body">Le nouveau (FastConformer coranique de mrmuminov, CC BY 4.0, d\'après le modèle arabe de NVIDIA) suit mieux une voix étouffée ou du bruit et répond plus vite ; il sert dès qu\'il est téléchargé, depuis l\'écran Réciter. Celui de Tarteel (Whisper) reste disponible. Aucun ne juge la prononciation : ils reconnaissent les mots.</string>
+    <string name="settings_recite_engine_new">Nouveau · %1$d Mo</string>
+    <string name="settings_recite_engine_whisper">Tarteel · %1$d Mo</string>
 </resources>
