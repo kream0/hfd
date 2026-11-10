@@ -1,0 +1,57 @@
+name: CTC speed
+
+# A candidate for Recite's recogniser: a character CTC model trained on Qur'an recitation
+# (FastConformer, 115 M parameters, int8 ONNX, CC-BY-4.0), timed on GitHub's arm64 runner
+# (Neoverse N2, as armspeed.yml) with ONNX Runtime, next to the app's whisper.cpp tiny on the same
+# machine and clip: what a reading would cost on a phone's CPU, by utterance length and threads.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - '.github/workflows/ctcspeed.yml'
+      - 'tools/ctc/speed.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  speed:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - name: CPU
+        run: grep -m1 -i "features" /proc/cpuinfo; nproc
+      - name: The CTC model
+        run: |
+          python3 -m pip install --quiet --break-system-packages onnxruntime numpy
+          mkdir -p model/onnx
+          base=https://huggingface.co/mrmuminov/quran-fastconformer-ctc-ar/resolve/main
+          curl -sSfL -o model/onnx/model_int8.onnx $base/onnx/model_int8.onnx
+          curl -sSfL -o model/onnx/fb.bin $base/onnx/fb.bin
+          curl -sSfL -o model/vocab.json $base/vocab.json
+          python3 tools/ctc/speed.py model app/src/main/assets/diag/112001.wav
+      - name: whisper.cpp tiny, as the app
+        run: |
+          git clone -q --depth 1 --branch v1.7.6 https://github.com/ggml-org/whisper.cpp
+          curl -sSfL -o model.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-tiny-ar-quran-q8_0.bin
+          cmake -S whisper.cpp -B build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_CPU_ARM_ARCH=armv8.6-a+dotprod+fp16+i8mm >/dev/null
+          cmake --build build -j"$(nproc)" --config Release --target whisper-cli >/dev/null
+          python3 - <<'PY'
+          import wave, numpy as np
+          with wave.open("app/src/main/assets/diag/112001.wav") as w: pcm = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2")
+          for s in (3, 6, 12, 20):
+              x = np.tile(pcm, int(np.ceil(s * 16000 / len(pcm))))[: s * 16000]
+              with wave.open(f"clip{s}.wav", "wb") as o: o.setnchannels(1); o.setsampwidth(2); o.setframerate(16000); o.writeframes(x.tobytes())
+          PY
+          for s in 3 6 12 20; do
+            for t in 1 2 4; do
+              build/bin/whisper-cli -m model.bin -l ar -nt -bs 1 -bo 1 -t $t -f clip$s.wav >/dev/null 2>&1
+              for i in 1 2 3 4 5; do
+                build/bin/whisper-cli -m model.bin -l ar -nt -bs 1 -bo 1 -t $t -f clip$s.wav 2>&1 >/dev/null | grep -E "encode time|decode time|batchd time" | tr -s ' ' | tr '\n' ' '
+                echo
+              done > times.txt
+              python3 -c "import re,statistics,sys;L=[l for l in open('times.txt') if 'encode' in l];f=lambda l:sum(float(x) for x in re.findall(r'(?:encode|decode|batchd) time = +([0-9.]+)',l));v=[f(l) for l in L];print('whisper %2s s threads=%s: best %.0f median %.0f ms (encode + decode)'%(sys.argv[1],sys.argv[2],min(v),statistics.median(v)))" $s $t
+            done
+          done
