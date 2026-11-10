@@ -260,6 +260,32 @@ def keyboard_shown():
     return shown.group(1) == "true" if shown else None
 
 
+def voice_search():
+    """The search by reciting opens, loads the recogniser and listens (the emulator's microphone is silent)."""
+    mic = find(is_("Chercher en récitant"))
+    if not mic:
+        failures.append("voice: no microphone button in the search field")
+        return
+    sh("logcat -c")
+    tap(mic)
+    listening = wait(lambda t: t.startswith("Récitez quelques mots") or t.startswith("À l"), 240)
+    shot("voice")
+    for line in sh("logcat -d -s Diag:D").splitlines():
+        if re.search(r"(ctc|whisper)\.(load|selftest)|voice\.|mic\.(open|device)", line):
+            print("   " + line[-220:], flush=True)
+    print(f"SMOKE voice search: {'listening' if listening else 'not listening'}", flush=True)
+    if not listening:
+        failures.append("voice: the search by reciting didn't listen")
+    stop = find(starts("Arrêter l"))
+    if stop:
+        tap(stop)
+        if not wait(lambda t: t.startswith("Je n") or t.startswith("Ce que j") or t == "Réessayer", 60):
+            failures.append("voice: it didn't stop")
+    # The sheet goes at a tap above it.
+    sh(f"input tap {W // 2} {int(H * 0.08)}")
+    time.sleep(1.0)
+
+
 def search_and_favourite():
     """A reference typed in the search opens its āya and the keyboard goes; the āya is kept as a favourite."""
     field = find(starts("Sourate, verset"))
@@ -305,6 +331,7 @@ def search_and_favourite():
     if not find(is_("Favoris")):
         sh("input keyevent 4")
         time.sleep(0.8)
+    voice_search()
     step("favourites", is_("Favoris"), is_("Al-Baqara 255"))
     step("juz", is_("Juzʾ"), is_("Juzʾ 2"))
     step("hizb", is_("Ḥizb"), is_("Ḥizb 3"))
