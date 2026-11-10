@@ -1,0 +1,228 @@
+#!/usr/bin/env python3
+"""The release APK on a real Android (smoke.yml's emulator): tour.py <apk> <out dir> [label]
+
+Installs the APK, times cold starts ("am start -W" and the app's own "fully drawn", once its text
+is loaded) as installed and again once ART has compiled it with its baseline profile, then walks
+the main screens through the accessibility tree (French labels), scrolls a long sūra for the frame
+times, and takes a screenshot of each screen. Fails on a crash, on a screen that doesn't come, or
+on a class / method / serializer the build lost (what R8 could break).
+"""
+import json, os, re, statistics, subprocess, sys, time
+import xml.etree.ElementTree as ET
+
+PKG = "app.hfd"
+ACTIVITY = PKG + "/.MainActivity"
+apk, out = sys.argv[1], sys.argv[2]
+label = sys.argv[3] if len(sys.argv) > 3 else "apk"
+os.makedirs(out, exist_ok=True)
+failures, report = [], {"label": label, "apk_bytes": os.path.getsize(apk)}
+
+
+def adb(*args, timeout=180, binary=False):
+    r = subprocess.run(["adb", *args], capture_output=True, timeout=timeout)
+    return r.stdout if binary else (r.stdout.decode("utf-8", "replace") + r.stderr.decode("utf-8", "replace"))
+
+
+def sh(cmd, **kw):
+    return adb("shell", cmd, **kw)
+
+
+def nodes():
+    """The screen's nodes: (text, description, (left, top, right, bottom))."""
+    for _ in range(4):
+        sh("uiautomator dump /sdcard/ui.xml")
+        xml = adb("exec-out", "cat", "/sdcard/ui.xml", binary=True)
+        try:
+            root = ET.fromstring(xml)
+        except ET.ParseError:
+            time.sleep(1.0)
+            continue
+        found = []
+        for n in root.iter("node"):
+            m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", n.get("bounds", ""))
+            if m and n.get("package") == PKG:
+                found.append((n.get("text", ""), n.get("content-desc", ""), tuple(map(int, m.groups()))))
+        if found:
+            return found
+        time.sleep(1.0)
+    return []
+
+
+def find(want, seen=None):
+    seen = nodes() if seen is None else seen
+    for text, desc, box in seen:
+        if want(text) or want(desc):
+            return box
+    return None
+
+
+def wait(want, seconds=25):
+    end = time.time() + seconds
+    while time.time() < end:
+        box = find(want)
+        if box:
+            return box
+        time.sleep(0.7)
+    return None
+
+
+def tap(box):
+    sh(f"input tap {(box[0] + box[2]) // 2} {(box[1] + box[3]) // 2}")
+    time.sleep(1.2)
+
+
+def shot(name):
+    png = adb("exec-out", "screencap", "-p", binary=True)
+    with open(os.path.join(out, f"{label}-{name}.png"), "wb") as f:
+        f.write(png)
+
+
+def step(name, want, then=None, seconds=25):
+    """Taps the node [want] finds, waits for [then], takes the screen's picture."""
+    box = wait(want, seconds)
+    if not box:
+        failures.append(f"{name}: nothing to tap")
+        shot(name + "-missing")
+        return False
+    tap(box)
+    if then and not wait(then, seconds):
+        failures.append(f"{name}: the screen didn't come")
+        shot(name + "-missing")
+        return False
+    shot(name)
+    print(f"SMOKE screen {name}: ok", flush=True)
+    return True
+
+
+def is_(s):
+    return lambda t: t == s
+
+
+def starts(s):
+    return lambda t: t.startswith(s)
+
+
+def ms(text):
+    """ActivityTaskManager's "+1s234ms"."""
+    m = re.match(r"\+(?:(\d+)s)?(\d+)ms", text)
+    return int(m.group(1) or 0) * 1000 + int(m.group(2)) if m else None
+
+
+def cold_start():
+    sh(f"am force-stop {PKG}")
+    time.sleep(1.0)
+    sh("logcat -c")
+    started = sh(f"am start -W -n {ACTIVITY}")
+    total = re.search(r"TotalTime: (\d+)", started)
+    drawn = None
+    end = time.time() + 30
+    while time.time() < end and drawn is None:
+        m = re.search(r"Fully drawn " + re.escape(PKG) + r"\S*: (\+\S+)", sh("logcat -d -s ActivityTaskManager:I"))
+        if m:
+            drawn = ms(m.group(1))
+        else:
+            time.sleep(0.5)
+    return (int(total.group(1)) if total else None), drawn
+
+
+def starts_report(name, n=7):
+    runs = [cold_start() for _ in range(n)]
+    first = [r[0] for r in runs if r[0] is not None]
+    drawn = [r[1] for r in runs if r[1] is not None]
+    report[name] = {"first_frame_ms": first, "fully_drawn_ms": drawn}
+    if not first:
+        failures.append(f"{name}: the app didn't start")
+        return
+    med = lambda v: int(statistics.median(v)) if v else None
+    print(f"SMOKE start {name}: first frame median {med(first)} ms {first}; fully drawn median {med(drawn)} ms {drawn}", flush=True)
+
+
+def frames(name):
+    info = sh(f"dumpsys gfxinfo {PKG}")
+    get = lambda pattern: (re.search(pattern, info) or [None, None])[1]
+    stats = {
+        "frames": get(r"Total frames rendered: (\d+)"), "janky": get(r"Janky frames: (\d+ \([\d.]+%\))"),
+        "p50": get(r"50th percentile: (\d+)ms"), "p90": get(r"90th percentile: (\d+)ms"),
+        "p95": get(r"95th percentile: (\d+)ms"), "p99": get(r"99th percentile: (\d+)ms"),
+    }
+    report[name] = stats
+    print(f"SMOKE frames {name}: {stats}", flush=True)
+
+
+# ------------------------------------------------------------------ install
+print(adb("install", "-r", apk, timeout=600).strip(), flush=True)
+if PKG not in sh(f"pm list packages {PKG}"):
+    print("SMOKE FAILED: the APK didn't install (see above)")
+    sys.exit(1)
+sh(f"pm grant {PKG} android.permission.POST_NOTIFICATIONS")
+sh(f"pm grant {PKG} android.permission.RECORD_AUDIO")
+sh("settings put global window_animation_scale 1; settings put global transition_animation_scale 1; settings put global animator_duration_scale 1")
+
+# ------------------------------------------------------------------ starts
+first = cold_start()
+report["first_start"] = {"first_frame_ms": first[0], "fully_drawn_ms": first[1]}
+print(f"SMOKE start after install: first frame {first[0]} ms, fully drawn {first[1]} ms", flush=True)
+if not wait(is_("Accueil"), 40):
+    failures.append("home: the app's first screen didn't come")
+shot("home")
+starts_report("as installed")
+
+# ------------------------------------------------------------------ the screens
+size = re.search(r"(\d+)x(\d+)", sh("wm size"))
+W, H = (int(size.group(1)), int(size.group(2))) if size else (1080, 2400)
+if step("passages", is_("Faḍāʾil"), is_("Āyat al-Kursī")):
+    if step("passage", is_("Āyat al-Kursī"), is_("Réciter")):
+        step("recite", is_("Réciter"), lambda t: t.startswith("Télécharger") or t.startswith("Commencer"))
+        sh("input keyevent 4")
+        time.sleep(1.0)
+    sh("input keyevent 4")
+    time.sleep(1.0)
+if step("quran", is_("Coran"), starts("Al-Baqara")):
+    if step("sura", starts("Al-Baqara"), lambda t: "ذَٰلِكَ" in t, seconds=40):
+        sh(f"dumpsys gfxinfo {PKG} reset")
+        for _ in range(12):
+            sh(f"input swipe {W // 2} {int(H * 0.72)} {W // 2} {int(H * 0.28)} 220")
+            time.sleep(0.5)
+        frames("sura scrolled")
+        shot("sura-scrolled")
+    sh("input keyevent 4")
+    time.sleep(1.0)
+    sh(f"dumpsys gfxinfo {PKG} reset")
+    for _ in range(8):
+        sh(f"input swipe {W // 2} {int(H * 0.72)} {W // 2} {int(H * 0.28)} 220")
+        time.sleep(0.5)
+    frames("sura list scrolled")
+step("stats", is_("Stats"))
+step("settings", is_("Réglages"))
+step("home-again", is_("Accueil"))
+
+# ------------------------------------------------------------------ compiled with its baseline profile
+# What Android does on its own some hours after an install (a sideloaded app's profile is written
+# by ProfileInstaller on its first run, then compiled while the phone charges).
+print(sh(f"am broadcast -a androidx.profileinstaller.action.INSTALL_PROFILE {PKG}/androidx.profileinstaller.ProfileInstallReceiver").strip()[-200:], flush=True)
+print(sh(f"cmd package compile -f -m speed-profile {PKG}", timeout=600).strip()[-200:], flush=True)
+status = re.search(r"\[status=([^\]]+)\]", sh(f"dumpsys package dexopt | grep -A3 '\\[{PKG}\\]'"))
+report["compiled"] = status.group(1) if status else None
+print(f"SMOKE compiled: {report['compiled']}", flush=True)
+starts_report("compiled with its profile")
+
+# ------------------------------------------------------------------ verdict
+log = sh("logcat -d", timeout=120)
+crash = sh("logcat -d -b crash")
+lost = [l for l in log.splitlines() if re.search(
+    r"UnsatisfiedLinkError|No implementation found|ClassNotFoundException|NoSuchMethodError|NoSuchFieldError|NoClassDefFoundError|SerializationException|MissingFieldException", l)]
+if PKG in crash:
+    failures.append("the app crashed")
+    print(crash[-6000:])
+if lost:
+    failures.append(f"{len(lost)} log lines about lost classes / methods")
+    print("\n".join(lost[:40]))
+if PKG not in sh(f"pidof {PKG} && echo {PKG}"):
+    failures.append("the app is no longer running")
+report["failures"] = failures
+with open(os.path.join(out, f"{label}.json"), "w") as f:
+    json.dump(report, f, indent=1)
+with open(os.path.join(out, f"{label}-logcat.txt"), "w") as f:
+    f.write(log)
+print("SMOKE " + ("FAILED: " + "; ".join(failures) if failures else "OK"), flush=True)
+sys.exit(1 if failures else 0)

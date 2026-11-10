@@ -1,0 +1,104 @@
+name: Smoke test
+
+# The release APK on a real Android 16 (an emulator): installs, starts (timed), every main screen
+# comes, a long sūra scrolls, nothing crashes and nothing the code needs was removed. Built both
+# plain and with R8 (-Phfd.minify=true), to compare them before R8 becomes what is released.
+# Read the "SMOKE" lines of each job's log; the screenshots are in the run's artifacts.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - '.github/workflows/smoke.yml'
+      - 'tools/smoke/**'
+      - 'app/build.gradle.kts'
+      - 'app/proguard-rules.pro'
+      - 'gradle/libs.versions.toml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: smoke (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { label: plain, minify: 'false' }
+          - { label: r8, minify: 'true' }
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      # As build.yml: QNN's headers for the NPU, fetched and never committed.
+      - uses: actions/cache@v5
+        id: qnn-headers
+        with:
+          path: qnn-include
+          key: qnn-include-2.42.0.251225
+      - name: QNN headers
+        run: |
+          if [ ! -f qnn-include/QnnInterface.h ]; then
+            python3 -m pip install --quiet remotezip
+            python3 tools/npu/headers.py 2.42.0.251225 qnn-include
+          fi
+          echo "QNN_INCLUDE=$PWD/qnn-include" >> "$GITHUB_ENV"
+
+      - name: Release APK
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon :app:assembleRelease -Phfd.minify=${{ matrix.minify }} 2>&1 | tee build.log | tail -40
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk dist/hfd.apk
+          ls -l dist/hfd.apk
+          unzip -l dist/hfd.apk | grep -E 'classes[0-9]*\.dex|baseline'
+
+      - name: Show build errors
+        if: failure()
+        run: |
+          grep -nE "^e: |error:|FAILED|Missing class|R8" build.log | head -80 || true
+
+      - name: Let the emulator use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Google's image: it runs arm64 code (the app's native libraries are arm64 only).
+      - name: The app on Android 16
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          ram-size: 4096M
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: python3 tools/smoke/tour.py dist/hfd.apk smoke-out ${{ matrix.label }}
+
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: smoke-${{ matrix.label }}
+          path: smoke-out
+          retention-days: 7

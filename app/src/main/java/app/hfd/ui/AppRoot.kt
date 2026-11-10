@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.ReportDrawnWhen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
@@ -100,6 +101,10 @@ fun AppRoot(app: AppViewModel) {
             ),
         )
     }
+
+    // The app is "fully drawn" once the text is loaded: what a start is timed to (smoke.yml).
+    val loaded by Graph.content.content.collectAsStateWithLifecycle()
+    ReportDrawnWhen { loaded != null }
 
     CompositionLocalProvider(LocalSheets provides openSheet) {
         Box(Modifier.fillMaxSize().background(P.background)) {

@@ -71,8 +71,11 @@ android {
 
     buildTypes {
         release {
-            // Small sideloaded app: shrinking isn't worth the reflection / serialization risk.
-            isMinifyEnabled = false
+            // R8 (shrinking and optimising, names kept: proguard-rules.pro) with -Phfd.minify=true:
+            // smoke.yml builds the APK both ways and runs each on an emulator before it becomes
+            // what is released.
+            isMinifyEnabled = providers.gradleProperty("hfd.minify").orNull == "true"
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("sideload")
         }
         debug {
