@@ -124,8 +124,8 @@ class PlayerConnection(private val context: Context) {
 
     /** Plays [session] from [start]; the service builds the plan (repeats, gaps, basmala). */
     fun play(session: PlaySession, start: AyahRef? = null) {
-        // Plain listening (not a Learn / Review step) is what "continue" resumes.
-        if (session.tag == null) Graph.sessions.update { it.copy(mode = AppMode.LISTEN, fadilaId = session.fadilaAt(0)) }
+        // Plain listening to a passage (not a Learn / Review step, nor the Qur'an section) is what "continue" resumes.
+        if (session.tag == null && session.sura == null) Graph.sessions.update { it.copy(mode = AppMode.LISTEN, fadilaId = session.fadilaAt(0)) }
         withController { Graph.engine.value?.play(session, start) }
     }
 

@@ -12,6 +12,10 @@ on:
     paths:
       - '.github/diag.trigger'
       - '.github/workflows/diag.yml'
+  # Every two hours too: ntfy keeps the events 12 h and a recording about 3 h, so what the owner
+  # recites while nobody is looking stays in these runs' logs (and its recordings in the cache).
+  schedule:
+    - cron: '17 */2 * * *'
   workflow_dispatch:
 
 permissions:

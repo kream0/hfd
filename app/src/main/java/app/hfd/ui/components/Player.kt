@@ -37,6 +37,8 @@ import app.hfd.core.fadail.Fadila
 import app.hfd.core.playback.GapMode
 import app.hfd.core.playback.PlanItem
 import app.hfd.core.playback.PlanSpec
+import app.hfd.core.playback.QuranListening
+import app.hfd.core.playback.Reciter
 import app.hfd.core.playback.Reciters
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.AppSettings
@@ -89,10 +91,14 @@ fun sessionFor(f: Fadila, title: String, r: SubRange): PlaySession =
 @Composable
 fun OfflineChip(f: Fadila, modifier: Modifier = Modifier) {
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
+    OfflineChip(settings.reciterInfo, neededAudio(f, settings), modifier)
+}
+
+/** The same for [refs] as [reciter] recites them; a tap saves what is missing. */
+@Composable
+fun OfflineChip(reciter: Reciter, refs: List<AyahRef>, modifier: Modifier = Modifier) {
     val files by Graph.audio.files.collectAsStateWithLifecycle()
     val tasks by Graph.downloads.tasks.collectAsStateWithLifecycle()
-    val reciter = settings.reciterInfo
-    val refs = neededAudio(f, settings)
     val progress = Graph.downloads.progress(reciter, refs, files, tasks)
     val keys = refs.map { Graph.audio.key(reciter, it) }
     val failed = keys.any { tasks[it]?.status == DlStatus.FAILED }
@@ -241,6 +247,88 @@ fun PlayerPanel(f: Fadila, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Bottom panel of a sūra of the Qur'an section: what's playing and the transport, with the speed,
+ * the section's reciter and the timer. No repeats nor pauses: a sūra plays through, then the next.
+ */
+@Composable
+fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifier) {
+    val sheets = LocalSheets.current
+    val context = LocalContext.current
+    val np by Graph.nowPlaying.collectAsStateWithLifecycle()
+    val ui by Graph.player.state.collectAsStateWithLifecycle()
+    val settings by Graph.settings.state.collectAsStateWithLifecycle()
+    val place by Graph.quranPlace.place.collectAsStateWithLifecycle()
+    val isThis = np?.session?.sura == sura
+    val playing = isThis && ui.playWhenReady
+    val reciter = settings.quranReciterInfo
+    // Where this sūra was left, if it is the one the section was last listened to.
+    val resumeAt = place?.takeIf { it.sura == sura && it.aya > 1 }
+
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .background(P.surface)
+            .padding(top = 12.dp, bottom = 10.dp),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (isThis) itemLabel(np?.item) else resumeAt?.toString() ?: stringResource(R.string.chip_all),
+                style = Type.clock,
+                color = P.text,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            OfflineChip(reciter, remember(ayat) { if (sura != 1 && sura != 9) ayat + app.hfd.core.playback.EveryAyah.BASMALA else ayat })
+        }
+        if (isThis) {
+            val progress by Graph.player.progress.collectAsStateWithLifecycle()
+            val fraction = if (ui.durationMs > 0) progress.positionMs.toFloat() / ui.durationMs else 0f
+            DotProgressBar(
+                progress = fraction,
+                onSeek = { p -> if (ui.durationMs > 0) Graph.player.seekTo((p * ui.durationMs).toLong()) },
+                modifier = Modifier.padding(horizontal = 18.dp),
+                height = 18.dp,
+            )
+        } else {
+            Spacer(Modifier.height(8.dp))
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 2.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TransportButton(DotGlyphs.PREV, stringResource(R.string.player_previous), enabled = isThis) { Graph.player.previousAyah() }
+            Spacer(Modifier.width(22.dp))
+            Box(
+                Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .background(P.inverse)
+                    .clickable { if (isThis) Graph.player.togglePlay() else Graph.playSura(sura, resumeAt) }
+                    .semantics { contentDescription = context.getString(if (playing) R.string.player_pause else R.string.player_play) },
+                contentAlignment = Alignment.Center,
+            ) {
+                DotIcon(if (playing) DotGlyphs.PAUSE else DotGlyphs.PLAY, P.onInverse, Modifier.size(22.dp))
+            }
+            Spacer(Modifier.width(22.dp))
+            TransportButton(DotGlyphs.NEXT, stringResource(R.string.player_next), enabled = isThis) { Graph.player.nextAyah() }
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            SettingChip(reciter.short, { sheets(quranReciterSheet(context, reciter.id)) })
+            SettingChip(speedLabel(settings.speed), { sheets(speedSheet(context)) }, settings.speed != 1f)
+            val sleep = if (isThis) np?.sleep else null
+            SettingChip(sleepLabel(sleep), { sheets(sleepSheet(context, context.getString(R.string.sleep_end_sura))) }, sleep != null)
+        }
+    }
+}
+
 @Composable
 private fun sleepLabel(sleep: Sleep?): String = when (sleep) {
     null -> "☾"
@@ -324,10 +412,23 @@ fun reciterSheet(context: android.content.Context, current: String) = SheetSpec(
     },
 )
 
-fun sleepSheet(context: android.content.Context) = SheetSpec(
+/** The Qur'an section's reciter: the recitations that have every āya. */
+fun quranReciterSheet(context: android.content.Context, current: String) = SheetSpec(
+    title = context.getString(R.string.reciter),
+    subtitle = context.getString(R.string.quran_reciter_body),
+    actions = QuranListening.RECITERS.map { r ->
+        SheetAction(
+            label = "${r.name} · ${r.style}",
+            icon = if (r.id == current) Ic.Check else null,
+        ) { Graph.settings.update { it.copy(quranReciter = r.id) } }
+    },
+)
+
+/** The timer; [end]: what "at the end" stops after (the faḍīla, or the sūra in the Qur'an section). */
+fun sleepSheet(context: android.content.Context, end: String = context.getString(R.string.sleep_end)) = SheetSpec(
     title = context.getString(R.string.sleep),
     actions = listOf(
-        SheetAction(context.getString(R.string.sleep_end)) { Graph.player.sleepAtEnd() },
+        SheetAction(end) { Graph.player.sleepAtEnd() },
         SheetAction(context.getString(R.string.sleep_minutes, 15)) { Graph.player.sleepAfter(15) },
         SheetAction(context.getString(R.string.sleep_minutes, 30)) { Graph.player.sleepAfter(30) },
         SheetAction(context.getString(R.string.sleep_minutes, 60)) { Graph.player.sleepAfter(60) },

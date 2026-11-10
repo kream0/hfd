@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import app.hfd.core.playback.GapMode
 import app.hfd.ui.components.LocalSheets
 import app.hfd.ui.components.gapLabel
+import app.hfd.ui.components.quranReciterSheet
 import app.hfd.ui.components.reciterSheet
 import app.hfd.ui.components.speedLabel
 import app.hfd.ui.components.timesLabel
@@ -226,6 +227,11 @@ private fun ListeningSection(settings: AppSettings) {
     val scope = rememberCoroutineScope()
     SettingLine(stringResource(R.string.reciter), "${settings.reciterInfo.name} · ${settings.reciterInfo.style}") {
         PillButton(settings.reciterInfo.short, { sheets(reciterSheet(context, settings.reciter)) })
+    }
+    // The Qur'an section's own reciter (one that has every āya).
+    val quranReciter = settings.quranReciterInfo
+    SettingLine(stringResource(R.string.quran_reciter), "${quranReciter.name} · ${quranReciter.style}") {
+        PillButton(quranReciter.short, { sheets(quranReciterSheet(context, quranReciter.id)) })
     }
     SettingBlock(stringResource(R.string.repeat_each), stringResource(R.string.repeat_each_body)) {
         val options = AppSettings.REPEAT_EACH

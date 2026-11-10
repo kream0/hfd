@@ -274,4 +274,19 @@
     <string name="recite_mic_earbuds">earbuds</string>
     <string name="recite_mic_phone">Microphone: phone</string>
     <string name="recite_mic_phone_switch">Microphone: phone · use the earbuds</string>
+    <!-- The Qur'an section -->
+    <string name="tab_quran">Qur’an</string>
+    <string name="quran_count">%1$d sūras</string>
+    <string name="quran_found">%1$d found</string>
+    <string name="quran_search">Search a sūra</string>
+    <string name="quran_search_clear">Clear the search</string>
+    <string name="quran_resume">Resume listening</string>
+    <string name="quran_listening">Listening now</string>
+    <string name="quran_resume_at">%1$s · āya %2$d of %3$d</string>
+    <string name="quran_reciter_body">For the Qur’an section: the recitations that have every āya. The passages’ reciter is set apart.</string>
+    <string name="sura_title">%1$d · %2$s</string>
+    <string name="sura_meccan">Meccan</string>
+    <string name="sura_medinan">Medinan</string>
+    <string name="sleep_end_sura">End of the sūra</string>
+    <string name="quran_reciter">Qur’an reciter</string>
 </resources>

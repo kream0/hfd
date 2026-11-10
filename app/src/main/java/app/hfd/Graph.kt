@@ -3,10 +3,13 @@ package app.hfd
 import android.app.Application
 import android.media.AudioManager
 import androidx.annotation.StringRes
+import app.hfd.core.playback.GapMode
+import app.hfd.core.playback.QuranListening
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.ContentRepo
 import app.hfd.diag.Diag
 import app.hfd.data.ProgressRepo
+import app.hfd.data.QuranPlace
 import app.hfd.data.SessionStore
 import app.hfd.data.RangeStore
 import app.hfd.data.Settings
@@ -67,6 +70,8 @@ object Graph {
     val downloads: AudioDownloader by lazy { AudioDownloader(app, audio, http, scope, timings) }
     val player: PlayerConnection by lazy { PlayerConnection(app) }
     val ranges: RangeStore by lazy { RangeStore(app) }
+    /** Where the Qur'an section was last listened to. */
+    val quranPlace: QuranPlace by lazy { QuranPlace(app) }
     val progress: ProgressRepo by lazy { ProgressRepo(app, scope) }
     val sessions: SessionStore by lazy { SessionStore(app) }
     /** Speech model for the Recite mode (downloaded once). */
@@ -98,6 +103,24 @@ object Graph {
         if (ayat.isEmpty()) return
         val parts = c.fadail.map { PlaySession.Part(it.id, it.title.pick(lang), it.ayat.size) }
         player.play(PlaySession(PlaySession.ALL, title, ayat, 0, ayat.lastIndex, parts = parts))
+    }
+
+    /**
+     * Sūra [sura] as the Qur'an section plays it: through, once, whatever the passages' repeats
+     * and pauses are; the engine then goes on with the next sūra.
+     */
+    fun quranSession(sura: Int): PlaySession? {
+        val meta = content.content.value?.suras?.getOrNull(sura - 1) ?: return null
+        val ayat = QuranListening.ayat(sura, meta.ayas)
+        return PlaySession(
+            QuranListening.id(sura), meta.tname, ayat, 0, ayat.lastIndex,
+            repeatEach = 1, repeatRange = 1, gap = GapMode.NONE, basmala = true,
+        )
+    }
+
+    /** Listens to the Qur'an from sūra [sura] ([start]: from that āya of it). */
+    fun playSura(sura: Int, start: AyahRef? = null) {
+        quranSession(sura)?.let { player.play(it, start) }
     }
 
     fun closeRecite() {

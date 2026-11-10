@@ -159,6 +159,15 @@ class ScreenshotTest {
         rule.onNodeWithTag("reading").performScrollToIndex(0)
         ui { vm.openFadila("tawba-end") }
         both("tawba-end")
+        // The Qur'an section: the sūras (the listening left at 18:10), and one open.
+        ui {
+            vm.fadila = null
+            Graph.quranPlace.set(app.hfd.core.quran.AyahRef(18, 10))
+            vm.selectTab(Tab.QURAN)
+        }
+        both("quran")
+        ui { vm.openSura(18) }
+        both("sura")
         ui {
             vm.fadila = null
             vm.selectTab(Tab.STATS)

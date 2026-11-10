@@ -9,6 +9,7 @@ import app.hfd.core.quran.AyahRef
 import app.hfd.core.quran.QuranText
 import app.hfd.core.quran.SuraFile
 import app.hfd.core.quran.SuraMeta
+import app.hfd.core.quran.SuraNames
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,7 +71,8 @@ class ContentRepo(private val context: Context, scope: CoroutineScope) {
     }
 
     private fun load(): Content {
-        val suras = HfdJson.decodeFromString(SuraFile.serializer(), asset("quran/suras.json")).suras
+        // Tanzil's metadata, with the names in the transliteration the passages' titles use.
+        val suras = SuraNames.apply(HfdJson.decodeFromString(SuraFile.serializer(), asset("quran/suras.json")).suras)
         val quran = cached("quran/quran-uthmani.txt", "quran-uthmani", splitBasmala = true)
         val fadail = HfdJson.decodeFromString(FadailFile.serializer(), asset("fadail.json")).fadail
         return Content(suras, quran, fadail)

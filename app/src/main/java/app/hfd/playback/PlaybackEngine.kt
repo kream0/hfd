@@ -12,6 +12,7 @@ import app.hfd.core.playback.GapMode
 import app.hfd.core.playback.PlanItem
 import app.hfd.core.playback.PlanSpec
 import app.hfd.core.playback.PlaybackPlan
+import app.hfd.core.playback.QuranListening
 import app.hfd.core.playback.Reciter
 import app.hfd.core.playback.Reciters
 import app.hfd.core.playback.Timing
@@ -33,8 +34,9 @@ import kotlinx.serialization.builtins.nullable
 import java.io.File
 
 /**
- * What is being listened to: a faḍīla, or a sub-range of it (indices into its āyāt); or every
- * faḍīla one after the other ([ALL], with its [parts]).
+ * What is being listened to: a faḍīla, or a sub-range of it (indices into its āyāt); every
+ * faḍīla one after the other ([ALL], with its [parts]); or, in the Qur'an section, a sūra
+ * ([fadilaId] is then [QuranListening.id]), which the next sūra follows.
  */
 @Serializable
 data class PlaySession(
@@ -62,6 +64,9 @@ data class PlaySession(
     fun fadilaAt(index: Int): String = partAt(index)?.fadilaId ?: fadilaId
 
     fun titleAt(index: Int): String = partAt(index)?.title ?: title
+
+    /** The sūra this plays in the Qur'an section; null for the passages. */
+    val sura: Int? get() = QuranListening.suraOf(fadilaId)
 
     private fun partAt(index: Int): Part? {
         var end = 0
@@ -162,24 +167,24 @@ class PlaybackEngine(
 
     // ------------------------------------------------------------------ commands
 
-    /** Plays [session] from [start] (its first āya by default). */
-    fun play(session: PlaySession, start: AyahRef? = null, rep: Int = 1) {
+    /** Plays [session] from [start] (its first āya by default); [playing] false loads it paused. */
+    fun play(session: PlaySession, start: AyahRef? = null, rep: Int = 1, playing: Boolean = true) {
         listening.flush()
         this.session = session
         endOfFadila = false
         if (_state.value?.sleep == Sleep.EndOfFadila) cancelSleep()
-        reciter = Graph.settings.current.reciterInfo
+        reciter = reciterFor(session, Graph.settings.current)
         val spec = specFor(session, Graph.settings.current)
         this.spec = spec
         val index = start?.let { spec.ayat.indexOf(it) }?.takeIf { it >= 0 } ?: 0
-        load(spec, Cursor(1, index, rep.coerceAtLeast(1)), 0, play = true)
+        load(spec, Cursor(1, index, rep.coerceAtLeast(1)), 0, play = playing)
     }
 
     fun nextAyah() {
         val spec = spec ?: return
         val current = currentItem() ?: return
-        // Past the last āya of the last pass there's nothing to skip to.
-        val target = PlaybackPlan.nextAyah(spec, current.cursor) ?: return
+        // Past the last āya of the last pass there's nothing to skip to, but a sūra's next sūra.
+        val target = PlaybackPlan.nextAyah(spec, current.cursor) ?: return continueQuran()
         jumpTo(spec, target)
     }
 
@@ -188,6 +193,11 @@ class PlaybackEngine(
         val current = currentItem() ?: return
         // Well into the first recitation: restart this āya rather than going back.
         val restart = current is PlanItem.Ayah && current.rep == 1 && player.currentPosition > RESTART_THRESHOLD_MS
+        // Before a sūra's first āya is the sūra before.
+        if (!restart && current.cursor.index == 0 && current.cursor.pass == 1) {
+            val before = session?.sura?.let(QuranListening::before)?.let { Graph.quranSession(it) }
+            if (before != null) return play(before, playing = player.playWhenReady)
+        }
         val target = if (restart) current.cursor.copy(rep = 1) else PlaybackPlan.previousAyah(spec, current.cursor)
         jumpTo(spec, target)
     }
@@ -195,7 +205,7 @@ class PlaybackEngine(
     fun hasNext(): Boolean {
         val spec = spec ?: return false
         val current = currentItem() ?: return false
-        return PlaybackPlan.nextAyah(spec, current.cursor) != null
+        return PlaybackPlan.nextAyah(spec, current.cursor) != null || session?.sura?.let(QuranListening::after) != null
     }
 
     fun hasPrevious(): Boolean = spec != null && currentItem() != null
@@ -205,13 +215,15 @@ class PlaybackEngine(
         val old = applied
         applied = s
         if (s.speed != old.speed) player.setPlaybackSpeed(s.speed)
-        val structural = s.reciter != old.reciter || s.repeatEach != old.repeatEach ||
-            s.repeatRange != old.repeatRange || s.gap != old.gap || s.basmala != old.basmala
-        if (!structural) return
         val session = session ?: return
+        val next = reciterFor(session, s)
+        val sameAudio = next.id == reciterFor(session, old).id
+        // A sūra of the Qur'an section plays through whatever the passages' repeats and pauses are.
+        val structural = !sameAudio || session.sura == null && (s.repeatEach != old.repeatEach ||
+            s.repeatRange != old.repeatRange || s.gap != old.gap || s.basmala != old.basmala)
+        if (!structural) return
         val current = currentItem()
-        val sameAudio = s.reciter == old.reciter
-        reciter = s.reciterInfo
+        reciter = next
         val spec = specFor(session, s)
         this.spec = spec
         if (current == null) return
@@ -285,12 +297,24 @@ class PlaybackEngine(
     fun saveNow() {
         listening.flush()
         saveJob?.cancel()
-        snapshot()?.let { resumeFile.write(it) }
+        val snap = snapshot() ?: return
+        resumeFile.write(snap)
+        if (snap.session.sura != null) currentItem()?.ref?.let { Graph.quranPlace.set(it) }
     }
 
     fun pause() = player.pause()
 
     // ------------------------------------------------------------------ internals
+
+    /** The passages' reciter, or the Qur'an section's for a sūra (one that has every āya). */
+    private fun reciterFor(session: PlaySession, s: AppSettings): Reciter =
+        if (session.sura != null) s.quranReciterInfo else s.reciterInfo
+
+    /** A sūra of the Qur'an section is over (or skipped past its end): the next one plays. */
+    private fun continueQuran() {
+        val next = session?.sura?.let(QuranListening::after)?.let { Graph.quranSession(it) } ?: return
+        play(next)
+    }
 
     private fun specFor(session: PlaySession, s: AppSettings): PlanSpec {
         var repeatEach = session.repeatEach ?: s.repeatEach
@@ -382,11 +406,14 @@ class PlaybackEngine(
     }
 
     private fun onEnded() {
+        val stopping = endOfFadila
         if (endOfFadila) {
             endOfFadila = false
             setSleep(null)
         }
         scheduleSave()
+        // The Qur'an section goes on with the next sūra (unless the timer was set to this one's end).
+        if (!stopping) continueQuran()
     }
 
     private fun setSleep(sleep: Sleep?) {
@@ -417,7 +444,12 @@ class PlaybackEngine(
         saveJob = scope.launch {
             delay(1_000)
             val snap = snapshot() ?: return@launch
-            launch(Dispatchers.IO) { resumeFile.write(snap) }
+            val place = currentItem()?.ref?.takeIf { snap.session.sura != null }
+            launch(Dispatchers.IO) {
+                resumeFile.write(snap)
+                // Where the Qur'an section resumes, whatever is listened to in between.
+                if (place != null) Graph.quranPlace.set(place)
+            }
         }
     }
 
@@ -439,7 +471,9 @@ class PlaybackEngine(
         fun tick() {
             val item = currentItem()
             val id = player.currentMediaItem?.mediaId
-            if (!player.isPlaying || item == null || item is PlanItem.Basmala || id == null) {
+            // Listening to the Qur'an isn't practice of the passages: it stays out of the progress log
+            // (and of the daily goal), which a whole reading would fill with six thousand lines.
+            if (!player.isPlaying || item == null || item is PlanItem.Basmala || id == null || session?.sura != null) {
                 closeItem()
                 lastTick = 0
                 return

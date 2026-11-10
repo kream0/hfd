@@ -3,6 +3,7 @@ package app.hfd.data
 import android.content.Context
 import app.hfd.core.playback.GapMode
 import app.hfd.core.playback.PlanSpec
+import app.hfd.core.playback.QuranListening
 import app.hfd.core.playback.Reciter
 import app.hfd.core.playback.Reciters
 import app.hfd.core.progress.LearnOrder
@@ -37,6 +38,8 @@ data class AppSettings(
     val arabicSize: Int = 28,
     /** everyayah.com recitation (see [Reciters]). */
     val reciter: String = Reciters.DEFAULT.id,
+    /** The Qur'an section's reciter; null: the passages' one, if it has every āya ([QuranListening.reciter]). */
+    val quranReciter: String? = null,
     /** Times each āya is recited in a row; [PlanSpec.INFINITE] = until skipped. Once by default: the passage plays through. */
     val repeatEach: Int = 1,
     /** Times the whole range is played; [PlanSpec.INFINITE] = loop. */
@@ -67,6 +70,8 @@ data class AppSettings(
         get() = ReminderConfig(reviews = remindReviews, reviewsAt = LocalTime.of(reviewsAt / 60, reviewsAt % 60))
 
     val reciterInfo: Reciter get() = Reciters.byId(reciter)
+
+    val quranReciterInfo: Reciter get() = QuranListening.reciter(quranReciter, reciter)
 
     fun translationFor(uiLanguage: String): TranslationLang = when (translation) {
         TranslationChoice.FR -> TranslationLang.FR
@@ -116,6 +121,7 @@ class Settings(context: Context) {
             reciter = Reciters.byId(prefs.getString("reciter", null)).id
                 // Until 1.3.1 Alafasy was the default (saved with every other setting): move to the new one.
                 .takeUnless { prefs.getInt("defaults", 0) < 2 && it == "alafasy" } ?: d.reciter,
+            quranReciter = prefs.getString("quranReciter", null)?.takeIf { id -> QuranListening.RECITERS.any { it.id == id } },
             repeatEach = prefs.getInt("repeatEach", d.repeatEach).takeIf { it in AppSettings.REPEAT_EACH }
                 // Until 1.3.0 each āya played ×3 by default (saved with every other setting): back to the new default.
                 ?.takeUnless { prefs.getInt("defaults", 0) < 1 && it == 3 } ?: d.repeatEach,
@@ -144,6 +150,7 @@ class Settings(context: Context) {
             .putString("language", s.language.name)
             .putInt("arabicSize", s.arabicSize)
             .putString("reciter", s.reciter)
+            .putString("quranReciter", s.quranReciter)
             .putInt("repeatEach", s.repeatEach)
             .putInt("repeatRange", s.repeatRange)
             .putString("gap", s.gap.name)

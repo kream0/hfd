@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.fadail.Fadila
+import app.hfd.core.playback.QuranListening
 import app.hfd.core.progress.LearnStep
 import app.hfd.core.quran.AyahRef
 import app.hfd.ui.screens.startLearning
@@ -16,6 +17,7 @@ import app.hfd.ui.screens.startTest
 enum class Tab(@StringRes val label: Int) {
     HOME(R.string.tab_home),
     FADAIL(R.string.tab_fadail),
+    QURAN(R.string.tab_quran),
     STATS(R.string.tab_stats),
     SETTINGS(R.string.tab_settings),
 }
@@ -43,7 +45,7 @@ class AppViewModel : ViewModel() {
             persist()
         }
 
-    /** Faḍīla open in the detail view, over the current tab. */
+    /** Faḍīla open in the detail view, over the current tab; or a sūra of the Qur'an section ([QuranListening.id]). */
     var fadila: String?
         get() = _fadila
         set(v) {
@@ -91,6 +93,11 @@ class AppViewModel : ViewModel() {
         fadila = id
     }
 
+    /** Opens sūra [sura] in the Qur'an section's reading view. */
+    fun openSura(sura: Int) {
+        fadila = QuranListening.id(sura)
+    }
+
     fun learn(f: Fadila, fromIndex: Int? = null) {
         startLearning(f, fromIndex)
         flow = PracticeFlow.Learn
@@ -115,7 +122,7 @@ class AppViewModel : ViewModel() {
     /** From the notification: show what's playing (or what would resume). */
     fun openPlaying() {
         val id = Graph.nowPlaying.value?.fadilaId ?: return
-        if (Graph.content.content.value?.fadila(id) != null) {
+        if (Graph.content.content.value?.fadila(id) != null || QuranListening.suraOf(id) != null) {
             flow = null
             fadila = id
         }

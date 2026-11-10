@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
+import app.hfd.core.playback.QuranListening
 import app.hfd.playback.NowPlaying
 import app.hfd.ui.components.DotGlyphs
 import app.hfd.ui.components.DotIcon
@@ -58,9 +60,11 @@ import app.hfd.ui.screens.FadailScreen
 import app.hfd.ui.screens.FadilaScreen
 import app.hfd.ui.screens.HomeScreen
 import app.hfd.ui.screens.LearnScreen
+import app.hfd.ui.screens.QuranScreen
 import app.hfd.ui.screens.ReciteScreen
 import app.hfd.ui.screens.ReviewScreen
 import app.hfd.ui.screens.StatsScreen
+import app.hfd.ui.screens.SuraScreen
 import app.hfd.ui.screens.SettingsScreen
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
@@ -98,6 +102,7 @@ fun AppRoot(app: AppViewModel) {
                     when (app.tab) {
                         Tab.HOME -> HomeScreen(app)
                         Tab.FADAIL -> FadailScreen(onOpen = app::openFadila)
+                        Tab.QURAN -> QuranScreen(onOpen = app::openSura)
                         Tab.STATS -> StatsScreen(onOpen = app::openFadila)
                         Tab.SETTINGS -> SettingsScreen()
                     }
@@ -140,7 +145,7 @@ private fun FlowOverlay(app: AppViewModel) {
     }
 }
 
-/** Faḍīla detail slides over the current tab, keeping the bottom navigation visible. */
+/** Faḍīla detail (or a sūra of the Qur'an section) slides over the current tab, keeping the bottom navigation visible. */
 @Composable
 private fun FadilaOverlay(app: AppViewModel) {
     var last by remember { mutableStateOf<String?>(null) }
@@ -150,7 +155,12 @@ private fun FadilaOverlay(app: AppViewModel) {
         enter = slideInHorizontally { it / 3 } + fadeIn(),
         exit = slideOutHorizontally { it / 3 } + fadeOut(),
     ) {
-        last?.let { id -> FadilaScreen(id, app, onBack = { app.fadila = null }) }
+        last?.let { id ->
+            val sura = QuranListening.suraOf(id)
+            // Each sūra with its own state (scroll position, what was playing): they follow one another here.
+            if (sura != null) key(sura) { SuraScreen(sura, onOpen = app::openSura, onBack = { app.fadila = null }) }
+            else FadilaScreen(id, app, onBack = { app.fadila = null })
+        }
     }
 }
 
@@ -208,7 +218,7 @@ private fun BottomNav(tab: Tab, onTab: (Tab) -> Unit) {
         Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 6.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         Tab.entries.forEach { t ->
@@ -217,7 +227,7 @@ private fun BottomNav(tab: Tab, onTab: (Tab) -> Unit) {
                 Modifier
                     .clip(RoundedCornerShape(14.dp))
                     .clickable { onTab(t) }
-                    .padding(horizontal = 18.dp, vertical = 8.dp),
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(
@@ -227,7 +237,7 @@ private fun BottomNav(tab: Tab, onTab: (Tab) -> Unit) {
                         .background(if (selected) P.accent else Color.Transparent),
                 )
                 Spacer(Modifier.height(5.dp))
-                Text(stringResource(t.label).uppercase(), style = Type.labelBold, color = if (selected) P.text else P.textFaint)
+                Text(stringResource(t.label).uppercase(), style = Type.labelBold, color = if (selected) P.text else P.textFaint, maxLines = 1)
             }
         }
     }
