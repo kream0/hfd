@@ -96,8 +96,12 @@ class AppViewModel : ViewModel() {
         fadila = id
     }
 
-    /** Opens sūra [sura] in the Qur'an section's reading view. */
-    fun openSura(sura: Int) {
+    /** The āya a sūra was opened at (a search result, a juzʾ, a favourite): its screen goes there, then forgets it. */
+    var suraTarget by mutableStateOf<AyahRef?>(null)
+
+    /** Opens sūra [sura] in the Qur'an section's reading view, at āya [aya] if given. */
+    fun openSura(sura: Int, aya: Int? = null) {
+        suraTarget = aya?.let { AyahRef(sura, it) }
         fadila = QuranListening.id(sura)
     }
 

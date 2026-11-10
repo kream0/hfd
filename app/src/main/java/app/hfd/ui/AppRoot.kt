@@ -172,7 +172,16 @@ private fun FadilaOverlay(app: AppViewModel) {
         last?.let { id ->
             val sura = QuranListening.suraOf(id)
             // Each sūra with its own state (scroll position, what was playing): they follow one another here.
-            if (sura != null) key(sura) { SuraScreen(sura, onOpen = app::openSura, onRecite = { from -> app.reciteSura(sura, from) }, onBack = { app.fadila = null }) }
+            if (sura != null) key(sura) {
+                SuraScreen(
+                    sura,
+                    target = app.suraTarget?.takeIf { it.sura == sura },
+                    onTargetShown = { app.suraTarget = null },
+                    onOpen = { n -> app.openSura(n) },
+                    onRecite = { from -> app.reciteSura(sura, from) },
+                    onBack = { app.fadila = null },
+                )
+            }
             else FadilaScreen(id, app, onBack = { app.fadila = null })
         }
     }

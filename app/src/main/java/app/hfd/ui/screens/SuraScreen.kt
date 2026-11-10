@@ -2,6 +2,15 @@ package app.hfd.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,19 +73,52 @@ import app.hfd.ui.uiLanguage
 private fun asPassage(s: SuraMeta): Fadila =
     Fadila(QuranListening.id(s.index), Localized(ar = s.name, fr = s.tname, en = s.tname), listOf(AyahRange(s.index, 1, s.ayas)))
 
+/** Reading a sūra, or reciting it from memory: the two ways into its text. */
+@Composable
+fun ModeSwitch(reciting: Boolean, onRead: () -> Unit, onRecite: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .clip(CircleShape)
+            .border(1.dp, P.outline, CircleShape)
+            .padding(3.dp),
+    ) {
+        listOf(false to R.string.mode_read, true to R.string.mode_recite).forEach { (recite, label) ->
+            val selected = recite == reciting
+            Box(
+                Modifier
+                    .clip(CircleShape)
+                    .background(if (selected) P.accent.copy(alpha = if (P.isDark) 0.2f else 0.16f) else Color.Transparent)
+                    .then(if (selected) Modifier.border(1.dp, P.accent.copy(alpha = 0.7f), CircleShape) else Modifier)
+                    .selectable(selected, role = Role.RadioButton) { if (!selected) (if (recite) onRecite() else onRead()) }
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(stringResource(label), style = Type.button.copy(fontSize = 13.sp), color = if (selected) P.text else P.textDim, maxLines = 1)
+            }
+        }
+    }
+}
+
 /**
- * A sūra of the Qur'an section: its text, and listening to it. The āya being recited is kept in
- * view; a tap on an āya plays from it; when the sūra ends the next one follows, and this screen
- * with it.
+ * A sūra of the Qur'an section, in its reading mode: its text, with the juzʾ and ḥizb that begin
+ * in it marked, and listening to it from the panel. A tap on an āya doesn't play it: it offers to
+ * keep it as a favourite, to listen or to recite from there. The āya being recited is kept in
+ * view; when the sūra ends the next one follows, and this screen with it. Opened at an āya
+ * ([target]: a search result, a juzʾ, a favourite), it starts there. The other mode recites it
+ * from memory ([onRecite]).
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun SuraScreen(sura: Int, onOpen: (Int) -> Unit, onRecite: (from: Int) -> Unit, onBack: () -> Unit) {
+fun SuraScreen(sura: Int, target: AyahRef?, onTargetShown: () -> Unit, onOpen: (Int) -> Unit, onRecite: (from: Int) -> Unit, onBack: () -> Unit) {
     KeepScreenOn()
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
     val translations by Graph.content.translations.collectAsStateWithLifecycle()
     val np by Graph.nowPlaying.collectAsStateWithLifecycle()
+    val favorites by Graph.favorites.list.collectAsStateWithLifecycle()
+    val marked = remember(favorites, sura) { favorites.filter { it.sura == sura }.map { it.aya }.toSet() }
+    val sheets = LocalSheets.current
+    val context = LocalContext.current
     val lang = settings.translationFor(uiLanguage)
     var panelPx by remember { mutableIntStateOf(0) }
     var userScrolledAt by remember { mutableLongStateOf(0L) }
@@ -101,6 +143,37 @@ fun SuraScreen(sura: Int, onOpen: (Int) -> Unit, onRecite: (from: Int) -> Unit, 
     }
 
     val listState = rememberLazyListState()
+
+    // Opened at an āya: the text starts there, and the āya is lit until something plays.
+    var shown by remember(sura) { mutableStateOf<AyahRef?>(null) }
+    LaunchedEffect(target, c, f) {
+        if (target == null || c == null || f == null) return@LaunchedEffect
+        val index = readingIndex(c, f, target, leading = 1) ?: return@LaunchedEffect
+        autoScrolling = System.currentTimeMillis()
+        listState.scrollToItem(index)
+        autoScrolling = System.currentTimeMillis()
+        shown = target
+        onTargetShown()
+    }
+
+    // The āya at the top of the screen (the first one wholly under the title), for reciting from there.
+    fun topAya(): Int? = listState.layoutInfo.let { info ->
+        info.visibleItemsInfo.firstOrNull { it.offset >= info.viewportStartOffset && (it.key as? String)?.startsWith("a-") == true }
+            ?.let { AyahRef.parse((it.key as String).removePrefix("a-"))?.aya }
+    }
+    fun recite() {
+        val top = topAya()
+        if (top == null || top <= 1) onRecite(1)
+        else sheets(
+            SheetSpec(
+                title = context.getString(R.string.mode_recite),
+                actions = listOf(
+                    SheetAction(context.getString(R.string.recite_from_aya, top), Ic.Mic) { onRecite(top) },
+                    SheetAction(context.getString(R.string.recite_from_start)) { onRecite(1) },
+                ),
+            ),
+        )
+    }
 
     // Keep the playing āya in view, unless the reader has just scrolled away by hand.
     LaunchedEffect(listState.isScrollInProgress) {
@@ -134,6 +207,7 @@ fun SuraScreen(sura: Int, onOpen: (Int) -> Unit, onRecite: (from: Int) -> Unit, 
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
                     )
+                    ModeSwitch(reciting = false, onRead = {}, onRecite = ::recite, modifier = Modifier.padding(end = 8.dp))
                 }
             }
             if (c == null || meta == null || f == null) {
@@ -157,9 +231,36 @@ fun SuraScreen(sura: Int, onOpen: (Int) -> Unit, onRecite: (from: Int) -> Unit, 
                     fadila = f,
                     arabicSize = settings.arabicSize,
                     translation = if (settings.showTranslation) translations[lang] else null,
-                    current = current,
+                    current = current ?: shown,
                     playing = playing,
-                    onTap = { ref -> Graph.playSura(sura, ref) },
+                    marks = { ref ->
+                        if (ref.aya in marked) {
+                            { Icon(Ic.Bookmark, contentDescription = stringResource(R.string.favorite_marked), tint = P.accent, modifier = Modifier.size(16.dp)) }
+                        } else null
+                    },
+                    heading = { ref ->
+                        // A juzʾ or a ḥizb begins here (a juzʾ is two aḥzāb: its first opens with it).
+                        c.parts.hizbAt(ref)?.let { h -> stringResource(R.string.quran_part_mark, c.parts.juzOf(ref), h) }
+                    },
+                    // Reading: a tap plays nothing. It offers what can be done with the āya.
+                    onTap = { ref ->
+                        val isMarked = ref.aya in marked
+                        sheets(
+                            SheetSpec(
+                                title = context.getString(R.string.quran_at, meta.tname, ref.aya),
+                                actions = listOf(
+                                    SheetAction(context.getString(if (isMarked) R.string.favorite_remove else R.string.favorite_add), if (isMarked) Ic.Bookmark else Ic.BookmarkBorder) {
+                                        Graph.toast(if (Graph.favorites.toggle(ref)) R.string.favorite_added else R.string.favorite_removed)
+                                    },
+                                    SheetAction(context.getString(R.string.aya_listen_from), Ic.Play) {
+                                        shown = null
+                                        Graph.playSura(sura, ref)
+                                    },
+                                    SheetAction(context.getString(R.string.aya_recite_from), Ic.Mic) { onRecite(ref.aya) },
+                                ),
+                            ),
+                        )
+                    },
                 )
                 item(key = "around") {
                     // The sūras before and after, to read on without going back to the list.
@@ -175,29 +276,7 @@ fun SuraScreen(sura: Int, onOpen: (Int) -> Unit, onRecite: (from: Int) -> Unit, 
             }
         }
         if (f != null) {
-            val sheets = LocalSheets.current
-            val context = LocalContext.current
-            SuraPlayerPanel(
-                sura, f.ayat, Modifier.align(Alignment.BottomCenter).onSizeChanged { panelPx = it.height },
-                // Reciting it aloud, checked by the microphone: from its start, or from the āya at the
-                // top of the screen (the first one wholly under the title).
-                onRecite = {
-                    val top = listState.layoutInfo.let { info ->
-                        info.visibleItemsInfo.firstOrNull { it.offset >= info.viewportStartOffset && (it.key as? String)?.startsWith("a-") == true }
-                            ?.let { AyahRef.parse((it.key as String).removePrefix("a-"))?.aya }
-                    }
-                    if (top == null || top <= 1) onRecite(1)
-                    else sheets(
-                        SheetSpec(
-                            title = context.getString(R.string.recite),
-                            actions = listOf(
-                                SheetAction(context.getString(R.string.recite_from_aya, top), Ic.Mic) { onRecite(top) },
-                                SheetAction(context.getString(R.string.recite_from_start)) { onRecite(1) },
-                            ),
-                        ),
-                    )
-                },
-            )
+            SuraPlayerPanel(sura, f.ayat, Modifier.align(Alignment.BottomCenter).onSizeChanged { panelPx = it.height })
         }
     }
 }

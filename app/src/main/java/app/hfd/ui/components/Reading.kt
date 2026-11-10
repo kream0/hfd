@@ -68,6 +68,8 @@ fun LazyListScope.readingItems(
     current: AyahRef? = null,
     playing: PlayingWord? = null,
     marks: (AyahRef) -> (@Composable () -> Unit)? = { null },
+    /** A line over an āya (a juzʾ or a ḥizb begins there), or null. */
+    heading: @Composable (AyahRef) -> String? = { null },
     onTap: ((AyahRef) -> Unit)? = null,
     onLongPress: ((AyahRef) -> Unit)? = null,
 ) {
@@ -82,6 +84,7 @@ fun LazyListScope.readingItems(
         }
         for (ref in range.ayat()) {
             item(key = ayahKey(ref)) {
+                heading(ref)?.let { PartHeading(it) }
                 AyahBlock(
                     ref = ref,
                     text = content.text(ref),
@@ -120,6 +123,18 @@ private fun SuraHeader(index: Int, arabic: String, translit: String, range: Stri
         }
         Spacer(Modifier.height(8.dp))
         Text(stringResource(R.string.sura_header, index, translit, range), style = Type.label, color = P.textDim, textAlign = TextAlign.Center)
+    }
+}
+
+/** Where a part of the muṣḥaf begins: its name between two fine lines, over the āya. */
+@Composable
+private fun PartHeading(text: String) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(top = 14.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f).height(1.dp).background(P.accent.copy(alpha = 0.35f)))
+        Star(Modifier.padding(horizontal = 8.dp).size(10.dp), outline = true)
+        Text(text, style = Type.overline, color = P.textDim, maxLines = 1)
+        Star(Modifier.padding(horizontal = 8.dp).size(10.dp), outline = true)
+        Box(Modifier.weight(1f).height(1.dp).background(P.accent.copy(alpha = 0.35f)))
     }
 }
 

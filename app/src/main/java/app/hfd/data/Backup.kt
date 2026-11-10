@@ -19,6 +19,8 @@ data class BackupFile(
     val ranges: Map<String, SubRange> = emptyMap(),
     /** Lines of progress/events.jsonl, verbatim. */
     val events: List<String> = emptyList(),
+    /** Āyāt marked in the Qur'an section's reading view. */
+    val favorites: List<Favorite> = emptyList(),
 ) {
     companion object {
         const val SCHEMA = 1
@@ -33,6 +35,7 @@ object Backup {
             settings = Graph.settings.current,
             ranges = Graph.ranges.ranges.value,
             events = Graph.progress.logLines(),
+            favorites = Graph.favorites.list.value,
         )
         withContext(Dispatchers.IO) {
             val out = context.contentResolver.openOutputStream(uri, "wt") ?: throw IOException("Can't write there")
@@ -52,6 +55,7 @@ object Backup {
         val added = Graph.progress.importLines(file.events)
         file.ranges.forEach { (id, r) -> Graph.ranges.set(id, r) }
         file.settings?.let { Graph.settings.restore(it) }
+        Graph.favorites.merge(file.favorites)
         return added
     }
 }

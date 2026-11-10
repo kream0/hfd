@@ -7,6 +7,7 @@ import app.hfd.core.playback.GapMode
 import app.hfd.core.playback.QuranListening
 import app.hfd.core.quran.AyahRef
 import app.hfd.data.ContentRepo
+import app.hfd.data.Favorites
 import app.hfd.diag.Diag
 import app.hfd.data.ProgressRepo
 import app.hfd.data.QuranPlace
@@ -77,6 +78,8 @@ object Graph {
     val ranges: RangeStore by lazy { RangeStore(app) }
     /** Where the Qur'an section was last listened to. */
     val quranPlace: QuranPlace by lazy { QuranPlace(app) }
+    /** Āyāt marked while reading the Qur'an section. */
+    val favorites: Favorites by lazy { Favorites(app) }
     val progress: ProgressRepo by lazy { ProgressRepo(app, scope) }
     val sessions: SessionStore by lazy { SessionStore(app) }
     /** Speech model for the Recite mode (downloaded once). */

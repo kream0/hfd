@@ -6,6 +6,9 @@ import app.hfd.core.HfdJson
 import app.hfd.core.fadail.FadailFile
 import app.hfd.core.fadail.Fadila
 import app.hfd.core.quran.AyahRef
+import app.hfd.core.quran.Parts
+import app.hfd.core.quran.PartsFile
+import app.hfd.core.quran.QuranSearch
 import app.hfd.core.quran.QuranText
 import app.hfd.core.quran.SuraFile
 import app.hfd.core.quran.SuraMeta
@@ -30,7 +33,13 @@ class Content(
     val allFadail: List<Fadila>,
     /** Ids of the passages the owner took out of it (Settings: which passages show). */
     val hidden: Set<String> = emptySet(),
+    /** The muṣḥaf's ajzāʾ and aḥzāb (Tanzil's metadata). */
+    val parts: Parts,
+    search: QuranSearch? = null,
 ) {
+    /** Finding one's way in the whole text (built at its first use: [QuranSearch.prepare]). */
+    val search: QuranSearch = search ?: QuranSearch(suras, quran, parts)
+
     /**
      * The passages the app shows, learns and reviews: the reference list without the hidden ones.
      * A hidden passage is nowhere (lists, learning path, reviews, playing them all, [fadila]) but
@@ -44,7 +53,7 @@ class Content(
      * hidden. An āya of a hidden passage that a shown one also holds (al-Kahf's last four) stays.
      */
     val shownAyat: Set<String>? = if (hidden.isEmpty()) null else fadail.flatMapTo(HashSet()) { f -> f.ayat.map { it.key } }
-    fun hiding(ids: Set<String>): Content = if (ids == hidden) this else Content(suras, quran, allFadail, ids)
+    fun hiding(ids: Set<String>): Content = if (ids == hidden) this else Content(suras, quran, allFadail, ids, parts, search)
     fun sura(index: Int): SuraMeta = suras[index - 1]
     fun text(ref: AyahRef): String = quran.text(ref).orEmpty()
 }
@@ -95,7 +104,8 @@ class ContentRepo(private val context: Context, scope: CoroutineScope, private v
         val suras = SuraNames.apply(HfdJson.decodeFromString(SuraFile.serializer(), asset("quran/suras.json")).suras)
         val quran = cached("quran/quran-uthmani.txt", "quran-uthmani", splitBasmala = true)
         val fadail = HfdJson.decodeFromString(FadailFile.serializer(), asset("fadail.json")).fadail
-        return Content(suras, quran, fadail)
+        val parts = Parts(HfdJson.decodeFromString(PartsFile.serializer(), asset("quran/parts.json")))
+        return Content(suras, quran, fadail, parts = parts)
     }
 
     private fun asset(path: String): String = context.assets.open(path).use { it.readBytes().decodeToString() }

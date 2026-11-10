@@ -166,8 +166,21 @@ class ScreenshotTest {
             vm.selectTab(Tab.QURAN)
         }
         both("quran")
+        // By juzʾ; then a search of the text (words typed plainly, found in the muṣḥaf's spelling).
+        rule.onNodeWithText(rule.activity.getString(R.string.quran_view_juz)).performSemanticsAction(SemanticsActions.OnClick)
+        both("quran-juz")
+        rule.onNodeWithText(rule.activity.getString(R.string.quran_view_suras)).performSemanticsAction(SemanticsActions.OnClick)
+        rule.onNodeWithTag("search").performSemanticsAction(SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString("الحي القيوم")) }
+        both("quran-search")
+        rule.onNodeWithTag("search").performSemanticsAction(SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString("")) }
+        // A sūra in its reading mode; then opened where a juzʾ begins, an āya kept as a favourite.
         ui { vm.openSura(18) }
         both("sura")
+        ui {
+            if (app.hfd.core.quran.AyahRef(18, 76) !in Graph.favorites) Graph.favorites.toggle(app.hfd.core.quran.AyahRef(18, 76))
+            vm.openSura(18, 75)
+        }
+        both("sura-part")
         ui {
             vm.fadila = null
             vm.selectTab(Tab.STATS)
