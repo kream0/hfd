@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0
+A new look of its own: deep green or warm paper, gold, and a book's type, in place of the Nothing style.
+- Colours after an illuminated muṣḥaf. Night: deep green, cream text, gold for what is lit. Paper: warm cream, dark ink, deep green buttons and ochre. Red is kept for mistakes alone, and the word being recited (or the word to say in Recite) is turquoise.
+- Names and titles in a serif that writes Faḍāʾil or Āl ʿImrān well (Source Serif 4), the rest in Source Sans 3; no more dot-matrix type nor capitals everywhere.
+- Smooth progress rings and bars and plain icons in place of the dots; a tab bar with icons; a sūra's heading framed in gold, as in a muṣḥaf; the eight-pointed star as ornament, and as the new app icon.
+- In the Qur'an section, a sūra that isn't saved offers "save offline" quietly, without a red warning.
+
 ## 1.16.1
 In the Qur'an section, Badr at-Turkī can be chosen: he recites the sūras he is cut into āyāt for, al-Kahf among them.
 - The section's reciter list only had the recitations with every āya, so at-Turkī (published as whole sūras) was replaced by another reciter. He now recites the 28 sūras already cut into āyāt (al-Fātiḥa, al-Kahf, as-Sajda, Yā-Sīn, al-Mulk and others); for the other sūras Muʿayqilī takes over, and the reciter chip says so. The list shows how many sūras a recitation has.

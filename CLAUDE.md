@@ -48,7 +48,7 @@
   `fetch` downloads the Tanzil text/metadata/translations and commits them (pull before your
   next push), `verify` prints what each cited source says (read it with `get_job_logs`).
 - UI checks without a phone: `.github/workflows/screenshots.yml` renders the main screens with
-  Robolectric (`app/src/testDebug/.../ScreenshotTest.kt`, French, each screen in black then paper
+  Robolectric (`app/src/testDebug/.../ScreenshotTest.kt`, French, each screen in night then paper
   in the same state) and commits them to `docs/screenshots` as the website's 840 px WebPs
   (`<screen>.webp`, `<screen>-paper.webp`; `tools/screenshots/normalise.py`). Pull before your
   next push, then look at them (convert to PNG with Pillow). It runs on pushes touching
@@ -84,10 +84,13 @@
   better than tiny (95 vs 94 of 105 words) and shows words ~1 s later, so tiny stays.
 - Reciters: everyayah.com folders (probe new ones with `tools/reference/reciters.py`, run by
   reference.yml). A reciter only published as whole-sūra files (mp3quran.net) gets āya byte
-  ranges from `tools/audio/align.py` (`.github/workflows/audio.yml`, ~45 min, commits
-  `assets/audio/<id>.json`; set `SURAS` in the workflow for a quick trial that writes nothing).
+  ranges from `tools/audio/align.py`. `.github/workflows/audio.yml` (on pushes touching
+  `tools/audio/**`) cuts the whole Qur'an (the Qur'an section plays any sūra) as eight jobs
+  (`WHOLE=1`, a part each), and `merge.py` adds the parts to `assets/audio/<id>.json`, keeping the
+  cuts already there unless `FRESH=1` (the passages' word timings and saved āyāt go with them).
+  Without `WHOLE`, align.py with sūras is a trial that writes nothing.
   Read its report: every cut is transcribed; "to look at" lines are misreadings or bad cuts.
-  If passages change, re-run it (the `:core` test requires every passage āya). Re-timing is safe
+  The `:core` test requires every passage āya. Re-timing is safe
   for users: saved āyāt whose size no longer matches their range are deleted at start, and the
   stream cache is keyed by the range. The report prints each repair with its scores.
 
@@ -225,11 +228,29 @@
   from `recite.partial` / `recite.heard`) through `Follower`: add a log there when a session goes
   wrong, to reproduce it without audio.
 
+## The Qur'an section and the look
+- Qur'an section (1.16.0): a sūra is a `PlaySession` whose id is `QuranListening.id(n)` ("sura:2");
+  it plays through once whatever the passages' settings, and `PlaybackEngine.onEnded` loads the
+  next (`continueQuran`; next / previous cross sūras). Its reciter is `AppSettings.quranChoice`;
+  a whole-sūra recitation recites the sūras all of whose āyāt are cut, else
+  `QuranListening.FALLBACK` takes over (`Graph.quranReciter`, 1.16.1: the owner chose at-Turkī
+  for al-Kahf). It stays out of the progress log (`ListenTracker`). `QuranPlace` keeps the last
+  āya (resume). Sūra names: `SuraNames` (the passages' transliteration, checked against Tanzil's).
+- The look (2.0.0, the owner: drop the Nothing theme for one fit for the app): `ui/theme/Theme.kt`.
+  Night (deep green, cream, gold) or paper (cream, ink, deep green buttons, ochre). `accent` is
+  what is lit, `primary` the main button, `error` mistakes alone, `wordMark` (turquoise) the word
+  recited / to say. Source Serif 4 for names and titles (it sets ʿ ʾ tightly, Literata and
+  Crimson Pro don't), Source Sans 3 for the rest: static subsets renamed "HFD Serif / Sans"
+  inside (Source Sans reserves its name), from google/fonts' variable files with
+  `tools/fonts/make.py`. The ornament is the eight-pointed star (`components/Visuals.kt`,
+  `Ic.Star`, the launcher icon). No dot-matrix parts any more.
+
 ## Debugging on the owner's phone
 - The app posts diagnostics (`app/src/main/java/app/hfd/diag/Diag.kt`: `Diag.log(event, …)`) to
   a ntfy.sh topic, kept 12 h. The sandbox can't reach ntfy.sh: write the time into
   `.github/diag.trigger` and push; `.github/workflows/diag.yml` prints the last 12 h (read it with
-  `get_job_logs`). Each app run has a session id (shown in Settings → About). Add events where you
+  `get_job_logs`). It also runs every two hours (cron), so sessions recited while nobody looks are in
+  those runs' logs and the Actions cache. Each app run has a session id (shown in Settings → About). Add events where you
   need them; never log audio, location or anything personal beyond what's there. Batches stay under
   4 KB in UTF-8 (Arabic is two bytes a letter): ntfy turns a longer message into an attachment.
 

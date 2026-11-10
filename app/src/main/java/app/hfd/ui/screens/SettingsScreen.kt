@@ -97,7 +97,7 @@ fun SettingsScreen() {
             SettingBlock(stringResource(R.string.settings_language), stringResource(R.string.settings_language_body)) {
                 Segmented(
                     // Each language in its own name.
-                    options = listOf("FRANÇAIS", "ENGLISH", stringResource(R.string.language_system)),
+                    options = listOf("Français", "English", stringResource(R.string.language_system)),
                     selected = settings.language.ordinal,
                     onSelect = { i ->
                         val language = AppLanguage.entries[i]

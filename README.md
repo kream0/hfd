@@ -5,8 +5,9 @@
 
 A personal, sideloaded Android app: listen, repeat, test yourself and track progress per āya.
 Offline-first, no accounts, no ads. English and French UI. Diagnostics for the developer (see
-below) can be turned off in *Settings → About*. Styled like Nothing OS (black or warm paper, one
-red accent, dot-matrix type), with the Qur'an text given room and calm.
+below) can be turned off in *Settings → About*. Styled after an illuminated muṣḥaf (a deep green
+night or warm paper, gold for what is lit, the eight-pointed star as ornament), with the Qur'an
+text given room and calm. A Qur'an section plays the whole Qur'an, sūra after sūra.
 
 <table>
 <tr>
@@ -23,7 +24,7 @@ red accent, dot-matrix type), with the Qur'an text given room and calm.
 </tr>
 </table>
 
-(Each screen in black and in paper, in [docs/screenshots](docs/screenshots): rendered by CI with
+(Each screen in the night theme and in paper, in [docs/screenshots](docs/screenshots): rendered by CI with
 Robolectric, in French; GitHub shows the paper ones in its light mode.)
 
 ## Install
@@ -123,11 +124,15 @@ that the app updates itself from new releases. Android 8.0 or newer.
   benches the whole pipeline on EveryAyah recitations brought down to the owner's phone
   microphone level — noise, a muffled microphone, rumble, restarts, repetitions — and on the
   owner's own sessions when they send them (`tools/recite/`): words right and how soon they show.
-- **Dark or paper** (*Settings → Appearance → Theme*): black like Nothing OS, or warm paper
-  with black ink, like a printed muṣḥaf; *System* follows the phone's dark mode. The status and
-  navigation bars follow the theme chosen.
+- **Night or paper** (*Settings → Appearance → Theme*): deep green with cream text and gold, or
+  warm paper with dark ink, green and ochre, like a printed muṣḥaf; *System* follows the phone's
+  dark mode. The status and navigation bars follow the theme chosen. Names and titles are set in
+  Source Serif 4, which writes the transliteration's letters well (Faḍāʾil, Āl ʿImrān).
+- **The whole Qur'an** (*Coran* tab): the 114 sūras with their text; a sūra plays through and the
+  next follows, to the end, screen off included. Resume where the listening stopped; a reciter
+  of its own; a sūra can be saved offline. It stays out of the learning statistics.
 - **Home and Stats:** today's goal (minutes of practice), streak, due reviews, continue where
-  you left off, per-faḍīla progress (memorised / total, next review), a dot-matrix calendar,
+  you left off, per-faḍīla progress (memorised / total, next review), a calendar of practice,
   total āyāt memorised and listening time.
 - **Never lose progress:** every event (listen, rating, recitation from the start, test) is
   appended to `progress/events.jsonl`, from which all state and stats are rebuilt (a snapshot
@@ -218,7 +223,8 @@ tracking) and its tests run on any JVM. The app builds whisper.cpp with the NDK 
   entries (`verified: false`) are never shown.
 - **Data refresh:** `tools/fetch-data.sh`, run by `.github/workflows/data.yml`, downloads the
   Tanzil files (checksums in `tools/data.lock`).
-- **Fonts:** Amiri Quran, Doto, Space Grotesk, Space Mono — SIL Open Font License (`licenses/`).
+- **Fonts:** Amiri Quran, Source Serif 4, Source Sans 3 — SIL Open Font License (`licenses/`); the
+  two Source families as static subsets renamed inside (`tools/fonts/make.py`).
 - **Playback:** AndroidX Media3 (Apache 2.0).
 - **Speech recognition:** whisper.cpp v1.7.6 (MIT), built from source by CMake; Tarteel AI's
   `whisper-tiny-ar-quran` (Apache-2.0), converted to whisper.cpp's format (8-bit) by

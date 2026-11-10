@@ -76,7 +76,9 @@ fun FadilaRow(f: Fadila, progress: Float, onClick: () -> Unit, modifier: Modifie
             .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ProgressRing(progress, Modifier.size(26.dp), color = P.saveColor(progress))
+        // Not begun: the star alone (an empty ring reads as a box to tick).
+        if (progress <= 0f) Star(Modifier.size(26.dp), color = P.outline, outline = true)
+        else ProgressRing(progress, Modifier.size(26.dp), color = P.saveColor(progress))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(f.title.text, style = Type.name, color = P.text, maxLines = 2, overflow = TextOverflow.Ellipsis)

@@ -110,7 +110,8 @@ fun OfflineChip(reciter: Reciter, refs: List<AyahRef>, modifier: Modifier = Modi
     val failed = keys.any { tasks[it]?.status == DlStatus.FAILED }
     val waiting = keys.any { tasks[it]?.status == DlStatus.WAITING_NETWORK }
     val active = keys.any { tasks[it] != null }
-    val offer = optional && progress <= 0f && !active
+    // (Under a hundredth: the basmala alone may be there, saved with a passage.)
+    val offer = optional && progress < 0.01f && !active
     val color = if (offer) P.textDim else P.saveColor(progress)
     val label = when {
         offer -> stringResource(R.string.offline_save)
