@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1
+Badr at-Turkī now recites the whole Qur'an in the Qur'an section, all 114 sūras.
+- His recitation is published as whole sūras; every āya of the 114 is now cut out of them (6,236 āyāt, each cut listened to by the speech model), so no other reciter takes over any more and the text follows him āya by āya everywhere.
+- The reciter list no longer shows "28 sūras of 114" next to his name.
+- Known limit: in a few places where he doesn't pause at the end of an āya (aṣ-Ṣāffāt 22–23 and 61–62 for instance), the highlight changes a word or two early or late. Nothing is skipped or said twice when a sūra plays through.
+
 ## 2.0.0
 A new look of its own: deep green or warm paper, gold, and a book's type, in place of the Nothing style.
 - Colours after an illuminated muṣḥaf. Night: deep green, cream text, gold for what is lit. Paper: warm cream, dark ink, deep green buttons and ochre. Red is kept for mistakes alone, and the word being recited (or the word to say in Recite) is turquoise.

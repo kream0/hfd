@@ -241,7 +241,7 @@
   next (`continueQuran`; next / previous cross sūras). Its reciter is `AppSettings.quranChoice`;
   a whole-sūra recitation recites the sūras all of whose āyāt are cut, else
   `QuranListening.FALLBACK` takes over (`Graph.quranReciter`, 1.16.1: the owner chose at-Turkī
-  for al-Kahf). It stays out of the progress log (`ListenTracker`). `QuranPlace` keeps the last
+  for al-Kahf; since 2.0.1 he is cut for all 114 sūras, 87 of 6,236 cuts "to look at"). It stays out of the progress log (`ListenTracker`). `QuranPlace` keeps the last
   āya (resume). Sūra names: `SuraNames` (the passages' transliteration, checked against Tanzil's).
 - The look (2.0.0, the owner: drop the Nothing theme for one fit for the app): `ui/theme/Theme.kt`.
   Night (deep green, cream, gold) or paper (cream, ink, deep green buttons, ochre). `accent` is
