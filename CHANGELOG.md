@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.1
+Faster after each update on Android 15 and 16.
+- Android can compile an app ahead of time from a list of the code it starts with. The part that hands Android this list refused Android 15 and later (it stopped at 14), so on those phones the app ran uncompiled for hours after every update, until Android compiled it on its own. It is now handed over on the first start, and the list covers the app's own screens as well as its libraries.
+
 ## 2.2.0
 Recite hears you better: a new recognition model, more accurate and several times faster.
 - **A new recogniser.** Recite can now read with a model made for Qur'an recitation in a different way (a FastConformer by mrmuminov, CC BY 4.0, from NVIDIA's Arabic model): it writes the recitation letter by letter with its vowel signs in one pass, where the Whisper model wrote word after word. On the test bench it gets 99.6 % of words right against 94.5 %, and most of the gain is where it hurt: a muffled voice, noise, the phone away from the mouth (a recitation recorded in a pocket: 28 of 29 words, against 1). A reading takes about 30 ms per second of audio on an ordinary phone processor, several times less than before.

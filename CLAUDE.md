@@ -334,6 +334,18 @@
   downloaded, loaded, the reference clip read: `ctc.selftest`, `whisper.load`), and an old build's
   updater offering the latest release. Not covered: reminders firing, installing an update, a
   backup read back, the NPU (no emulator has one).
+- Baseline profiles (2.2.1): Compose brought `androidx.profileinstaller` 1.3.1, whose
+  `MAX_SUPPORTED_SDK` is 34: on Android 15 and 16 it installs nothing (the emulator:
+  `INSTALL_PROFILE` → "result=3", unsupported ART version), so after each update the owner's phone
+  ran the app interpreted and JIT-compiled until Android's own idle compilation. 1.4.1 has no upper
+  bound (pinned in libs.versions.toml; the tour fails unless the answer is 1 or 2).
+  `app/src/main/baseline-prof.txt` adds the app's own methods (wildcards; names are kept by R8)
+  to the libraries' rules: 1,928 of its 2,191 are in the built profile (decoded from the APK's
+  `assets/dexopt/baseline.prof`: "pro\0010\0", zlib, per dex the hot methods, the class ids, the
+  startup bitmap). Its class line (`Lapp/hfd/**;`) matches nothing: 0 of the app's 553 classes
+  are in the class set (2,476 library classes are); to fix or drop.
+- dl.google.com/android/maven2 answers from this sandbox since 10 Nov (group-index.xml, AARs):
+  a library's bytecode can be read here (`javap`) before changing its version.
 - Found there: the first start after an install showed in the phone's language (fixed:
   `AppLocale.wrap` on every Android version).
 
