@@ -61,6 +61,12 @@ class Follower(
         }
         val from = before?.position ?: tracker.position
         val clean = withoutOpening(text)
+        // The utterance is the isti'ādha or the basmala so far: what an earlier, rougher reading
+        // of it seemed to follow in the text was their sound (بِسْمِلم, a second into the basmala).
+        if (clean.isEmpty() && text.isNotBlank()) {
+            followed = null
+            wentBack = null
+        }
         if (final) {
             val all = text.split(Regex("\\s+")).filter { it.isNotBlank() }
             finalOpening = all.take(all.size - clean.split(Regex("\\s+")).count { it.isNotBlank() })
@@ -266,6 +272,8 @@ class Follower(
      * [text] without the isti'ādha and, at the start of an āya, the basmala: recited before the
      * text (before a sūra, and by some before any passage) but not part of it here.
      */
+    private val basmalaInText = targets.any { it.ref.sura == 1 && it.ref.aya == 1 }
+
     fun withoutOpening(text: String): String {
         var words = text.split(Regex("\\s+")).filter { it.isNotBlank() }
         fun startsWith(phrase: String): Int {
@@ -273,11 +281,25 @@ class Follower(
             val w = words.take(p.size).map { Arabic.skeleton(it) }
             return if (w == p) p.size else 0
         }
+        /** All of what is left is [phrase]'s beginning, its last word maybe not said whole yet. */
+        fun begins(phrase: String): Boolean {
+            val p = Arabic.words(phrase).map { Arabic.skeleton(it) }
+            val w = words.map { Arabic.skeleton(it) }
+            return w.isNotEmpty() && w.size <= p.size && (0 until w.size - 1).all { w[it] == p[it] } && p[w.size - 1].startsWith(w.last())
+        }
+        // Still saying the isti'ādha or the basmala (a partial reading): nothing of the text yet.
+        // (Read as it grew, بسم الله counted as the disconnected letters that open al-Baqara,
+        // which take whatever is heard: the bench, 10 Nov.)
+        if (begins(ISTIADHA)) return ""
         words = words.drop(startsWith(ISTIADHA))
         if (!tracker.done) {
             val (a, w) = tracker.locate(tracker.position)
             val ref = targets[a].ref
-            if (w == 0 && !(ref.sura == 1 && ref.aya == 1)) words = words.drop(startsWith(BASMALA))
+            if (w == 0 && !(ref.sura == 1 && ref.aya == 1)) {
+                // (Not where the basmala is of the text: al-Fātiḥa's first āya, said again.)
+                if (!basmalaInText && begins(BASMALA)) return ""
+                words = words.drop(startsWith(BASMALA))
+            }
         }
         return words.joinToString(" ")
     }

@@ -117,10 +117,16 @@ that the app updates itself from new releases. Android 8.0 or newer.
   again at the marked word. The microphone is cut into utterances at short pauses
   (`:core` `Segmenter`); while one goes on, what was said so far is recognised again every
   second, each reading replacing the last (`Follower`), so the text keeps up without waiting
-  for a pause. Speech is recognised **on the phone** by [whisper.cpp](https://github.com/ggml-org/whisper.cpp) with
-  Tarteel's Qur'an model [`whisper-tiny-ar-quran`](https://huggingface.co/tarteel-ai/whisper-tiny-ar-quran)
-  (Apache-2.0; 43 MB, downloaded once from this repo's `speech-model` release and checked by
-  SHA-256). What was heard is aligned letter by letter with the text (`:core` `Tracker`,
+  for a pause. Speech is recognised **on the phone**. Since 2.2.0 by a CTC model,
+  [`quran-fastconformer-ctc-ar`](https://huggingface.co/mrmuminov/quran-fastconformer-ctc-ar)
+  (mrmuminov, CC BY 4.0, fine-tuned from NVIDIA's Arabic FastConformer; 174 MB), run by ONNX
+  Runtime: one pass per reading, no decoder, about 30 ms per second of audio on an ARM core, and
+  on the test bench 98 % of words right against 94.5 % (most of the gain on a muffled or noisy
+  voice). Before it is downloaded, or if Settings keeps to it, by
+  [whisper.cpp](https://github.com/ggml-org/whisper.cpp) with Tarteel's
+  [`whisper-tiny-ar-quran`](https://huggingface.co/tarteel-ai/whisper-tiny-ar-quran) (Apache-2.0;
+  43 MB). Both are downloaded once from this repo's `speech-model` release and checked by
+  SHA-256. Neither judges pronunciation or tajwīd: they recognise words. What was heard is aligned letter by letter with the text (`:core` `Tracker`,
   without ḥarakāt or alif forms, so spelling variants of the Uthmani script don't count as
   mistakes). Each finished āya is a review in the log with its mistakes (none → Good, a few →
   Hard, more → Again), so it drives FSRS; Stats shows recitations and accuracy, and the
@@ -234,7 +240,10 @@ tracking) and its tests run on any JVM. The app builds whisper.cpp with the NDK 
 - **Fonts:** Amiri Quran, Source Serif 4, Source Sans 3 — SIL Open Font License (`licenses/`); the
   two Source families as static subsets renamed inside (`tools/fonts/make.py`).
 - **Playback:** AndroidX Media3 (Apache 2.0).
-- **Speech recognition:** whisper.cpp v1.7.6 (MIT), built from source by CMake; Tarteel AI's
-  `whisper-tiny-ar-quran` (Apache-2.0), converted to whisper.cpp's format (8-bit) by
-  `.github/workflows/model.yml`, which also measures it on EveryAyah recitations (about 13 %
-  word error, greedy decoding).
+- **Speech recognition:** "Quranic character-level CTC (FastConformer)" by mrmuminov
+  (CC BY 4.0), fine-tuned from NVIDIA's `stt_ar_fastconformer_hybrid_large_pcd_v1.0` (CC BY 4.0):
+  its int8 ONNX file, unchanged (`.github/workflows/ctcmodel.yml` copies it), run by ONNX Runtime
+  1.28.0 (MIT; the last Android build without telemetry: the builds check). whisper.cpp v1.7.6
+  (MIT), built from source by CMake; Tarteel AI's `whisper-tiny-ar-quran` (Apache-2.0), converted
+  to whisper.cpp's format (8-bit) by `.github/workflows/model.yml`, which also measures it on
+  EveryAyah recitations (about 13 % word error, greedy decoding).

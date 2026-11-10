@@ -71,10 +71,11 @@ android {
 
     buildTypes {
         release {
-            // R8 (shrinking and optimising, names kept: proguard-rules.pro) with -Phfd.minify=true:
-            // smoke.yml builds the APK both ways and runs each on an emulator before it becomes
-            // what is released.
-            isMinifyEnabled = providers.gradleProperty("hfd.minify").orNull == "true"
+            // R8 (shrinking and optimising, names kept: proguard-rules.pro), since 2.2.0: the APK
+            // loses 7 MB and 22 of its 27 MB of code. smoke.yml runs it on an emulator next to a
+            // build without (-Phfd.minify=false): every screen, playing, both recognisers, the
+            // updater. A release goes out only after that run passed on its code.
+            isMinifyEnabled = providers.gradleProperty("hfd.minify").orNull != "false"
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("sideload")
         }

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.0
+Recite hears you better: a new recognition model, more accurate and several times faster.
+- **A new recogniser.** Recite can now read with a model made for Qur'an recitation in a different way (a FastConformer by mrmuminov, CC BY 4.0, from NVIDIA's Arabic model): it writes the recitation letter by letter with its vowel signs in one pass, where the Whisper model wrote word after word. On the test bench it gets 99.6 % of words right against 94.5 %, and most of the gain is where it hurt: a muffled voice, noise, the phone away from the mouth (a recitation recorded in a pocket: 28 of 29 words, against 1). A reading takes about 30 ms per second of audio on an ordinary phone processor, several times less than before.
+- **To get it:** open Recite; a card offers the model (174 MB, once). Until it is there, and if it ever fails to load, the current model reads as before. Settings → Reciting aloud can keep to the old one.
+- **Mistakes are judged on the sound itself.** A word the model wrote differently is checked against the audio letter by letter: it counts as said when no letter of it is missing from the sound. Words really replaced by another are still caught (4 of the bench's 5).
+- **The disconnected letters** (الٓمٓ and the like) no longer take the next words with them, and the basmala before them is no longer counted as them; a word marked wrong that you then say right, in a phrase that goes on, turns right.
+- Like the old one, this model recognises words: it is no judge of pronunciation or tajwīd.
+- Nothing the app adds sends data anywhere: the library that runs the model is pinned to its last version without telemetry, and every build is checked for it.
+
 ## 2.1.0
 Recite shows more and follows any sūra, and the list of passages is yours to trim.
 - **Recite, on screen.** The word being said stays in view down a long āya (it used to slip under the screen). Words light up smoothly; an āya's number turns gold once recited whole, red with a mistake; a bar counts the words and mistakes so far; the summary gives the total. If two phrases in a row match nothing, the screen says to take it up again at the marked word.

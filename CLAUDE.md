@@ -282,6 +282,29 @@
   word the mean loss, the worst character, its frames). `CtcTest` pins them to the reference
   (numpy + ONNX Runtime) on the reference clip. The signs' order matters: compare with Tanzil's
   text, never retyped Arabic.
+- In the app since 2.2.0 (`recite/CtcEngine.kt`, `OrtCtcModel`, 2 threads kept on the fast cores):
+  `SpeechModel.CTC` on the speech-model pre-release (`ctcmodel.yml` copies the author's file,
+  checksum pinned); `ReciteEngine.BEST` reads with it once downloaded (the Recite screen's card;
+  Whisper meanwhile), `WHISPER` keeps the old one; a session falls back to Whisper if it doesn't
+  load or misreads the reference clip (`ctc.load`, `ctc.selftest`, `ctc.text` with ms). The APK
+  grows by 10.7 MB (libonnxruntime.so).
+- `CtcRecognizer` speaks the follower's protocol: the text read freely (nothing to steer), or
+  "?\n<text>" held to the frames. A word's check cost is its **worst character** (each at its
+  best frame) × 3/7: no character over 7 nats. `tools/ctc/coststudy.py` on the bench's āyāt (2,101
+  words said, 624 replaced, 5 swapped in the audio): said p99 5.8, swapped 8.4–14; at 7, 99.5 % of
+  the said pass, no swapped, 8 % of random others. The mean loss per frame (the first try) let 3
+  of the 5 swapped pass: a long vowel's frames dilute the two letters that differ.
+- The bench with the app's code (`HFD_CTC`, in process; `recite.yml`'s `ctc` config, reading time
+  30 ms + 26 ms/s): 98.8 %, then **99.6 %** (2043/2052; wrong 4, missed 0, pending 5; swaps 4/5;
+  red shown 7) with three fixes to the follower, all from al-Baqara's opening
+  (`FollowerLettersTest`): a reading still inside the isti'ādha or basmala says nothing of the
+  text (`withoutOpening`; بِسْمِلم counted as الٓمٓ); the disconnected letters' sound takes the words
+  after only if it says them right (the model writes alif lām mīm as «بِسٱللَّ ٱلررَّحَحِمٓ»: its
+  training labels put the basmala on a sūra's first āya); a word before the position said again
+  right in a chunk that goes on is corrected (`Tracker.align`, as `back` does).
+- Not caught: يُولَدْ said يَلِدْ (the model writes يُولِدْ, the text's letters: no check runs). Checking
+  every word of a whole utterance at a higher bar (10?) would, at some cost in words said: not
+  tried. الٓمٓ itself costs 10 nats held to the bench's audio: the letters stay the tracker's.
 - **ONNX Runtime for Android phones home from 1.29.0** (a `TelemetryInitializer` provider, an
   HTTP client, `mobile.events.data.microsoft.com/OneCollector` in the library; INTERNET in its
   manifest). 1.28.0 is the last without: pin it, and check any other version's AAR the same way
@@ -300,6 +323,13 @@
   …/artifacts/<id>/zip` works here). Runners differ too much to compare two jobs, and one
   emulator's starts vary ±300 ms: R8's effect on the start can't be read there (plain 2.0–2.3 s,
   R8 1.8–2.1 s). What R8 gives for sure: APK 19.8 → 12.4 MB, dex 27 → 4.7 MB.
+- R8 is on since 2.2.0 (`isMinifyEnabled` unless `-Phfd.minify=false`; `app/proguard-rules.pro`:
+  no obfuscation, the JNI's classes and ONNX Runtime's kept). Before a release, the smoke run on
+  that code must have passed: it is the only check of the minified APK (the unit tests run
+  unminified classes). It covers every screen, playing a sūra, Recite with each recogniser (model
+  downloaded, loaded, the reference clip read: `ctc.selftest`, `whisper.load`), and an old build's
+  updater offering the latest release. Not covered: reminders firing, installing an update, a
+  backup read back, the NPU (no emulator has one).
 - Found there: the first start after an install showed in the phone's language (fixed:
   `AppLocale.wrap` on every Android version).
 

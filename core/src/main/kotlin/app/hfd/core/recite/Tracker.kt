@@ -142,7 +142,18 @@ class Tracker(
             // counts as them, and the rest of the chunk may be the words after.
             if (letters[position]) {
                 status[position++] = WordStatus.OK
-                return 1 + if (done) 0 else maxOf(0, align(hWords))
+                if (done) return 1
+                // The words after only if the chunk says them: every one it passes right, but the
+                // last it reaches. (The CTC model writes ten seconds of alif lām mīm as two long
+                // words of noise, which matched enough letters of ذلك الكتاب لا to take them as
+                // missed, wrong and right: the bench, 10 Nov.)
+                val kept = mark()
+                val more = align(hWords)
+                if (more > 0 && (position - more until position - 1).any { status[it] != WordStatus.OK }) {
+                    reset(kept)
+                    return 1
+                }
+                return 1 + maxOf(0, more)
             }
         }
         return back(hWords)
@@ -383,6 +394,17 @@ class Tracker(
         // owner's session of 2 Oct).
         if (WordStatus.OK !in now) return 0
         aligned = same
+        // Words before the position the chunk began with, said again and now right: a correction
+        // counts, as when the recitation goes back ([back]). Never the other way: a word recited
+        // right stays so. (A reading that took noise for the next words left them missed and
+        // wrong; said right after in a chunk that went on past them, they stayed red.)
+        if (j == 0 && i < p) {
+            for (w in owner[i] until position) {
+                if (status[w] != WordStatus.OK && status[w] != WordStatus.PENDING &&
+                    statusOf(owner.indices.filter { owner[it] == w }, matched, touched, w) == WordStatus.OK
+                ) status[w] = WordStatus.OK
+            }
+        }
         for (w in position..lastWord) status[w] = now[w - position]
         val moved = lastWord + 1 - position
         position = lastWord + 1
