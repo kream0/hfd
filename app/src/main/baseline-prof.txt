@@ -1,0 +1,6 @@
+# The app's own code, compiled ahead of time once Android has the profile (ProfileInstaller writes
+# it on the first run; the phone compiles while it charges): no screen of it is first run by the
+# interpreter. The libraries (Compose, Media3 …) bring their own rules. Names are kept by R8
+# (proguard-rules.pro), so these patterns still name the code.
+HSPLapp/hfd/**;->**(**)**
+Lapp/hfd/**;

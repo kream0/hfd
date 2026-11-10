@@ -15,6 +15,7 @@ on:
       - 'app/build.gradle.kts'
       - 'app/src/main/java/app/hfd/recite/**'
       - 'app/proguard-rules.pro'
+      - 'app/src/main/baseline-prof.txt'
       - 'gradle/libs.versions.toml'
   workflow_dispatch:
 
