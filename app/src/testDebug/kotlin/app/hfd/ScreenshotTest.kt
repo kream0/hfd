@@ -199,6 +199,16 @@ class ScreenshotTest {
             Graph.closeRecite()
             vm.flow = null
         }
+        // Which passages show: the list with its switches, al-Kahf switched off.
+        ui {
+            Graph.hideFadila("kahf", hide = true)
+            vm.editingFadail = true
+        }
+        both("passages")
+        ui {
+            Graph.hideFadila("kahf", hide = false)
+            vm.editingFadail = false
+        }
         watchdog.interrupt()
     }
 }
