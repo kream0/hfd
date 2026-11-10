@@ -38,7 +38,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -473,7 +472,6 @@ private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () ->
 private fun VoiceSearchSheet(c: Content, onOpen: (AyahRef) -> Unit) {
     val close = LocalSheetClose.current
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val whisper by Graph.speech.state.collectAsStateWithLifecycle()
     val ctc by Graph.speechCtc.state.collectAsStateWithLifecycle()
     val ready = whisper is ModelState.Ready || ctc is ModelState.Ready
@@ -495,7 +493,8 @@ private fun VoiceSearchSheet(c: Content, onOpen: (AyahRef) -> Unit) {
         Spacer(Modifier.height(8.dp))
         return
     }
-    val voice = remember { VoiceSearch(scope, Graph::reciteModels) { heard -> c.search.recited(heard) } }
+    // On the app's scope, not the sheet's: closing frees the models after the sheet is gone.
+    val voice = remember { VoiceSearch(Graph.scope, Graph::reciteModels) { heard -> c.search.recited(heard) } }
     DisposableEffect(voice) { onDispose { voice.close() } }
     val ui by voice.ui.collectAsStateWithLifecycle()
     val wave by voice.wave.collectAsStateWithLifecycle()

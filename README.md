@@ -142,9 +142,19 @@ that the app updates itself from new releases. Android 8.0 or newer.
   warm paper with dark ink, green and ochre, like a printed muṣḥaf; *System* follows the phone's
   dark mode. The status and navigation bars follow the theme chosen. Names and titles are set in
   Source Serif 4, which writes the transliteration's letters well (Faḍāʾil, Āl ʿImrān).
-- **The whole Qur'an** (*Coran* tab): the 114 sūras with their text; a sūra plays through and the
-  next follows, to the end, screen off included. Resume where the listening stopped; a reciter
-  of its own; a sūra can be saved offline. It stays out of the learning statistics.
+- **The whole Qur'an** (*Coran* tab): the 114 sūras with their text, listed by sūra, by juzʾ (30)
+  or by ḥizb (60), from Tanzil's metadata (`parts.json`); a sūra plays through and the next
+  follows, to the end, screen off included. Resume where the listening stopped; a reciter of its
+  own; a sūra can be saved offline. It stays out of the learning statistics.
+  - **Search** (`:core` `QuranSearch`): a reference (`2:255`, `baqara 255`), a sūra's name or
+    number, `juz 5` / `hizb 12`, words of the text typed in Arabic however spelt (compared
+    without vowel signs or alif forms; the words found are lit in the results), or words of the
+    translation. And **by reciting**: the microphone in the search field listens to a few words
+    (the Recite recogniser, on the phone) and shows where they are in the text: each word heard
+    votes for the places it occurs at, the likeliest are compared letter by letter.
+  - **Two modes** for a sūra. *Reading*: the text, the juzʾ and ḥizb that begin in it marked; a
+    tap on an āya plays nothing and offers to keep it as a **favourite** (listed in the tab,
+    saved in backups), to listen or to recite from there. *Reciting*: Recite on that sūra.
 - **Home and Stats:** today's goal (minutes of practice), streak, due reviews, continue where
   you left off, per-faḍīla progress (memorised / total, next review), a calendar of practice,
   total āyāt memorised and listening time.

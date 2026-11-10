@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.3.0
+The Qur'an section finds any verse (by a word, a reference, or by reciting a few words), lists by juzʾ or ḥizb, and reads or recites.
+- **Search everything.** The search of the Coran tab now finds a reference (2:255, "baqara 255"), a sūra by name or number, "juz 5" or "hizb 12", words of the text typed in Arabic however you spell them (the words found are lit in the results), and words of the translation.
+- **Find a passage by reciting.** The microphone in the search field listens to a few words and shows where they are in the Qur'an; a tap opens the text there. It uses Recite's model, on the phone: nothing is recorded or sent.
+- **By juzʾ or ḥizb.** The tab lists the sūras, the 30 ajzāʾ or the 60 aḥzāb, each opening the text where it begins; in a sūra's text, a line marks where a juzʾ or a ḥizb starts.
+- **Reading mode.** A sūra opens to be read: a tap on a verse no longer plays it. It offers to keep the verse as a favourite, to listen from there, or to recite from there. Favourites are listed in the tab (and saved in backups). Listening is still the panel's play button.
+- **Reciting mode.** The switch at the top of a sūra, Reading | Reciting, goes to Recite on that sūra and back.
+- **Fixed:** the keyboard stayed open over the sūra after choosing a search result.
+
 ## 2.2.1
 Faster after each update on Android 15 and 16.
 - Android can compile an app ahead of time from a list of the code it starts with. The part that hands Android this list refused Android 15 and later (it stopped at 14), so on those phones the app ran uncompiled for hours after every update, until Android compiled it on its own. It is now handed over on the first start, and the list covers the app's own screens as well as its libraries.

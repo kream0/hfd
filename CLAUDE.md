@@ -349,6 +349,30 @@
 - Found there: the first start after an install showed in the phone's language (fixed:
   `AppLocale.wrap` on every Android version).
 
+## The Qur'an section: parts, search, modes (2.3.0, the owner's list of 11 Nov)
+- `assets/quran/parts.json` (30 ajzāʾ, 240 quarters; a ḥizb is every fourth) from Tanzil's
+  quran-data.xml (`tools/fetch-data.sh`; tanzil.net answers again from this sandbox and from CI:
+  the file fetched here has the lock's checksum). `Parts`, `PartsTest`: the ajzāʾ are the
+  muṣḥaf's known starts; the text's ۞ agree with the quarters but in al-Ḥijr (text 15:49,
+  metadata 15:50: a quarter inside a ḥizb, shown nowhere).
+- `QuranSearch` (`:core`, `QuranSearchTest`): `search` (references, names, parts, the text by
+  skeleton with the words matched, a translation with the match's place: `plain` folds letter for
+  letter) and `recited` (a recogniser's writing of a phrase: each word votes for the places it
+  occurs at, weighted by rarity, the best 24 are aligned by letters, kept at 70 %). 8 ms a search
+  on the JVM once `prepare` has run.
+- `QuranScreen`: views (sūras / juzʾ / ḥizb / favourites), results by kind; choosing a result
+  hides the keyboard and clears the focus (the bug: it stayed up over the sūra), then
+  `AppViewModel.openSura(sura, aya)` (`suraTarget`, which the sūra screen scrolls to and forgets).
+  The microphone opens `VoiceSearch` in a sheet (the Recite recogniser through `SpeechReader`,
+  which now holds the models' loading for both; reads freely; stops at the first whole phrase
+  found or after 30 s).
+- `SuraScreen` is the reading mode (the owner: a tap on a verse must not play it): the tap opens
+  a sheet (favourite, listen from here, recite from here); `ModeSwitch` goes to Recite and back
+  (`ReciteScreen` shows it for a sūra). `Favorites` (progress/favorites.json, in backups).
+- The smoke tour types `2:255`, checks the keyboard is gone once the āya is open
+  (`dumpsys input_method`, `mInputShown`), keeps the āya, finds it under Favoris, opens the juzʾ
+  and ḥizb lists and the search by reciting (the emulator's microphone is silent: it only listens).
+
 ## The Qur'an section and the look
 - Reciting a sūra (2.1.0): the sūra panel's Recite chip opens the passages' `ReciteSession` with
   the sūra's id (`AppViewModel.reciteSura`, from its start or the āya at the top of the screen);
