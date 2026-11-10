@@ -263,6 +263,14 @@
     <string name="recite_done">Recited</string>
     <string name="recite_result">%1$s · %2$d / %3$d words right</string>
     <string name="recite_mistakes">To work on: %1$s</string>
+    <string name="recite_lost">I\'ve lost you: take it up again at the marked word.</string>
+    <string name="recite_lost_hidden">I\'ve lost you: take it up again at the marked word (the bulb shows it).</string>
+    <string name="recite_progress">%1$d / %2$d words</string>
+    <plurals name="recite_progress_mistakes">
+        <item quantity="one">%1$d / %2$d words · %3$d mistake</item>
+        <item quantity="other">%1$d / %2$d words · %3$d mistakes</item>
+    </plurals>
+    <string name="recite_total">%1$d / %2$d words right · %3$d %%</string>
     <string name="recite_again">Again</string>
     <string name="stats_recited">Recited aloud</string>
     <string name="stats_recited_value">%1$d recitations · %2$d%% of words right</string>

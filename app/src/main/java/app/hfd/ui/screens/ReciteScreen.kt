@@ -5,7 +5,11 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,6 +31,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -35,25 +41,31 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
+import app.hfd.core.playback.QuranListening
 import app.hfd.core.recite.AyahResult
 import app.hfd.core.recite.ReciteTarget
 import app.hfd.core.recite.WordStatus
@@ -103,12 +115,13 @@ fun ReciteScreen(onClose: () -> Unit) {
     // The screen stays on while the verses are shown (listening or not).
     KeepScreenOn()
 
-    val f = content?.fadila(s.fadilaId)
+    // A passage, or a sūra of the Qur'an section.
+    val name = QuranListening.suraOf(s.fadilaId)?.let { n -> content?.suras?.getOrNull(n - 1)?.tname } ?: content?.fadila(s.fadilaId)?.title?.text
     Column(Modifier.fillMaxSize().background(P.background).statusBarsPadding().navigationBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconBtn(Ic.Close, onClose, contentDescription = stringResource(R.string.close))
             Text(
-                f?.let { stringResource(R.string.recite_title, it.title.text) }.orEmpty(),
+                name?.let { stringResource(R.string.recite_title, it) }.orEmpty(),
                 style = Type.name,
                 color = P.text,
                 maxLines = 1,
@@ -116,19 +129,30 @@ fun ReciteScreen(onClose: () -> Unit) {
             )
         }
         Text(statusLine(ui, s), style = Type.label, color = P.textDim, modifier = Modifier.padding(horizontal = 20.dp))
+        ProgressLine(ui, Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
         ModelCard(model)
 
         val list = rememberLazyListState()
-        // Keep the āya being recited in view.
-        LaunchedEffect(ui.next?.first) { ui.next?.first?.let { list.animateScrollToItem(it) } }
+        // The āya being recited comes into view when it isn't (its word then keeps itself there,
+        // AyahWords: a long āya runs over more lines than the screen holds).
+        LaunchedEffect(ui.next?.first) {
+            val a = ui.next?.first ?: return@LaunchedEffect
+            if (list.layoutInfo.visibleItemsInfo.none { it.index == a }) list.animateScrollToItem(a)
+        }
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list) {
             itemsIndexed(ui.targets) { a, t ->
                 AyahWords(t, ui.status.getOrNull(a).orEmpty(), current = ui.next?.takeIf { it.first == a }?.second, showText, settings.arabicSize)
             }
-            if (ui.done && ui.results.isNotEmpty()) item { Summary(ui.results, onAgain = { f?.let { Graph.openRecite(it.id, ui.targets.map { t -> t.ref }) } }, onClose) }
+            if (ui.done && ui.results.isNotEmpty()) item { Summary(ui.results, onAgain = { Graph.openRecite(s.fadilaId, ui.targets.map { t -> t.ref }) }, onClose) }
         }
 
-        ui.heard?.let {
+        if (ui.lost && ui.listening && !ui.done) {
+            // Phrases heard that aren't the text from the marker: where to take it up again.
+            Text(
+                stringResource(if (showText) R.string.recite_lost else R.string.recite_lost_hidden), style = Type.label, color = P.wordMark, textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+            )
+        } else ui.heard?.let {
             Text(it, style = Type.label, color = P.textFaint, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp))
         }
         if (ui.muffled && ui.listening) {
@@ -216,13 +240,23 @@ private fun ModelCard(model: ModelState) {
  * An āya's words, right to left: dim until recited (or hidden, without [showText]), then in full
  * colour; mistakes in red, hints in yellow. The word to say next is in the marker's turquoise.
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, showText: Boolean, size: Int) {
     val style = Type.quran(size)
     // The word to say next: turquoise on a pill of the same colour, as the word being recited
     // while listening (QuranText); hidden text keeps the pill only.
     val mark = P.wordMark
+    // The marker's word stays in view with a line and a half around it, like a prompter: the
+    // list scrolls as the recitation goes down a long āya (Āyat al-Kursī is ten lines).
+    val inView = remember { BringIntoViewRequester() }
+    // (The size of the last word marked: the lines are all as high.)
+    val markSize = remember { arrayOf(IntSize.Zero) }
+    LaunchedEffect(current) {
+        if (current == null) return@LaunchedEffect
+        val (w, h) = markSize[0].let { it.width.toFloat() to it.height.toFloat() }
+        inView.bringIntoView(if (h > 0f) Rect(0f, -1.5f * h, w, 2.5f * h) else null)
+    }
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         FlowRow(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -243,35 +277,72 @@ private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, 
                         WordStatus.HINTED -> P.saveYellow
                     }
                 }
+                // A word lights up (or the marker moves onto it) over a moment, not at a stroke.
+                val shown by animateColorAsState(color, tween(if (hidden) 0 else 160), label = "word")
+                val marked by animateFloatAsState(if (next) 1f else 0f, tween(140), label = "marker")
                 Text(
                     word,
                     style = style.copy(textDecoration = if (st == WordStatus.MISSED) TextDecoration.LineThrough else null),
-                    color = color,
+                    color = shown,
                     modifier = Modifier
-                        .then(
-                            when {
-                                // Drawn as QuranText draws it: hugging the letters, a little wider
-                                // than the word, without moving the words around it.
-                                next -> Modifier.drawBehind {
-                                    val box = this.size
-                                    val inset = box.height * 0.12f
-                                    val pad = 2.dp.toPx()
-                                    drawRoundRect(
-                                        mark.copy(alpha = 0.16f),
-                                        topLeft = Offset(-pad, inset),
-                                        size = Size(box.width + 2 * pad, box.height - 2 * inset),
-                                        cornerRadius = CornerRadius(10.dp.toPx()),
-                                    )
-                                }
-                                hidden -> Modifier.clip(RoundedCornerShape(8.dp)).background(P.surfaceHigh)
-                                else -> Modifier
-                            },
-                        )
+                        .then(if (next) Modifier.bringIntoViewRequester(inView).onSizeChanged { markSize[0] = it } else Modifier)
+                        .then(if (hidden) Modifier.clip(RoundedCornerShape(8.dp)).background(P.surfaceHigh) else Modifier)
+                        // Drawn as QuranText draws it: hugging the letters, a little wider than
+                        // the word, without moving the words around it.
+                        .drawBehind {
+                            if (marked <= 0f) return@drawBehind
+                            val box = this.size
+                            val inset = box.height * 0.12f
+                            val pad = 2.dp.toPx()
+                            drawRoundRect(
+                                mark.copy(alpha = (if (hidden) 0.45f else 0.16f) * marked),
+                                topLeft = Offset(-pad, inset),
+                                size = Size(box.width + 2 * pad, box.height - 2 * inset),
+                                cornerRadius = CornerRadius(10.dp.toPx()),
+                            )
+                        }
                         .padding(horizontal = 2.dp),
                 )
             }
-            Text(ayahEnd(t.ref.aya), style = style, color = P.textDim)
+            // The āya's end says how it went once all of it is recited: gold, or red with a mistake.
+            val recited = status.size >= t.words.size && status.none { it == WordStatus.PENDING }
+            val end by animateColorAsState(
+                when {
+                    !recited -> P.textDim
+                    status.any { it == WordStatus.WRONG || it == WordStatus.MISSED } -> P.error
+                    status.any { it == WordStatus.HINTED } -> P.saveYellow
+                    else -> P.accent
+                },
+                tween(300), label = "end",
+            )
+            Text(ayahEnd(t.ref.aya), style = style, color = end)
         }
+    }
+}
+
+/** How far the recitation is: a thin bar of the words recited, and the mistakes so far. */
+@Composable
+private fun ProgressLine(ui: ReciteUi, modifier: Modifier = Modifier) {
+    val total = remember(ui.targets) { ui.targets.sumOf { it.words.size } }
+    val recited = ui.status.sumOf { a -> a.count { it != WordStatus.PENDING } }
+    val mistakes = ui.status.sumOf { a -> a.count { it == WordStatus.WRONG || it == WordStatus.MISSED || it == WordStatus.HINTED } }
+    val fraction by animateFloatAsState(if (total == 0) 0f else recited.toFloat() / total, tween(250), label = "progress")
+    val track = P.track
+    val bar = P.accent
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Canvas(Modifier.weight(1f).height(4.dp)) {
+            val r = CornerRadius(size.height / 2)
+            drawRoundRect(track, cornerRadius = r)
+            // From the right, as the text is read.
+            val w = size.width * fraction
+            if (w > 0f) drawRoundRect(bar, topLeft = Offset(size.width - w, 0f), size = Size(w, size.height), cornerRadius = r)
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            if (mistakes == 0) stringResource(R.string.recite_progress, recited, total)
+            else pluralStringResource(R.plurals.recite_progress_mistakes, mistakes, recited, total, mistakes),
+            style = Type.label, color = if (mistakes == 0) P.textDim else P.error,
+        )
     }
 }
 
@@ -281,6 +352,13 @@ private fun Summary(results: List<AyahResult>, onAgain: () -> Unit, onClose: () 
     Column(Modifier.fillMaxWidth().padding(20.dp)) {
         SectionLabel(stringResource(R.string.recite_done))
         Spacer(Modifier.height(8.dp))
+        val words = results.sumOf { it.words }
+        val right = words - results.sumOf { it.mistakes.size }
+        Text(
+            stringResource(R.string.recite_total, right, words, if (words == 0) 100 else right * 100 / words),
+            style = Type.displaySmall, color = if (right == words) P.accent else P.text,
+        )
+        Spacer(Modifier.height(10.dp))
         results.forEach { r ->
             Text(
                 stringResource(R.string.recite_result, r.ref.toString(), r.words - r.mistakes.size, r.words),

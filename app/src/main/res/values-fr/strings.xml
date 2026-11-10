@@ -265,6 +265,14 @@
     <string name="recite_result">%1$s · %2$d / %3$d mots justes</string>
     <string name="recite_mistakes">À retravailler : %1$s</string>
     <string name="recite_again">Recommencer</string>
+    <string name="recite_lost">Je ne vous suis plus : reprenez au mot marqué.</string>
+    <string name="recite_lost_hidden">Je ne vous suis plus : reprenez au mot marqué (l\'ampoule le montre).</string>
+    <string name="recite_progress">%1$d / %2$d mots</string>
+    <plurals name="recite_progress_mistakes">
+        <item quantity="one">%1$d / %2$d mots · %3$d erreur</item>
+        <item quantity="other">%1$d / %2$d mots · %3$d erreurs</item>
+    </plurals>
+    <string name="recite_total">%1$d / %2$d mots justes · %3$d %%</string>
     <string name="stats_recited">Récité à voix haute</string>
     <string name="stats_recited_value">%1$d récitations · %2$d %% de mots justes</string>
     <string name="play_all">Tout écouter</string>

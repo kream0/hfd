@@ -48,6 +48,11 @@ data class ReciteUi(
     val error: String? = null,
     /** The microphone sounds muffled (a pocket, a hand over it) and the text doesn't follow ([MuffledWarning]). */
     val muffled: Boolean = false,
+    /**
+     * What is being said is no longer followed: whole phrases in a row heard, none of them the
+     * text from the marker nor words before it. The screen says where to take it up again.
+     */
+    val lost: Boolean = false,
 ) {
     val done: Boolean get() = next == null
 }
@@ -81,6 +86,8 @@ class ReciteSession(
     private val consumer: Job
     private var heardChunks = 0
     private val muffledWarning = MuffledWarning()
+    /** Whole utterances in a row that said something and followed nothing ([ReciteUi.lost]). */
+    private var strays = 0
     private val startedAt = System.currentTimeMillis()
     /** When each āya was first finished, and those already written to the log. */
     private val finishedAt = LinkedHashMap<AyahRef, Long>()
@@ -148,6 +155,15 @@ class ReciteSession(
                     if (u.final) {
                         val warn = muffledWarning.heard(muffled, u.pcm.size / Segmenter.RATE.toFloat(), moved)
                         if (warn != _ui.value.muffled) _ui.value = _ui.value.copy(muffled = warn)
+                        // Words heard, and neither the text from the marker nor words before it
+                        // (the marker would be on those): twice in a row, the reciter is told.
+                        val said = text != null && Arabic.skeleton(text).length >= STRAY_LETTERS
+                        strays = if (moved != 0 || follower.voice != null || tracker.done) 0 else if (said) strays + 1 else strays
+                        val lost = strays >= STRAYS_LOST
+                        if (lost != _ui.value.lost) {
+                            if (lost) Diag.log("recite.lost", "position" to tracker.position)
+                            _ui.value = _ui.value.copy(lost = lost)
+                        }
                     }
                 }
             }
@@ -227,6 +243,8 @@ class ReciteSession(
         val dropped = queue.count { it.id <= lastId && it.final }
         queue.removeAll { it.id <= lastId }
         _ui.value = _ui.value.copy(pending = (_ui.value.pending - dropped).coerceAtLeast(0))
+        strays = 0
+        _ui.value = _ui.value.copy(lost = false)
         // The hinted word shows at once.
         shown = maxOf(shown, tracker.position)
         afterProgress(null, final = true)
@@ -437,6 +455,9 @@ class ReciteSession(
         const val ERROR_MIC = "mic"
         /** A reading's new words are shown over about this long. */
         private const val REVEAL_MS = 300L
+        /** Letters an utterance must say to count as a phrase that followed nothing, and how many such in a row. */
+        private const val STRAY_LETTERS = 6
+        private const val STRAYS_LOST = 2
 
 
         fun targets(refs: List<AyahRef>, text: (AyahRef) -> String?): List<ReciteTarget> =
