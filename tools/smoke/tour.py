@@ -319,18 +319,19 @@ def search_and_favourite():
         playing = re.search(r"package=" + re.escape(PKG) + r".*?state=PlaybackState \{state=(\w+)", sh("dumpsys media_session"), re.S)
         if playing and playing.group(1) == "PLAYING":
             failures.append("reading: a tap on an āya played it")
-    else:
+    # Back to the tab (the sheet closed itself on the action), and the search emptied.
+    if find(is_("Ajouter aux favoris")) or find(is_("Retirer des favoris")):
         sh("input keyevent 4")
+        time.sleep(1.0)
     sh("input keyevent 4")
     time.sleep(1.0)
     clear = find(is_("Effacer la recherche"))
     if clear:
         tap(clear)
-    sh("input keyevent 4")  # the keyboard, if the field took the focus again
-    time.sleep(0.8)
-    if not find(is_("Favoris")):
+    if keyboard_shown():  # the field took the focus again
         sh("input keyevent 4")
         time.sleep(0.8)
+    shot("after-search")
     voice_search()
     step("favourites", is_("Favoris"), is_("Al-Baqara 255"))
     step("juz", is_("Juzʾ"), is_("Juzʾ 2"))
