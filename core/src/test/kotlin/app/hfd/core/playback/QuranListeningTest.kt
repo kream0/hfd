@@ -1,6 +1,7 @@
 package app.hfd.core.playback
 
 import app.hfd.core.Assets
+import app.hfd.core.HfdJson
 import app.hfd.core.quran.AyahRef
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -38,14 +39,28 @@ class QuranListeningTest {
     }
 
     @Test
-    fun onlyRecitationsWithEveryAyaAreOffered() {
-        assertTrue(QuranListening.RECITERS.isNotEmpty())
-        assertTrue(QuranListening.RECITERS.none { it.timings != null })
-        // The passages' reciter is kept when it has every āya; a whole-sūra one falls back.
-        assertEquals("husary", QuranListening.reciter(null, "husary").id)
-        assertEquals("alafasy", QuranListening.reciter("alafasy", "husary").id)
-        val wholeSura = Reciters.ALL.first { it.timings != null }
-        assertNull(QuranListening.reciter(null, wholeSura.id).timings)
-        assertNull(QuranListening.reciter(wholeSura.id, wholeSura.id).timings)
+    fun theSectionsReciterIsTheOneChosenThereElseThePassages() {
+        assertEquals("husary", QuranListening.choice(null, "husary").id)
+        assertEquals("alafasy", QuranListening.choice("alafasy", "husary").id)
+        assertEquals("badr", QuranListening.choice("badr", "husary").id)
+        assertEquals(Reciters.DEFAULT.id, QuranListening.choice("nobody", null).id)
+    }
+
+    @Test
+    fun aWholeSuraRecitationRecitesTheSurasItIsCutFor() {
+        val badr = Reciters.byId("badr")
+        val timings = HfdJson.decodeFromString(AyahTimings.serializer(), Assets.file(badr.timings!!).readText())
+        fun sura(n: Int) = QuranListening.ayat(n, Assets.quran.suras[n - 1].size)
+        // The owner chose at-Turkī for al-Kahf (10 Nov): every āya of it is cut, so he recites it.
+        for (n in listOf(1, 18, 36, 67, 112)) assertEquals("sūra $n", badr, QuranListening.reciterFor(badr, timings, sura(n)))
+        // Al-Baqara is only cut for its passages: a recitation that has every āya takes over.
+        val other = QuranListening.reciterFor(badr, timings, sura(2))
+        assertEquals(QuranListening.FALLBACK, other)
+        assertNull(other.timings)
+        // Without its cuts (the asset unread), nothing is his.
+        assertEquals(QuranListening.FALLBACK, QuranListening.reciterFor(badr, null, sura(18)))
+        // One that has every āya recites any sūra.
+        val husary = Reciters.byId("husary")
+        for (n in listOf(2, 18, 114)) assertEquals(husary, QuranListening.reciterFor(husary, null, sura(n)))
     }
 }

@@ -228,8 +228,8 @@ private fun ListeningSection(settings: AppSettings) {
     SettingLine(stringResource(R.string.reciter), "${settings.reciterInfo.name} · ${settings.reciterInfo.style}") {
         PillButton(settings.reciterInfo.short, { sheets(reciterSheet(context, settings.reciter)) })
     }
-    // The Qur'an section's own reciter (one that has every āya).
-    val quranReciter = settings.quranReciterInfo
+    // The Qur'an section's own reciter.
+    val quranReciter = settings.quranChoice
     SettingLine(stringResource(R.string.quran_reciter), "${quranReciter.name} · ${quranReciter.style}") {
         PillButton(quranReciter.short, { sheets(quranReciterSheet(context, quranReciter.id)) })
     }

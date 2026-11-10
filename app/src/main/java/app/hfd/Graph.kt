@@ -118,6 +118,15 @@ object Graph {
         )
     }
 
+    /**
+     * Who recites [ayat] (a sūra) in the Qur'an section: the reciter chosen there, or, for a sūra
+     * a whole-sūra recitation isn't cut into āyāt for yet, one that has every āya.
+     */
+    fun quranReciter(ayat: List<AyahRef>, s: app.hfd.data.AppSettings = settings.current): app.hfd.core.playback.Reciter {
+        val choice = s.quranChoice
+        return QuranListening.reciterFor(choice, timings.of(choice), ayat)
+    }
+
     /** Listens to the Qur'an from sūra [sura] ([start]: from that āya of it). */
     fun playSura(sura: Int, start: AyahRef? = null) {
         quranSession(sura)?.let { player.play(it, start) }

@@ -25,15 +25,25 @@ object QuranListening {
 
     fun ayat(sura: Int, count: Int): List<AyahRef> = (1..count).map { AyahRef(sura, it) }
 
-    /**
-     * The recitations that have every āya (everyayah.com's). A whole-sūra recitation
-     * ([Reciter.timings]) is only cut into āyāt for the passages.
-     */
-    val RECITERS: List<Reciter> get() = Reciters.ALL.filter { it.timings == null }
+    /** The Qur'an section's reciter: the one [chosen] there, else the passages' ([passages]). */
+    fun choice(chosen: String?, passages: String?): Reciter =
+        Reciters.ALL.firstOrNull { it.id == chosen } ?: Reciters.byId(passages)
 
-    /** The Qur'an section's reciter: [chosen] there, else the passages' one ([passages]) if it has every āya. */
-    fun reciter(chosen: String?, passages: String?): Reciter {
-        val all = RECITERS
-        return all.firstOrNull { it.id == chosen } ?: all.firstOrNull { it.id == passages } ?: all.first()
-    }
+    /**
+     * Who recites when the chosen recitation lacks a sūra: the first that has every āya
+     * (everyayah.com's have).
+     */
+    val FALLBACK: Reciter get() = Reciters.ALL.first { it.timings == null }
+
+    /**
+     * Whether [reciter] has all of [ayat]. A whole-sūra recitation ([Reciter.timings], [timings]
+     * its āya cuts) only has the āyāt cut so far: the passages', so some sūras whole (al-Kahf,
+     * Yā-Sīn, al-Mulk…) and most not.
+     */
+    fun has(reciter: Reciter, timings: AyahTimings?, ayat: List<AyahRef>): Boolean =
+        reciter.timings == null || timings != null && ayat.all { it in timings }
+
+    /** Who recites [ayat] (a sūra) in the Qur'an section: [choice] if it [has] them, else the [FALLBACK]. */
+    fun reciterFor(choice: Reciter, timings: AyahTimings?, ayat: List<AyahRef>): Reciter =
+        if (has(choice, timings, ayat)) choice else FALLBACK
 }

@@ -38,7 +38,7 @@ data class AppSettings(
     val arabicSize: Int = 28,
     /** everyayah.com recitation (see [Reciters]). */
     val reciter: String = Reciters.DEFAULT.id,
-    /** The Qur'an section's reciter; null: the passages' one, if it has every āya ([QuranListening.reciter]). */
+    /** The Qur'an section's reciter; null: the passages' one ([QuranListening.choice]). */
     val quranReciter: String? = null,
     /** Times each āya is recited in a row; [PlanSpec.INFINITE] = until skipped. Once by default: the passage plays through. */
     val repeatEach: Int = 1,
@@ -71,7 +71,8 @@ data class AppSettings(
 
     val reciterInfo: Reciter get() = Reciters.byId(reciter)
 
-    val quranReciterInfo: Reciter get() = QuranListening.reciter(quranReciter, reciter)
+    /** The reciter chosen for the Qur'an section (a whole-sūra recitation doesn't have every sūra: [app.hfd.Graph.quranReciter]). */
+    val quranChoice: Reciter get() = QuranListening.choice(quranReciter, reciter)
 
     fun translationFor(uiLanguage: String): TranslationLang = when (translation) {
         TranslationChoice.FR -> TranslationLang.FR
@@ -121,7 +122,7 @@ class Settings(context: Context) {
             reciter = Reciters.byId(prefs.getString("reciter", null)).id
                 // Until 1.3.1 Alafasy was the default (saved with every other setting): move to the new one.
                 .takeUnless { prefs.getInt("defaults", 0) < 2 && it == "alafasy" } ?: d.reciter,
-            quranReciter = prefs.getString("quranReciter", null)?.takeIf { id -> QuranListening.RECITERS.any { it.id == id } },
+            quranReciter = prefs.getString("quranReciter", null)?.takeIf { id -> Reciters.ALL.any { it.id == id } },
             repeatEach = prefs.getInt("repeatEach", d.repeatEach).takeIf { it in AppSettings.REPEAT_EACH }
                 // Until 1.3.0 each āya played ×3 by default (saved with every other setting): back to the new default.
                 ?.takeUnless { prefs.getInt("defaults", 0) < 1 && it == 3 } ?: d.repeatEach,

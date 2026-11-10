@@ -267,7 +267,9 @@ fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifie
     val place by Graph.quranPlace.place.collectAsStateWithLifecycle()
     val isThis = np?.session?.sura == sura
     val playing = isThis && ui.playWhenReady
-    val reciter = settings.quranReciterInfo
+    // The reciter chosen for the section, or the one who takes over for a sūra that one doesn't have.
+    val choice = settings.quranChoice
+    val reciter = remember(choice, ayat) { Graph.quranReciter(ayat, settings) }
     // Where this sūra was left, if it is the one the section was last listened to.
     val resumeAt = place?.takeIf { it.sura == sura && it.aya > 1 }
 
@@ -327,7 +329,10 @@ fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifie
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            SettingChip(reciter.short, { sheets(quranReciterSheet(context, reciter.id)) })
+            SettingChip(
+                if (reciter.id == choice.id) reciter.short else stringResource(R.string.quran_reciter_instead, reciter.short, choice.short),
+                { sheets(quranReciterSheet(context, choice.id)) },
+            )
             SettingChip(speedLabel(settings.speed), { sheets(speedSheet(context)) }, settings.speed != 1f)
             val sleep = if (isThis) np?.sleep else null
             SettingChip(sleepLabel(sleep), { sheets(sleepSheet(context, context.getString(R.string.sleep_end_sura))) }, sleep != null)
@@ -418,17 +423,28 @@ fun reciterSheet(context: android.content.Context, current: String) = SheetSpec(
     },
 )
 
-/** The Qur'an section's reciter: the recitations that have every āya. */
-fun quranReciterSheet(context: android.content.Context, current: String) = SheetSpec(
-    title = context.getString(R.string.reciter),
-    subtitle = context.getString(R.string.quran_reciter_body),
-    actions = QuranListening.RECITERS.map { r ->
-        SheetAction(
-            label = "${r.name} · ${r.style}",
-            icon = if (r.id == current) Ic.Check else null,
-        ) { Graph.settings.update { it.copy(quranReciter = r.id) } }
-    },
-)
+/**
+ * The Qur'an section's reciter. A whole-sūra recitation says how many sūras it is cut into āyāt
+ * for: it recites those, and [QuranListening.FALLBACK] the others.
+ */
+fun quranReciterSheet(context: android.content.Context, current: String): SheetSpec {
+    val sizes = Graph.content.content.value?.suras?.map { it.ayas }.orEmpty()
+    return SheetSpec(
+        title = context.getString(R.string.reciter),
+        subtitle = context.getString(R.string.quran_reciter_body, QuranListening.FALLBACK.short),
+        actions = Reciters.ALL.map { r ->
+            val partial = r.timings?.let {
+                val t = Graph.timings.of(r)
+                val suras = sizes.indices.count { i -> QuranListening.has(r, t, QuranListening.ayat(i + 1, sizes[i])) }
+                " · " + context.getString(R.string.quran_reciter_suras, suras, sizes.size)
+            }.orEmpty()
+            SheetAction(
+                label = "${r.name} · ${r.style}$partial",
+                icon = if (r.id == current) Ic.Check else null,
+            ) { Graph.settings.update { it.copy(quranReciter = r.id) } }
+        },
+    )
+}
 
 /** The timer; [end]: what "at the end" stops after (the faḍīla, or the sūra in the Qur'an section). */
 fun sleepSheet(context: android.content.Context, end: String = context.getString(R.string.sleep_end)) = SheetSpec(

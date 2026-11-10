@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.16.1
+In the Qur'an section, Badr at-Turkī can be chosen: he recites the sūras he is cut into āyāt for, al-Kahf among them.
+- The section's reciter list only had the recitations with every āya, so at-Turkī (published as whole sūras) was replaced by another reciter. He now recites the 28 sūras already cut into āyāt (al-Fātiḥa, al-Kahf, as-Sajda, Yā-Sīn, al-Mulk and others); for the other sūras Muʿayqilī takes over, and the reciter chip says so. The list shows how many sūras a recitation has.
+
 ## 1.16.0
 A new Qur'an section: listen to the whole Qur'an, sūra after sūra, with its text.
 - The new Coran tab lists the 114 sūras (search by name or number). A sūra opens with its text and translation; the āya being recited is lit and kept in view, and a tap on an āya plays from it.

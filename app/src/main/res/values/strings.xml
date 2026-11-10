@@ -283,11 +283,13 @@
     <string name="quran_resume">Resume listening</string>
     <string name="quran_listening">Listening now</string>
     <string name="quran_resume_at">%1$s · āya %2$d of %3$d</string>
-    <string name="quran_reciter_body">For the Qur’an section: the recitations that have every āya. The passages’ reciter is set apart.</string>
+    <string name="quran_reciter_body">For the Qur’an section; the passages’ reciter is set apart. A recitation published as whole sūras only recites here the sūras already cut into āyāt: for the others, %1$s takes over.</string>
     <string name="sura_title">%1$d · %2$s</string>
     <string name="sura_meccan">Meccan</string>
     <string name="sura_medinan">Medinan</string>
     <string name="sleep_end_sura">End of the sūra</string>
     <string name="quran_reciter">Qur’an reciter</string>
     <string name="offline_save">Save offline</string>
+    <string name="quran_reciter_suras">%1$d sūras of %2$d</string>
+    <string name="quran_reciter_instead">%1$s (not %2$s here)</string>
 </resources>

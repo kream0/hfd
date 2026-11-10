@@ -306,9 +306,9 @@ class PlaybackEngine(
 
     // ------------------------------------------------------------------ internals
 
-    /** The passages' reciter, or the Qur'an section's for a sūra (one that has every āya). */
+    /** The passages' reciter, or for a sūra the Qur'an section's (if that recitation has the sūra). */
     private fun reciterFor(session: PlaySession, s: AppSettings): Reciter =
-        if (session.sura != null) s.quranReciterInfo else s.reciterInfo
+        if (session.sura != null) Graph.quranReciter(session.ayat, s) else s.reciterInfo
 
     /** A sūra of the Qur'an section is over (or skipped past its end): the next one plays. */
     private fun continueQuran() {
