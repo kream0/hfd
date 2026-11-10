@@ -255,7 +255,65 @@ if step("passages", is_("Faḍāʾil"), is_("Āyat al-Kursī")):
         time.sleep(1.0)
     sh("input keyevent 4")
     time.sleep(1.0)
+def keyboard_shown():
+    shown = re.search(r"mInputShown=(\w+)", sh("dumpsys input_method"))
+    return shown.group(1) == "true" if shown else None
+
+
+def search_and_favourite():
+    """A reference typed in the search opens its āya and the keyboard goes; the āya is kept as a favourite."""
+    field = find(starts("Sourate, verset"))
+    if not field:
+        failures.append("search: no search field")
+        return
+    tap(field)
+    sh("input text 2:255")
+    if not wait(is_("Al-Baqara 255"), 20):
+        failures.append("search: 2:255 found nothing")
+        shot("search-missing")
+        return
+    before = keyboard_shown()
+    shot("search")
+    tap(find(is_("Al-Baqara 255")))
+    if not wait(is_("2:255"), 30):
+        failures.append("search: the result didn't open at its āya")
+        shot("search-open-missing")
+        return
+    time.sleep(1.5)
+    after = keyboard_shown()
+    report["keyboard"] = {"while typing": before, "after choosing": after}
+    print(f"SMOKE search: opened at 2:255; keyboard shown while typing {before}, after choosing {after}", flush=True)
+    shot("search-open")
+    if after:
+        failures.append("search: the keyboard stayed open over the sūra")
+    # Reading mode: a tap on an āya plays nothing, it offers to keep it.
+    tap(find(is_("2:255")))
+    if step("favourite", is_("Ajouter aux favoris")):
+        time.sleep(1.0)
+        playing = re.search(r"package=" + re.escape(PKG) + r".*?state=PlaybackState \{state=(\w+)", sh("dumpsys media_session"), re.S)
+        if playing and playing.group(1) == "PLAYING":
+            failures.append("reading: a tap on an āya played it")
+    else:
+        sh("input keyevent 4")
+    sh("input keyevent 4")
+    time.sleep(1.0)
+    clear = find(is_("Effacer la recherche"))
+    if clear:
+        tap(clear)
+    sh("input keyevent 4")  # the keyboard, if the field took the focus again
+    time.sleep(0.8)
+    if not find(is_("Favoris")):
+        sh("input keyevent 4")
+        time.sleep(0.8)
+    step("favourites", is_("Favoris"), is_("Al-Baqara 255"))
+    step("juz", is_("Juzʾ"), is_("Juzʾ 2"))
+    step("hizb", is_("Ḥizb"), is_("Ḥizb 3"))
+    step("suras", is_("Sourates"), starts("Al-Baqara"))
+
+
+sh("settings put secure show_ime_with_hard_keyboard 1")
 if step("quran", is_("Coran"), starts("Al-Baqara")):
+    search_and_favourite()
     if step("sura", starts("Al-Baqara"), lambda t: "ذَٰلِكَ" in t, seconds=40):
         # Playing: the media service, its session, the stream.
         if step("playing", is_("Lire"), is_("Pause")):
