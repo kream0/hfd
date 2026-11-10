@@ -302,6 +302,10 @@
   after only if it says them right (the model writes alif lām mīm as «بِسٱللَّ ٱلررَّحَحِمٓ»: its
   training labels put the basmala on a sūra's first āya); a word before the position said again
   right in a chunk that goes on is corrected (`Tracker.align`, as `back` does).
+- CI (run of c4c6bce, both configs in one run): ctc 2043/2052 as here; Whisper with the same
+  follower fixes 1953/2052 (95.2 %; wrong 30, missed 17, pending 52, swaps 4/5, red shown 16)
+  against 2.1.0's 1939 (94.5 %; 42, 19, 52, 4/5, 9): the correction rule shows more words red
+  then right. The CTC parts take 25 min, Whisper's over an hour.
 - Not caught: يُولَدْ said يَلِدْ (the model writes يُولِدْ, the text's letters: no check runs). Checking
   every word of a whole utterance at a higher bar (10?) would, at some cost in words said: not
   tried. الٓمٓ itself costs 10 nats held to the bench's audio: the letters stay the tracker's.
