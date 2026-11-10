@@ -21,7 +21,7 @@ before = len(doc["ayat"])
 unchecked = set(doc.get("unchecked", []))
 parts = sorted(glob.glob(os.path.join(parts_dir, "**", "*.json"), recursive=True))
 if not parts:
-    sys.exit("no parts under " + parts_dir)
+    print("no parts under", parts_dir, "(nothing was left to cut): the timings as they are")
 for path in parts:
     part = json.load(open(path, encoding="utf-8"))
     assert part["reciter"] == rid and part["base"] == doc["base"], path
@@ -53,4 +53,15 @@ missing = [s for s in range(1, 115) if s not in whole]
 print(f"{before} → {len(doc['ayat'])} āyāt of {sum(counts)}; {len(whole)} sūras whole; {len(doc['unchecked'])} cuts to look at")
 if missing:
     print("not whole:", missing)
+# Played one after the other, the cuts of a sūra must leave nothing out and say nothing twice
+# (20:128 was once left between two cuts: recorded low, it read as a pause).
+for key, (b0, b1) in doc["ayat"].items():
+    s, a = map(int, key.split(":"))
+    nxt = doc["ayat"].get(f"{s}:{a + 1}")
+    if nxt:
+        gap = (nxt[0] - b1) / (doc["suras"][str(s)]["kbps"][0] * 125)
+        if gap > 3.0:
+            print(f"LEFT OUT: {gap:.1f} s between {key} and {s}:{a + 1}")
+        if gap < -0.5:
+            print(f"TWICE: {-gap:.1f} s in both {key} and {s}:{a + 1}")
 json.dump(doc, open(dest, "w", encoding="utf-8"), ensure_ascii=False, indent=None, separators=(",", ":"))

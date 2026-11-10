@@ -46,6 +46,7 @@ JOIN_S = 0.08               # overlap where two āyāt are recited without a pau
 SHORT = 0.45                # a cut under this share of its text's time at the reciter's pace is wrong
 FAR_S = 4.5                 # a boundary may also move this far (a reciter repeating an āya)
 PAUSE_S = 0.4               # a repair prefers a real pause, up to this long, to a dip inside a word
+LOW_S = 4.0                 # a quiet stretch this long inside a sūra is recitation recorded low, not a pause
 
 
 # ---------------------------------------------------------------- text
@@ -296,7 +297,8 @@ def fetch(url, path):
 
 
 def decode(path):
-    raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", path, "-ar", str(RATE), "-ac", "1", "-f", "s16le", "-"],
+    # As MP3, said outright: left to guess, ffmpeg took one āya's cut (37:163) for a video stream.
+    raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "mp3", "-i", path, "-ar", str(RATE), "-ac", "1", "-f", "s16le", "-"],
                          check=True, capture_output=True).stdout
     return np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768
 
@@ -377,6 +379,26 @@ def pauses(pcm):
     return out, db, threshold
 
 
+def level(pcm, notes):
+    """
+    The audio to analyse, its pauses, frame energies and threshold. Recitation recorded much lower
+    than the rest (20:128 in at-Turkī's file: 17 s, 20 dB down, under the echo that fills his
+    pauses) reads as one long pause, and its āya was left out of every cut. A quiet stretch too
+    long for a pause, and not dead silence, is brought up to the level of the rest.
+    """
+    quiet, db, threshold = pauses(pcm)
+    loud, out = np.percentile(db, 90), None
+    for a, b in quiet:
+        i, j = int(round(a * 50)), int(round(b * 50))
+        if i == 0 or j >= len(db) or b - a < LOW_S or np.median(db[i:j]) < threshold - 12:
+            continue
+        gain = min(30.0, loud - np.percentile(db[i:j], 90))
+        out = pcm.copy() if out is None else out
+        out[i * HOP:j * HOP] *= 10 ** (gain / 20)
+        notes.append(f"quiet for {b - a:.1f} s from {a:.2f}: taken as recitation recorded low (+{gain:.0f} dB to find its āyāt)")
+    return (pcm, quiet, db, threshold) if out is None else (out, *pauses(out))
+
+
 def split_long(chunks, db):
     """Speech runs longer than a window are cut at their quietest moment."""
     out = []
@@ -398,9 +420,9 @@ def sura_timings(rid, sura, text, want):
     mp3 = fetch(cfg["base"] + "%03d.mp3" % sura, os.path.join(WORK, f"{rid}-{sura:03d}.mp3"))
     data = open(mp3, "rb").read()
     fr, frate, spf, kbps = frames(data)
-    pcm = decode(mp3)
+    notes = []
+    pcm, quiet, db, threshold = level(decode(mp3), notes)
     dur = len(pcm) / RATE
-    quiet, db, threshold = pauses(pcm)
     smooth = np.convolve(db, np.ones(5) / 5, mode="same")  # 100 ms
     # A pause between āyāt lasts longer than the closure of a consonant (ك, ت, د…).
     broad = np.convolve(db, np.ones(12) / 12, mode="same")  # 240 ms
@@ -635,7 +657,7 @@ def sura_timings(rid, sura, text, want):
         i1 = min(len(fr) - 1, int(end / per) + 1)
         out[f"{sura}:{a}"] = [fr[i0][0], fr[i1][0] + fr[i1][1]]
         report.append(f"{sura}:{a} {start:8.2f} {end:8.2f}")
-    report = repaired + report
+    report = notes + repaired + report
     if len(windows) <= 12:
         report = debug + report
     info = {"file": "%03d.mp3" % sura, "size": len(data), "seconds": round(dur, 1), "kbps": kbps}
@@ -691,27 +713,32 @@ def parts(key, a0, a1):
 
 def check(rid, text, ayat, infos):
     """Cut each āya as the app will, transcribe it and compare with its text."""
-    segs, refs = {}, []
+    segs, refs, failed = {}, [], []
     for key, (b0, b1) in ayat.items():
         s, a = map(int, key.split(":"))
         data = open(os.path.join(WORK, f"{rid}-{s:03d}.mp3"), "rb").read()[b0:b1]
         mp3 = os.path.join(WORK, f"check-{rid}-{s:03d}{a:03d}.mp3")
         open(mp3, "wb").write(data)
-        pcm = decode(mp3)
+        try:
+            pcm = decode(mp3)
+        except subprocess.CalledProcessError as e:
+            # One cut that doesn't decode is one to look at, not the end of an hour's run.
+            failed.append((s, a, 9.99, False, False, "not decoded: " + e.stderr.decode(errors="replace").strip()[:160]))
+            continue
         for part, (a0, a1) in parts(key, 0, len(pcm) / RATE).items():
             wav = os.path.join(WORK, f"check-{rid}-{part.replace(':', '-').replace('~', '-')}.wav")
             write_wav(wav, pcm[int(a0 * RATE):int(a1 * RATE)])
             segs[part] = wav
         refs.append((key, s, a))
     heard = transcribe(list(segs.values()))
-    bad = []
+    bad = list(failed)
     for key, s, a in refs:
         h = heard[segs[key]]
         t = heard[segs[key + "~end"]] if key + "~end" in segs else None
         ok, _, err, head, tail = verdict(text, s, a, h, t)
         if not ok:
             bad.append((s, a, err, head, tail, h + (" … " + t if t else "")))
-    print(f"\nChecked {len(refs)} āyāt: {len(refs) - len(bad)} fine, {len(bad)} to look at")
+    print(f"\nChecked {len(refs) + len(failed)} āyāt: {len(refs) + len(failed) - len(bad)} fine, {len(bad)} to look at")
     for s, a, err, head, tail, h in bad:
         print(f"  {s}:{a} letters off {err:.2f} start {'ok' if head else 'OFF'} end {'ok' if tail else 'OFF'} | {h[:200]}")
     return bad

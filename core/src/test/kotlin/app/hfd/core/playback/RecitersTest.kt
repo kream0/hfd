@@ -48,6 +48,27 @@ class RecitersTest {
         }
     }
 
+    /**
+     * A sūra plays as its āyāt's cuts one after the other (the Qur'an section): between two cuts
+     * nothing but a pause may be left out, and nothing said twice. Ṭā-Hā 128 was once left between
+     * two cuts (17 s recorded so low that they read as a pause).
+     */
+    @Test
+    fun wholeSuraRecitersLeaveNothingOutBetweenAyat() {
+        for (r in Reciters.ALL.filter { it.timings != null }) {
+            val t = HfdJson.decodeFromString(AyahTimings.serializer(), Assets.file(r.timings!!).readText())
+            val wrong = t.ayat.keys.mapNotNull { key ->
+                val (sura, aya) = key.split(":").map { it.toInt() }
+                val here = t.bytes(AyahRef(sura, aya)) ?: return@mapNotNull null
+                val next = t.bytes(AyahRef(sura, aya + 1)) ?: return@mapNotNull null
+                val bytesPerSecond = t.suras.getValue(sura.toString()).kbps.first() * 125.0
+                val gap = (next.first - (here.last + 1)) / bytesPerSecond
+                if (gap > 3.0 || gap < -0.5) "$key→${aya + 1}: %.1f s".format(gap) else null
+            }
+            assertTrue("${r.id}: $wrong", wrong.isEmpty())
+        }
+    }
+
     @Test
     fun theWordBeingRecitedIsTheLastOneStarted() {
         val t = WordTimings(1, "x", mapOf("112:1" to listOf(40, 95, 150, 230)))

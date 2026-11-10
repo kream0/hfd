@@ -53,8 +53,8 @@ class QuranListeningTest {
         fun sura(n: Int) = QuranListening.ayat(n, Assets.quran.suras[n - 1].size)
         // The owner chose at-Turkī for al-Kahf (10 Nov): every āya of it is cut, so he recites it.
         for (n in listOf(1, 18, 36, 67, 112)) assertEquals("sūra $n", badr, QuranListening.reciterFor(badr, timings, sura(n)))
-        // Al-Baqara is only cut for its passages: a recitation that has every āya takes over.
-        val other = QuranListening.reciterFor(badr, timings, sura(2))
+        // A sūra lacking one āya's cut isn't his: a recitation that has every āya takes over.
+        val other = QuranListening.reciterFor(badr, timings.copy(ayat = timings.ayat - "18:50"), sura(18))
         assertEquals(QuranListening.FALLBACK, other)
         assertNull(other.timings)
         // Without its cuts (the asset unread), nothing is his.

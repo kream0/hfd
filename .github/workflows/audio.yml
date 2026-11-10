@@ -23,7 +23,8 @@ concurrency:
 jobs:
   align:
     # The whole Qur'an, every āya (the Qur'an section plays any sūra), in parts of about the same
-    # length of text. A part takes around an hour.
+    # length of text. A part takes up to an hour; it only cuts the sūras the timings don't hold
+    # whole yet (tools/audio/todo.py: to cut one again, take its āyāt out of the asset).
     name: align (sūras ${{ matrix.suras }})
     strategy:
       fail-fast: false
@@ -33,11 +34,21 @@ jobs:
     timeout-minutes: 330
     steps:
       - uses: actions/checkout@v6
+      - name: What is left to cut
+        id: todo
+        env:
+          RANGE: ${{ matrix.suras }}
+        run: |
+          left=$(python3 tools/audio/todo.py badr-alturki "${RANGE%-*}" "${RANGE#*-}")
+          echo "left: ${left:-nothing}"
+          echo "suras=$left" >> "$GITHUB_OUTPUT"
       - name: ffmpeg, numpy
+        if: steps.todo.outputs.suras != ''
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
           pip install --quiet numpy
       - name: whisper.cpp and the app's speech model
+        if: steps.todo.outputs.suras != ''
         run: |
           mkdir -p work && cd work
           git clone -q --depth 1 --branch v1.7.6 https://github.com/ggml-org/whisper.cpp
@@ -46,12 +57,13 @@ jobs:
           curl -sSfL -o ggml-tiny-ar-quran-q8_0.bin https://github.com/kream0/hfd/releases/download/speech-model/ggml-tiny-ar-quran-q8_0.bin
           echo "ef01ab441b004f9e6f1ea98d397b43452b3a45efab7c3928ab37af655dde8b52  ggml-tiny-ar-quran-q8_0.bin" | sha256sum -c
       - name: Align Badr at-Turkī
+        if: steps.todo.outputs.suras != ''
         env:
           WHOLE: '1'
           OUT: part-${{ matrix.suras }}.json
-          RANGE: ${{ matrix.suras }}
-        run: python3 tools/audio/align.py badr-alturki $(seq "${RANGE%-*}" "${RANGE#*-}")
+        run: python3 tools/audio/align.py badr-alturki ${{ steps.todo.outputs.suras }}
       - uses: actions/upload-artifact@v4
+        if: steps.todo.outputs.suras != ''
         with:
           name: timings-${{ matrix.suras }}
           path: part-${{ matrix.suras }}.json
@@ -63,6 +75,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: actions/download-artifact@v4
+        continue-on-error: true  # no part at all: nothing was left to cut
         with:
           path: parts
       - name: Merge

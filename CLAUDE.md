@@ -88,8 +88,15 @@
   `tools/audio/**`) cuts the whole Qur'an (the Qur'an section plays any sūra) as eight jobs
   (`WHOLE=1`, a part each), and `merge.py` adds the parts to `assets/audio/<id>.json`, keeping the
   cuts already there unless `FRESH=1` (the passages' word timings and saved āyāt go with them).
-  Without `WHOLE`, align.py with sūras is a trial that writes nothing.
-  Read its report: every cut is transcribed; "to look at" lines are misreadings or bad cuts.
+  A part only cuts the sūras the asset doesn't hold whole (`todo.py`): to cut one again, take its
+  āyāt out of the asset. Without `WHOLE`, align.py with sūras is a trial that writes nothing.
+  Read its report: every cut is transcribed; "to look at" lines are misreadings, a syllable of the
+  neighbouring āya, or an āya the reciter says twice (5:74, 50:29, 55:27, 92:1). merge.py prints
+  "LEFT OUT" / "TWICE" where consecutive cuts skip or repeat audio (`RecitersTest` pins none):
+  Ṭā-Hā 128 is recorded 20 dB lower, under the echo in his pauses, and read as a 17 s pause until
+  align.py's `level` (a quiet stretch over 4 s inside a sūra is recitation). This sandbox reaches
+  mp3quran.net: one sūra runs here in minutes (whisper.cpp built in the scratchpad, `WHOLE=1 OUT=…`).
+  ffmpeg is told the cuts are MP3 (it took 37:163 for video and stopped a part).
   The `:core` test requires every passage āya. Re-timing is safe
   for users: saved āyāt whose size no longer matches their range are deleted at start, and the
   stream cache is keyed by the range. The report prints each repair with its scores.
