@@ -360,6 +360,13 @@
   letter) and `recited` (a recogniser's writing of a phrase: each word votes for the places it
   occurs at, weighted by rarity, the best 24 are aligned by letters, kept at 70 %). 8 ms a search
   on the JVM once `prepare` has run.
+- `RecitedSearchBench` (HFD_BENCH + HFD_CTC, writes search.txt; `benchctc.sh`'s variables): the
+  bench's recordings cut every 7 s into clips (wherever they fall, often inside a word), read by
+  the CTC recogniser, looked for in the whole text. 11 Nov: 6 s clips, the first place right 76 %,
+  the āya among those listed 81 %; 10 s clips 88 % and 94 %. What is left: the disconnected
+  letters (read as a basmala), pocket audio, phrases of three short words (under five letters
+  once vowels and alifs are gone). A phrase the text says in several places lists them all:
+  `VoiceSearch` goes on listening until one stands out (`CLEAR_MARGIN`).
 - `QuranScreen`: views (sūras / juzʾ / ḥizb / favourites), results by kind; choosing a result
   hides the keyboard and clears the focus (the bug: it stayed up over the sūra), then
   `AppViewModel.openSura(sura, aya)` (`suraTarget`, which the sūra screen scrolls to and forgets).

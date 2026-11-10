@@ -182,6 +182,18 @@ class QuranSearch(private val suras: List<SuraMeta>, private val quran: QuranTex
      */
     fun recited(heard: String, limit: Int = 8): List<Recited> {
         val h = heard.split(Regex("\\s+")).map { Arabic.skeleton(it) }.filter { it.isNotEmpty() }
+        // A phrase caught on the way begins or ends inside a word (or with a breath taken for
+        // one): if the whole of it is nowhere, it is looked for without its first or last word.
+        val tries = listOf(h, h.dropLast(1), h.drop(1), h.drop(1).dropLast(1))
+        for ((i, words) in tries.withIndex()) {
+            if (i > 0 && words.size < MIN_WORDS_CUT) continue
+            val found = places(words, limit)
+            if (found.isNotEmpty()) return found
+        }
+        return emptyList()
+    }
+
+    private fun places(h: List<String>, limit: Int): List<Recited> {
         val letters = h.joinToString("")
         if (letters.length < MIN_RECITED_LETTERS) return emptyList()
         val votes = HashMap<Int, Double>()
@@ -256,6 +268,8 @@ class QuranSearch(private val suras: List<SuraMeta>, private val quran: QuranTex
         /** Letters a recited phrase needs, and the share of them a place must hold. */
         const val MIN_RECITED_LETTERS = 5
         const val RECITED_FRACTION = 0.7
+        /** Words a phrase must keep when it is looked for without its first or last one. */
+        const val MIN_WORDS_CUT = 3
         private const val CANDIDATES = 24
         private const val SLACK = 3
 

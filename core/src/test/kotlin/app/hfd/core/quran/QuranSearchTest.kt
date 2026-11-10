@@ -115,6 +115,10 @@ class QuranSearchTest {
         val refrain = search.recited("فبأي آلاء ربكما تكذبان", limit = 40)
         assertEquals(31, refrain.count { it.ref.sura == 55 && it.score > 0.99f })
         assertEquals("55:13", refrain.first().ref.key)
+        // Caught on the way: it begins and ends inside a word (the bench's «ـٰلِكِ يَوْمِ ٱلدِّينِ إِيَّاكَ نَعْ»).
+        val cut = search.recited("لك يوم الدين اياك نعبد واياك نست")
+        assertEquals("1:4", cut.first().ref.key)
+        assertEquals("1:5", cut.first().last.key)
         // Not the Qur'an, or too little: nothing.
         assertEquals(emptyList<QuranSearch.Recited>(), search.recited("صباح الخير كيف حالك اليوم يا صديقي"))
         assertEquals(emptyList<QuranSearch.Recited>(), search.recited("من"))

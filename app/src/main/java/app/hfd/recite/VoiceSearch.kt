@@ -33,7 +33,8 @@ data class VoiceSearchUi(
  * Finding a passage by reciting some of it: the microphone is cut into utterances as for Recite
  * ([Recorder]), each read by the same recogniser on the phone ([SpeechReader], freely: nothing is
  * expected), and what was read so far is looked for in the whole text ([search]). It stops by
- * itself once a whole phrase has been found, or after [MAX_SECONDS]. Nothing is recorded or sent.
+ * itself once a whole phrase has one place that stands out, or after [MAX_SECONDS]; the reciter
+ * can stop it sooner. Nothing is recorded or sent.
  */
 class VoiceSearch(
     private val scope: CoroutineScope,
@@ -78,7 +79,10 @@ class VoiceSearch(
                     _ui.value = _ui.value.copy(heard = all, hits = hits.ifEmpty { if (u.final) hits else _ui.value.hits })
                     if (u.final) Diag.log("voice.heard", "letters" to all.length, "seconds" to u.seconds, "hits" to hits.take(3).joinToString(",") { it.ref.key })
                     val late = System.currentTimeMillis() - started > MAX_SECONDS * 1000
-                    if ((u.final && hits.isNotEmpty()) || late) recorder.stop()
+                    // One place stands out once a whole phrase is said: enough. A phrase the text
+                    // says in several places goes on being heard, to tell them apart.
+                    val clear = hits.isNotEmpty() && (hits.size == 1 || hits[0].score - hits[1].score >= CLEAR_MARGIN)
+                    if ((u.final && clear) || late) recorder.stop()
                 }
             }
             try {
@@ -109,5 +113,7 @@ class VoiceSearch(
     companion object {
         /** A search by reciting listens this long at most. */
         const val MAX_SECONDS = 30
+        /** What the best place's share of the phrase must have over the next one's to be the answer. */
+        const val CLEAR_MARGIN = 0.04f
     }
 }
