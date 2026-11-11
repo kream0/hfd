@@ -372,9 +372,17 @@ def go_while_listening():
         failures.append("go: no way back to the āya recited")
         return
     tap(chip)
-    if not wait(is_("2:255"), 15):
+    # (The recitation went on meanwhile: the āya recited is 255 or one after it.)
+    def recited(t):
+        m = re.fullmatch(r"Al-Baqara · (\d+)", t)
+        return m is not None and int(m.group(1)) >= 255
+    back = wait(recited, 15)
+    time.sleep(2.0)
+    still = find(starts("Revenir à l"))
+    print(f"SMOKE the way back: at the āya recited {bool(back)}, the chip gone {still is None}", flush=True)
+    shot("go-back")
+    if not back or still:
         failures.append("go: the way back didn't bring the āya recited")
-        shot("go-back-missing")
 
 
 def one_player(when):
