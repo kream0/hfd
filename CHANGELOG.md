@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.4.0
+One bar to listen and recite from, where three sets of controls were stacked.
+- **One bar.** Under a sūra or a passage there is now a single bar, just above the tabs: the round button listens or pauses, then the next āya, **Recite**, and an arrow that opens the full player. It replaces the Reading | Reciting switch at the top of a sūra, the player panel that covered a fifth of the screen, and the second player that showed under it whenever something else was loaded. The text gets that room back.
+- **The full player** (the arrow, or a tap on the bar): where the āya is, previous and next, saving offline, and the settings chosen right there: speed, reciter and timer, and for a passage the repeats, the pause and the range.
+- **The same bar on every screen.** On the tabs it shows what you were listening to, with the same buttons; a tap opens that text. If something else is still playing when you open a text, the bar keeps it until you leave, so what you hear can always be paused.
+- **Recite** closes with its ✕ (the switch it carried did the same). On a passage, Recite moved from under the title to the bar.
+- The Coran tab's "Resume" card no longer doubles the bar when a sūra is already loaded.
+
 ## 2.3.0
 The Qur'an section finds any verse (by a word, a reference, or by reciting a few words), lists by juzʾ or ḥizb, and reads or recites.
 - **Search everything.** The search of the Coran tab now finds a reference (2:255, "baqara 255"), a sūra by name or number, "juz 5" or "hizb 12", words of the text typed in Arabic however you spell them (the words found are lit in the results), and words of the translation.
