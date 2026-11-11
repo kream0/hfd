@@ -312,7 +312,16 @@ class ReciteSession(
                 Diag.log("recite.check", "id" to id, "words" to c.words.joinToString(","), "right" to right, "reading" to again)
             }
         }
-        if (sound != null && tajweed() && speech.timing) follower.read(id)?.let { time(id, it, sound) }
+        // (Timing is an extra: whatever goes wrong in it, the recitation goes on.)
+        if (sound != null && tajweed() && speech.timing) follower.read(id)?.let { read ->
+            try {
+                time(id, read, sound)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Diag.log("recite.tajweedError", "id" to id, "error" to (e.message ?: e.javaClass.simpleName))
+            }
+        }
         afterProgress(text.ifBlank { null }, final)
         return moved
     }

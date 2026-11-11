@@ -36,6 +36,26 @@ class TajweedCheckTest {
         assertEquals(beats.map { it.at }, beats.map { it.at }.sorted())
     }
 
+    @Test
+    fun everyAyaHasItsBeats() {
+        // The whole Qur'an as Recite holds it (the āya's words, a space between): each beat on a letter of its word,
+        // in order; every long vowel with a set length in a beat of its own.
+        var held = 0
+        for (sura in Assets.quran.suras) for (aya in sura) {
+            val words = Arabic.words(aya)
+            val text = words.joinToString(" ")
+            val beats = Tajweed.beats(text)
+            assertEquals(beats.map { it.at }, beats.map { it.at }.sorted())
+            for (b in beats) {
+                assertTrue(b.at in text.indices && text[b.at] != ' ' && b.word in words.indices)
+                if (b.madd == Rule.MADD_MUTTASIL || b.madd == Rule.MADD_MUNFASIL || b.madd == Rule.MADD_LAZIM) held++
+            }
+            assertEquals(beats, TajweedCheck.stretch(listOf(words), 0, words.size))
+        }
+        // (Of the 5,376 the engine finds: a long vowel right after another's consonant-less seat shares its beat.)
+        assertTrue("$held", held > 5000)
+    }
+
     private fun timed(madd: Rule?, seconds: Float, paused: Boolean = false, last: Boolean = false) =
         TajweedCheck.Timed(Beat(at = 0, word = 0, vowel = if (madd != null) Vowel.LONG else Vowel.SHORT, madd = madd), seconds, paused, last)
 
