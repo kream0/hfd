@@ -226,11 +226,13 @@ fun PlayerDock(open: String?, onOpen: () -> Unit, onRecite: (() -> Unit)?, modif
     val place by Graph.quranPlace.place.collectAsStateWithLifecycle()
     val held = np
     val own = open != null && held != null && held.plays(open)
-    // Another text than the open one, heard while it is open.
+    // Another text than the open one, heard while it is open. (An āya of the open text left by a
+    // lesson is neither: the bar offers the text.)
+    val foreign = open != null && held != null && held.fadilaId != open
     var heard by remember(open) { mutableStateOf<PlaySession?>(null) }
-    val other = open != null && held != null && !own && (ui.playWhenReady || heard === held.session)
-    LaunchedEffect(open, held?.session, ui.playWhenReady) {
-        if (open != null && held != null && !own && ui.playWhenReady) heard = held.session
+    val other = foreign && (ui.playWhenReady || heard === held?.session)
+    LaunchedEffect(foreign, held?.session, ui.playWhenReady) {
+        if (foreign && ui.playWhenReady) heard = held?.session
     }
     val loaded = held != null && (open == null || own || other)
     val id = if (loaded) held!!.fadilaId else open ?: return

@@ -33,9 +33,21 @@
   (`0.dev.<run>`, Actions artifact) that the app never offers.
 
 ## Building
-- This sandbox can't reach Google's Maven / Android SDK hosts, so Android builds only run in
-  GitHub Actions (`.github/workflows/build.yml`). Push, then read the run with the GitHub MCP
-  tools; the "Show compiler errors" step prints Kotlin errors and test failures compactly.
+- Release and smoke builds run in GitHub Actions (`.github/workflows/build.yml`): push, then read
+  the run (`gh api` works here); the "Show compiler errors" step prints Kotlin errors and test
+  failures compactly.
+- **The app compiles and its screens render in this sandbox** (since 11 Nov: dl.google.com's SDK
+  repository answers). Once a session: the command-line tools (the `commandlinetools-linux-…`
+  zip named in `https://dl.google.com/android/repository/repository2-3.xml`) unpacked as
+  `<sdk>/cmdline-tools/latest`, then `sdkmanager --sdk_root=<sdk> --proxy=http --proxy_host=127.0.0.1
+  --proxy_port=<the https.proxyPort of JAVA_TOOL_OPTIONS> "platforms;android-36"
+  "build-tools;35.0.0" "platform-tools"` (`yes |` for the licences). Then, with
+  `ANDROID_HOME=<sdk>`: `gradle --no-daemon -q -I tools/local/init.gradle :app:compileDebugKotlin`
+  (1 min) and `… :app:testDebugUnitTest --tests app.hfd.ScreenshotTest` (1 min; PNGs in
+  `build/screenshots`, 1200 px wide: look at them before pushing). The init script puts Google's
+  mirror of Maven Central first, for Gradle and for Robolectric's Android images:
+  repo.maven.apache.org answers 429 here, and the plugin portal redirects to it. No NDK is needed
+  for these two tasks; the APK itself (whisper.cpp, QNN) still builds on CI only.
 - Pure-Kotlin logic lives in the `:core` module (no Android): Qur'an data, faḍāʾil dataset,
   playback plan, FSRS, progress model, recitation tracking (`recite/Tracker.kt`). Test it
   locally with the harness in the scratchpad or recreate it: a `settings.gradle.kts` that
@@ -373,12 +385,33 @@
   The microphone opens `VoiceSearch` in a sheet (the Recite recogniser through `SpeechReader`,
   which now holds the models' loading for both; reads freely; stops at the first whole phrase
   found or after 30 s).
-- `SuraScreen` is the reading mode (the owner: a tap on a verse must not play it): the tap opens
-  a sheet (favourite, listen from here, recite from here); `ModeSwitch` goes to Recite and back
-  (`ReciteScreen` shows it for a sūra). `Favorites` (progress/favorites.json, in backups).
+- `SuraScreen` is for reading (the owner: a tap on a verse must not play it): the tap opens
+  a sheet (favourite, listen from here, recite from here). Listening and reciting are the bar's
+  (below). `Favorites` (progress/favorites.json, in backups).
 - The smoke tour types `2:255`, checks the keyboard is gone once the āya is open
   (`dumpsys input_method`, `mInputShown`), keeps the āya, finds it under Favoris, opens the juzʾ
   and ḥizb lists and the search by reciting (the emulator's microphone is silent: it only listens).
+
+## The one bar (2.4.0, the owner: "top switch, lecture player menu and currently playing controls are redundant")
+- Before: a sūra's screen stacked the Reading | Reciting switch (top), a player panel a fifth of
+  the screen high (bottom), and under it the mini player whenever the player held something else
+  (it nearly always does: the last session is restored at start). Now `PlayerDock`
+  (`components/Player.kt`, placed once in `AppRoot` above the tabs) is the only player on any
+  screen: the round button listens / pauses, the text names what it plays, next āya when loaded,
+  « Réciter », and the arrow (or a tap on the text) opens `playerSheet`: the full player
+  (place, previous / next, offline chip, speed; for a passage the repeats, the pause and the
+  range; reciter and timer in their own sheets, which come back to it: `thenBack`).
+- What the bar shows: on a tab, what the player holds (a tap opens it). With a text open, that
+  text (`NowPlaying.plays(id)`: an āya left by a lesson isn't the text; Play then starts it).
+  Something else *heard* while a text is open stays in the bar until the text is left (`heard`),
+  so what sounds can always be paused; « Réciter » is only on a text's own bar.
+- A sūra's screen hands the bar how it starts a recitation (`onReciteAction`: from the āya at the
+  top, a sheet asking "from āya N / from the start"). A passage's Recite pill left its intro for
+  the bar. `ReciteScreen` has no switch (its ✕ did the same). The Coran tab's resume card shows
+  only when the player holds no sūra.
+- `Graph.playingPreview` shows the player as holding something without playing (the screenshot
+  test: `listen`, `fadail-listening`). The smoke tour counts the listening buttons on a sūra's
+  screen (one), opens the full player, and recites from the bar.
 
 ## The Qur'an section and the look
 - Reciting a sūra (2.1.0): the sūra panel's Recite chip opens the passages' `ReciteSession` with

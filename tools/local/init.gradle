@@ -1,0 +1,23 @@
+// Local builds only: Maven Central through Google's mirror, first (repo.maven.apache.org answers
+// 429 here, and the plugin portal redirects to it).
+settingsEvaluated { settings ->
+    def mirror = "https://maven-central.storage-download.googleapis.com/maven2"
+    settings.pluginManagement.repositories.clear()
+    settings.pluginManagement.repositories {
+        maven { url mirror }
+        google()
+        gradlePluginPortal()
+    }
+    settings.dependencyResolutionManagement.repositories.clear()
+    settings.dependencyResolutionManagement.repositories {
+        maven { url mirror }
+        google()
+    }
+}
+
+// Robolectric fetches its Android images itself: from the mirror too.
+allprojects {
+    tasks.withType(Test).configureEach {
+        systemProperty 'robolectric.dependency.repo.url', 'https://maven-central.storage-download.googleapis.com/maven2'
+    }
+}
