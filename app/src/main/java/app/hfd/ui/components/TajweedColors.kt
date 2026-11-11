@@ -192,6 +192,9 @@ fun TajweedLegend() {
 /** 2:19 has nearly every colour in one line. */
 private val SAMPLE = app.hfd.core.quran.AyahRef(2, 19)
 
+/** A rule's name, as a string resource. */
+fun ruleName(rule: Rule): Int = rule.label
+
 private val Rule.label: Int
     get() = when (this) {
         Rule.GHUNNAH -> R.string.tajweed_ghunnah

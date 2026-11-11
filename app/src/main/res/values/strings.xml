@@ -426,4 +426,15 @@
     <string name="tajweed_silent_body">Written, not pronounced.</string>
     <string name="tajweed_tafkhim">Tafkhīm</string>
     <string name="tajweed_tafkhim_body">A letter said heavy.</string>
+    <string name="recite_tajweed">Tajwīd</string>
+    <string name="recite_tajweed_body">While you recite, the app measures how long you hold the long vowels, against your own natural madds: a madd of 4–5 or of 6 counts that lasts no longer than a natural one is underlined. Your stops are taken into account, and a madd held just four counts is never corrected. This check judges neither the ghunna, nor the points of articulation, nor heaviness, nor a madd held too long: timing can\'t tell those reliably letter by letter.</string>
+    <string name="recite_tajweed_short45">Held %1$s s, like your natural madds (%2$s s). Before a hamza the long vowel lasts four or five counts: at least twice as long.</string>
+    <string name="recite_tajweed_short6">Held %1$s s; your natural madds last %2$s s. This madd lasts six counts: three times a natural one.</string>
+    <string name="recite_tajweed_how">Measured on your recitation: the time from this consonant to the next, against your ordinary long vowels.</string>
+    <string name="recite_tajweed_nothing">No long vowel of 4 counts or more could be measured (it takes phrases recited without a mistake, with the new model).</string>
+    <string name="recite_tajweed_some">%1$d long vowels held out of %2$d</string>
+    <plurals name="recite_tajweed_all">
+        <item quantity="one">%d long vowel measured, held as it should be</item>
+        <item quantity="other">%d long vowels measured, all held as they should be</item>
+    </plurals>
 </resources>

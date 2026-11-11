@@ -3,10 +3,13 @@ package app.hfd.core.ctc
 /**
  * Reads an utterance with a CTC model, in the terms the recitation's follower speaks
  * ([app.hfd.core.recite.Follower]): the text heard, or, asked to check a text ("?\n" then the
- * words), the text heard, a tab, and what holding each word to the sound costs.
+ * words), the text heard, a tab, and what holding each word to the sound costs; or, asked where a
+ * text lies in time ("@\n" then the text), the frame of each of its characters.
  */
 class CtcRecognizer(private val model: CtcModel, private val vocabulary: CtcVocabulary = CtcVocabulary.QURAN) {
     private val mel = Mel()
+    private var lastPcm: FloatArray? = null
+    private var lastOut: CtcOutput? = null
 
     /** The model itself: a spectrogram in, each frame's symbols out. One call at a time. */
     fun interface CtcModel {
@@ -21,8 +24,14 @@ class CtcRecognizer(private val model: CtcModel, private val vocabulary: CtcVoca
      * decoder to steer). "?\n<words>": that text held to the sound, each word's cost after a tab.
      */
     fun transcribe(pcm: FloatArray, expected: String = ""): String {
-        val out = listen(pcm)
+        // (The same sound asked about twice, to check its words then to time them, is listened to once.)
+        val out = if (pcm === lastPcm) lastOut else listen(pcm).also { lastPcm = pcm; lastOut = it }
         val text = out?.let { Ctc.greedy(it, vocabulary) }.orEmpty().replace('\n', ' ')
+        if (expected.startsWith(TIMES)) {
+            // "@\n<text>": the frame each of the text's characters is written at (a frame is 40 ms).
+            val placed = out?.let { Ctc.placed(it, vocabulary, expected.substring(TIMES.length)) } ?: return text
+            return text + "\t" + out.frames + ";" + placed.joinToString(",")
+        }
         if (!expected.startsWith(CHECK)) return text
         val words = expected.substring(CHECK.length).split(' ').filter { it.isNotEmpty() }
         val forced = out?.let { Ctc.forced(it, vocabulary, words.joinToString(" ")) }
@@ -32,6 +41,17 @@ class CtcRecognizer(private val model: CtcModel, private val vocabulary: CtcVoca
 
     companion object {
         private const val CHECK = "?\n"
+
+        /** Asked where a text's letters lie in time ([app.hfd.core.tajweed.TajweedCheck]). */
+        const val TIMES = "@\n"
+
+        /** The frames' count and each character's frame, from a reading asked with [TIMES]; null without them. */
+        fun times(reading: String): Pair<Int, IntArray>? {
+            val tail = reading.substringAfterLast('\t', "").takeIf { ';' in it } ?: return null
+            val frames = tail.substringBefore(';').toIntOrNull() ?: return null
+            val placed = tail.substringAfter(';').split(',').map { it.toIntOrNull() ?: return null }
+            return frames to placed.toIntArray()
+        }
         private const val MIN_SAMPLES = 1600
         /** A word no frame could be given to: as the follower's CHECK_FAILED. */
         const val FAILED = 99f

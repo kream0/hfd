@@ -77,6 +77,13 @@ import app.hfd.recite.ReciteSession
 import app.hfd.recite.ReciteUi
 import app.hfd.recite.Wave
 import app.hfd.ui.ayahEnd
+import app.hfd.core.tajweed.Rule
+import app.hfd.core.tajweed.TajweedCheck
+import app.hfd.ui.components.LocalSheets
+import app.hfd.ui.components.SheetSpec
+import app.hfd.ui.components.ruleName
+import app.hfd.ui.components.tajweedColor
+import androidx.compose.ui.unit.sp
 import app.hfd.ui.components.KeepScreenOn
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.IconBtn
@@ -135,6 +142,8 @@ fun ReciteScreen(onClose: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(start = 4.dp),
             )
+            // Timing the long vowels needs the model that places letters in time.
+            if (best && ctcModel is ModelState.Ready) TajweedToggle(settings.reciteTajweed)
         }
         Text(statusLine(ui, s), style = Type.label, color = P.textDim, modifier = Modifier.padding(horizontal = 20.dp))
         ProgressLine(ui, Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
@@ -151,11 +160,21 @@ fun ReciteScreen(onClose: () -> Unit) {
             val a = ui.next?.first ?: return@LaunchedEffect
             if (list.layoutInfo.visibleItemsInfo.none { it.index == a }) list.animateScrollToItem(a)
         }
+        // Where each āya's words begin among all the words (the long vowels not held are named by word).
+        val firstWord = remember(ui.targets) { ui.targets.runningFold(0) { n, t -> n + t.words.size } }
+        val sheets = LocalSheets.current
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list) {
             itemsIndexed(ui.targets) { a, t ->
-                AyahWords(t, ui.status.getOrNull(a).orEmpty(), current = ui.next?.takeIf { it.first == a }?.second, showText, settings.arabicSize)
+                val faults = if (ui.tajweed.isEmpty()) emptyMap() else t.words.indices.mapNotNull { w -> ui.tajweed[firstWord[a] + w]?.let { w to it } }.toMap()
+                AyahWords(
+                    t, ui.status.getOrNull(a).orEmpty(), current = ui.next?.takeIf { it.first == a }?.second, showText, settings.arabicSize,
+                    faults = faults, onFault = { w, f -> sheets(faultSheet(context, t.words[w], f)) },
+                )
             }
-            if (ui.done && ui.results.isNotEmpty()) item { Summary(ui.results, onAgain = { Graph.openRecite(s.fadilaId, ui.targets.map { t -> t.ref }) }, onClose) }
+            if (ui.done && ui.results.isNotEmpty()) item {
+                Summary(ui.results, onAgain = { Graph.openRecite(s.fadilaId, ui.targets.map { t -> t.ref }) }, onClose)
+                if (settings.reciteTajweed) TajweedSummary(ui, firstWord)
+            }
         }
 
         if (ui.lost && ui.listening && !ui.done) {
@@ -222,7 +241,8 @@ private fun statusLine(ui: ReciteUi, s: ReciteSession): String {
         next == null -> stringResource(R.string.recite_done)
         ui.pending > 0 -> stringResource(R.string.recite_recognising)
         ui.listening -> stringResource(R.string.recite_listening)
-        else -> stringResource(R.string.recite_position, next.first + 1, s.targets.size, s.targets[next.first].ref.toString())
+        // (From the state shown: a session just replaced by another may not have the same āyāt.)
+        else -> stringResource(R.string.recite_position, next.first + 1, ui.targets.size, ui.targets.getOrNull(next.first)?.ref?.toString().orEmpty())
     }
 }
 
@@ -261,7 +281,15 @@ private fun ModelCard(store: ModelStore, state: ModelState, text: Int, keepOld: 
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
-private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, showText: Boolean, size: Int) {
+private fun AyahWords(
+    t: ReciteTarget,
+    status: List<WordStatus>,
+    current: Int?,
+    showText: Boolean,
+    size: Int,
+    faults: Map<Int, TajweedCheck.Finding> = emptyMap(),
+    onFault: (Int, TajweedCheck.Finding) -> Unit = { _, _ -> },
+) {
     val style = Type.quran(size)
     // The word to say next: turquoise on a pill of the same colour, as the word being recited
     // while listening (QuranText); hidden text keeps the pill only.
@@ -299,16 +327,24 @@ private fun AyahWords(t: ReciteTarget, status: List<WordStatus>, current: Int?, 
                 // A word lights up (or the marker moves onto it) over a moment, not at a stroke.
                 val shown by animateColorAsState(color, tween(if (hidden) 0 else 160), label = "word")
                 val marked by animateFloatAsState(if (next) 1f else 0f, tween(140), label = "marker")
+                // A long vowel of this word not held as its rule asks: a line under it in the rule's colour, a tap says more.
+                val fault = faults[w]
+                val faultColor = fault?.let { tajweedColor(it.rule.family, P.isDark) }
                 Text(
                     word,
                     style = style.copy(textDecoration = if (st == WordStatus.MISSED) TextDecoration.LineThrough else null),
                     color = shown,
                     modifier = Modifier
                         .then(if (next) Modifier.bringIntoViewRequester(inView).onSizeChanged { markSize[0] = it } else Modifier)
+                        .then(if (fault != null) Modifier.clip(RoundedCornerShape(8.dp)).clickable { onFault(w, fault) } else Modifier)
                         .then(if (hidden) Modifier.clip(RoundedCornerShape(8.dp)).background(P.surfaceHigh) else Modifier)
                         // Drawn as QuranText draws it: hugging the letters, a little wider than
                         // the word, without moving the words around it.
                         .drawBehind {
+                            if (faultColor != null) {
+                                val y = this.size.height * 0.9f
+                                drawLine(faultColor, Offset(3.dp.toPx(), y), Offset(this.size.width - 3.dp.toPx(), y), 2.5.dp.toPx(), androidx.compose.ui.graphics.StrokeCap.Round)
+                            }
                             if (marked <= 0f) return@drawBehind
                             val box = this.size
                             val inset = box.height * 0.12f
@@ -447,5 +483,83 @@ private fun MicButton(listening: Boolean, level: Float, enabled: Boolean, onClic
             tint = if (listening) P.background else if (enabled) P.onPrimary else P.textFaint,
             modifier = Modifier.size(32.dp),
         )
+    }
+}
+
+/** The switch of the check of the long vowels: lit when on; switched on, it says what is checked. */
+@Composable
+private fun TajweedToggle(on: Boolean) {
+    val sheets = LocalSheets.current
+    val context = LocalContext.current
+    Row(
+        Modifier
+            .padding(end = 8.dp)
+            .clip(CircleShape)
+            .background(if (on) P.accent.copy(alpha = if (P.isDark) 0.2f else 0.16f) else Color.Transparent)
+            .border(1.dp, if (on) P.accent.copy(alpha = 0.7f) else P.outline, CircleShape)
+            .clickable {
+                Graph.settings.update { it.copy(reciteTajweed = !on) }
+                if (!on) sheets(SheetSpec(title = context.getString(R.string.recite_tajweed), subtitle = context.getString(R.string.recite_tajweed_body)))
+            }
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(stringResource(R.string.recite_tajweed), style = Type.button.copy(fontSize = 13.sp), color = if (on) P.text else P.textDim, maxLines = 1)
+    }
+}
+
+@Composable
+private fun faultText(f: TajweedCheck.Finding): String = stringResource(
+    if (f.rule == Rule.MADD_LAZIM) R.string.recite_tajweed_short6 else R.string.recite_tajweed_short45,
+    String.format(java.util.Locale.getDefault(), "%.1f", f.seconds), String.format(java.util.Locale.getDefault(), "%.1f", f.natural),
+)
+
+/** What the timing found on one word. */
+private fun faultSheet(context: android.content.Context, word: String, f: TajweedCheck.Finding) = SheetSpec(
+    title = word,
+    content = {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(10.dp).clip(CircleShape).background(tajweedColor(f.rule.family, P.isDark)))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(ruleName(f.rule)), style = Type.title, color = P.text)
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(faultText(f), style = Type.body, color = P.text)
+            Spacer(Modifier.height(10.dp))
+            Text(stringResource(R.string.recite_tajweed_how), style = Type.label, color = P.textDim)
+        }
+    },
+)
+
+/** After the recitation: how the long vowels were held. */
+@Composable
+private fun TajweedSummary(ui: ReciteUi, firstWord: List<Int>) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp)) {
+        SectionLabel(stringResource(R.string.recite_tajweed))
+        Spacer(Modifier.height(8.dp))
+        if (ui.timed == 0 && ui.tajweed.isEmpty()) {
+            Text(stringResource(R.string.recite_tajweed_nothing), style = Type.body, color = P.textDim)
+            return@Column
+        }
+        val short = ui.tajweed.size
+        Text(
+            if (ui.tajweed.isEmpty()) pluralStringResource(R.plurals.recite_tajweed_all, ui.timed, ui.timed)
+            else stringResource(R.string.recite_tajweed_some, ui.timed - short, ui.timed),
+            style = Type.title, color = if (ui.tajweed.isEmpty()) P.accent else P.text,
+        )
+        for ((flat, f) in ui.tajweed.entries.sortedBy { it.key }) {
+            val a = firstWord.indexOfLast { it <= flat }.coerceIn(0, ui.targets.lastIndex)
+            val word = ui.targets[a].words.getOrNull(flat - firstWord[a]) ?: continue
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(ui.targets[a].ref.toString() + " · " + stringResource(ruleName(f.rule)), style = Type.labelBold, color = tajweedColor(f.rule.family, P.isDark))
+                    Text(faultText(f), style = Type.label, color = P.textDim)
+                }
+                Spacer(Modifier.width(12.dp))
+                Text(word, style = Type.quran(24), color = P.text, maxLines = 1)
+            }
+        }
     }
 }

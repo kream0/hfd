@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.5.0
+Tajwīd: the letters in the colours of their rules, and Recite can time your long vowels.
+- **Coloured letters.** The Qur'an's text now shows the rules of tajwīd as the printed muṣḥafs of tajwīd do: the reds of the long vowels deepen with their length (2, 2-4-6, 4-5, 6 counts), green for the ghunna (ikhfāʾ, iqlāb, idghām), sky blue for the qalqala, grey for what is not pronounced. The palette button on a text's screen (or Settings → Reading) opens the legend, where each colour, or all of them, can be switched off; the heavy rāʾ and the lām of the Name have a colour too, off until you ask for it.
+- **An āya's rules.** Tap a verse of a sūra (or hold one of a passage) → "Tajwīd of this āya": each rule in order, with its word, its name and what to do.
+- **How the rules are found.** They are read from the Uthmani text itself, for the reading of Ḥafṣ: nothing is left unplaced in the 6,236 āyāt, and the result was compared word by word with the annotation the coloured editions online share (it is the same, but where that one misses a rule or marks one wrongly). The text is Tanzil's, unchanged: only colour is added.
+- **Recite times your long vowels** (the "Tajwīd" switch at the top of Recite, with the new recognition model). A madd of 4–5 or 6 counts that you hold no longer than your own plain long vowels is underlined; a tap says how long it lasted. Tried on four master reciters: none of their 213 such madds is flagged, and one cut short is caught 8 to 10 times in 10 at a measured pace (about half at a fast one). It never corrects a madd held four counts.
+- **What that check does not judge**, because timing can't tell it reliably letter by letter: the ghunna, the points of articulation, heavy and light letters, a madd held too long. These stay for a teacher's ear.
+- **Home** shows your day in one card (the goal, your streak, the week at a glance, what is due); Stats and a sūra's heading are tidier.
+
 ## 2.4.0
 One bar to listen and recite from, where three sets of controls were stacked.
 - **One bar.** Under a sūra or a passage there is now a single bar, just above the tabs: the round button listens or pauses, then the next āya, **Recite**, and an arrow that opens the full player. It replaces the Reading | Reciting switch at the top of a sūra, the player panel that covered a fifth of the screen, and the second player that showed under it whenever something else was loaded. The text gets that room back.

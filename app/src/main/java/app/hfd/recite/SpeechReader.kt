@@ -24,6 +24,9 @@ class SpeechReader(private val models: () -> ReciteModels) {
      * What reads an utterance: its sound, and what the follower expects or wants checked (empty
      * for a free reading); null where no model is on the phone or none loads.
      */
+    /** Whether the model reading places letters in time (the CTC one does): the long vowels can then be timed. */
+    val timing: Boolean get() = ctc != null
+
     fun reader(): ((FloatArray, String) -> String?)? {
         ctc?.let { return it::transcribe }
         whisper?.let { w -> return { pcm, expected -> w.transcribe(pcm, expected) } }

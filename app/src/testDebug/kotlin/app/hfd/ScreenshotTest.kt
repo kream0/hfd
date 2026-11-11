@@ -246,6 +246,23 @@ class ScreenshotTest {
             }
         }
         both("recite")
+        // The same with the check of the long vowels on: a madd not held, underlined in its rule's colour.
+        ui {
+            Graph.closeRecite()
+            vm.flow = null
+        }
+        ui {
+            Graph.settings.update { it.copy(reciteTajweed = true) }
+            Graph.openRecite("sura:1", listOf(app.hfd.core.quran.AyahRef(1, 6), app.hfd.core.quran.AyahRef(1, 7)))
+            vm.flow = app.hfd.ui.PracticeFlow.Recite("sura:1")
+            Graph.recite.value!!.run {
+                onHeard(content.text(app.hfd.core.quran.AyahRef(1, 6)))
+                onHeard(content.text(app.hfd.core.quran.AyahRef(1, 7)))
+                previewTajweed(listOf(app.hfd.core.tajweed.TajweedCheck.Finding(0, 11, app.hfd.core.tajweed.Rule.MADD_LAZIM, app.hfd.core.tajweed.TajweedCheck.Fault.TOO_SHORT, 0.5f, 0.3f)), timed = 1)
+            }
+        }
+        both("recite-tajweed")
+        ui { Graph.settings.update { it.copy(reciteTajweed = false) } }
         ui {
             Graph.closeRecite()
             vm.flow = null

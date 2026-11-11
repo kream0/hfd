@@ -357,6 +357,12 @@ if step("quran", is_("Coran"), starts("Al-Baqara")):
     if step("sura", starts("Al-Baqara"), lambda t: "ذَٰلِكَ" in t, seconds=40):
         # Playing: the media service, its session, the stream.
         one_player("before listening")
+        # The colours of tajwīd: the legend opens from the text's screen, with its switch; Back closes it.
+        if step("tajweed", is_("Couleurs du tajwīd"), is_("Lettres en couleurs")):
+            if not find(starts("Madd de 6")):
+                failures.append("tajweed: the legend has no colours")
+            sh("input keyevent 4")
+            time.sleep(1.0)
         if step("playing", is_("Écouter"), is_("Pause")):
             time.sleep(6)
             session = sh("dumpsys media_session")

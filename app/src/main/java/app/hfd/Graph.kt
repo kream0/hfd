@@ -206,6 +206,7 @@ object Graph {
         Whisper.libraryDir = application.applicationInfo.nativeLibraryDir
         Diag.start(http, scope) { settings.current.sendDiagnostics }
         ReciteSession.recordings = { settings.current.sendRecordings }
+        ReciteSession.tajweed = { settings.current.reciteTajweed }
         ReciteSession.audioManager = { application.getSystemService(AudioManager::class.java) }
         ReciteSession.headset = { settings.current.reciteHeadset }
         ReciteSession.npuEncoder = { npu.takeIf { it.compiled != null } }

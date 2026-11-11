@@ -62,6 +62,12 @@ that the app updates itself from new releases. Android 8.0 or newer.
   ḥarakāt, waqf marks and āya numbers in Arabic-Indic digits between ornate brackets ﴿٤﴾. Each sūra's basmala
   is shown above its first āya. Optional translation of meanings under each āya (Hamidullah in
   French, Saheeh International in English; *Auto* follows the app language). Text size S–XL.
+- **Tajwīd:** the letters in the colours of their rules, as in the muṣḥafs of tajwīd (the long
+  vowels by length, ghunna, qalqala, what is not pronounced, the heavy rāʾ), each colour switchable;
+  an āya's rules listed with their words. The rules are read from the Uthmani text for the reading
+  of Ḥafṣ (`core` `tajweed/`), checked on the whole Qur'an. Recite can time the long vowels
+  against the reciter's own natural madd and underline one not held (`TajweedCheck`; measured on
+  four masters: no false alarm in 213).
 - **One bar to listen from** (`PlayerDock`), above the tabs on every screen: what is being
   listened to, or, with a passage or a sūra open, that text — listen, next āya, recite it aloud —
   and behind it the full player (the place in the āya, previous / next, saving offline, and the

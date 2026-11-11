@@ -127,5 +127,45 @@ object Ctc {
         return Forced(FloatArray(n) { if (held[it] == 0) 0f else (loss[it] / held[it]).toFloat() }, worst, from, to)
     }
 
+    /**
+     * Where [text]'s characters lie in time when the text is held to the frames: for each character
+     * of [text], the first frame it is written at (−1 for one the model doesn't write: a space
+     * where it has none, a sign of pause). Null when the text doesn't fit the utterance.
+     */
+    fun placed(out: CtcOutput, vocabulary: CtcVocabulary, text: String): IntArray? {
+        val ids = ArrayList<Int>()
+        val where = ArrayList<Int>()
+        for ((i, c) in text.withIndex()) vocabulary.indexOf(c)?.let { ids += it; where += i }
+        val count = ids.size
+        val frames = out.frames
+        if (count == 0 || frames < count) return null
+        val states = 2 * count + 1
+        val blank = out.blank
+        var score = FloatArray(states) { NEG }
+        var next = FloatArray(states)
+        val back = ByteArray(frames * states)
+        score[0] = out[0, blank]
+        score[1] = out[0, ids[0]]
+        for (t in 1 until frames) {
+            for (s in 0 until states) {
+                var best = score[s]
+                var step = 0
+                if (s > 0 && score[s - 1] > best) { best = score[s - 1]; step = 1 }
+                if (s > 1 && s % 2 == 1 && ids[s / 2] != ids[s / 2 - 1] && score[s - 2] > best) { best = score[s - 2]; step = 2 }
+                next[s] = if (best <= NEG) NEG else best + out[t, if (s % 2 == 0) blank else ids[s / 2]]
+                back[t * states + s] = step.toByte()
+            }
+            val swap = score; score = next; next = swap
+        }
+        var state = if (score[states - 1] >= score[states - 2]) states - 1 else states - 2
+        if (score[state] <= NEG) return null
+        val placed = IntArray(text.length) { -1 }
+        for (t in frames - 1 downTo 0) {
+            if (state % 2 == 1) placed[where[state / 2]] = t
+            state -= back[t * states + state]
+        }
+        return placed
+    }
+
     private const val NEG = -1e30f
 }

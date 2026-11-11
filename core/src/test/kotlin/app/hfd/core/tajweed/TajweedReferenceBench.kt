@@ -113,7 +113,14 @@ class TajweedReferenceBench {
                 }
             }
             seen.entries.sortedByDescending { it.value }.forEach { out.append("${it.value}\t${it.key}\n") }
-        } else for (r in what!!.split(' ')) {
+        } else if (what!!.startsWith("beats:")) {
+            // For the timing study (tools/tajweed): each āya's text and its beats, a line each.
+            for (r in what.removePrefix("beats:").split(' ')) {
+                val ref = AyahRef.parse(r)!!
+                val text = Assets.quran.text(ref)!!
+                out.append("$ref\t$text\t" + Tajweed.beats(text).joinToString(" ") { b -> "${b.at}:${b.vowel.name[0]}:${b.madd?.name ?: "-"}:${if (b.doubled) 1 else 0}:${b.nasal?.name ?: "-"}:${if (b.tanwin) 1 else 0}:${if (b.last) 1 else 0}:${b.word}" } + "\n")
+            }
+        } else for (r in what.split(' ')) {
             val ref = AyahRef.parse(r)!!
             val text = Assets.quran.text(ref)!!
             val words = text.split(' ').filter { w -> w.any { letter(it) } }

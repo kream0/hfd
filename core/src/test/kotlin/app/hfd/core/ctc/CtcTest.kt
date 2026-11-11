@@ -112,6 +112,27 @@ class CtcTest {
     }
 
     @Test
+    fun theLettersArePlacedInTime() {
+        // Each character the model writes, at a frame of its own, in order; the words where the alignment has them.
+        val placed = Ctc.placed(output, vocabulary, aya)!!
+        val frames = aya.indices.filter { vocabulary.indexOf(aya[it]) != null }.map { placed[it] }
+        assertTrue(frames.all { it in 0 until output.frames })
+        assertEquals(frames, frames.sorted())
+        assertEquals(frames.size, frames.distinct().size)
+        val forced = Ctc.forced(output, vocabulary, aya)!!
+        var at = 0
+        aya.split(' ').forEachIndexed { w, word ->
+            assertEquals("word $w", forced.from[w], placed[at])
+            at += word.length + 1
+        }
+        // Asked through the recogniser: the frames' count, then each character's frame.
+        val (count, again) = CtcRecognizer.times(CtcRecognizer({ output }).transcribe(clip, CtcRecognizer.TIMES + aya))!!
+        assertEquals(74, count)
+        assertEquals(placed.toList(), again.toList())
+        assertNull(Ctc.placed(output, vocabulary, (1..40).joinToString(" ") { aya }))
+    }
+
+    @Test
     fun aTextLongerThanTheUtteranceHasNoAlignment() {
         val long = (1..40).joinToString(" ") { aya }
         assertNull(Ctc.forced(output, vocabulary, long))

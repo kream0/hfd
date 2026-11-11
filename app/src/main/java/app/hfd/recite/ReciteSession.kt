@@ -4,6 +4,9 @@ import android.media.AudioManager
 import app.hfd.BuildConfig
 import app.hfd.core.progress.Event
 import app.hfd.core.quran.AyahRef
+import app.hfd.core.ctc.CtcRecognizer
+import app.hfd.core.tajweed.Rule
+import app.hfd.core.tajweed.TajweedCheck
 import app.hfd.core.recite.Arabic
 import app.hfd.core.recite.AudioStats
 import app.hfd.core.recite.AyahResult
@@ -54,6 +57,13 @@ data class ReciteUi(
      * text from the marker nor words before it. The screen says where to take it up again.
      */
     val lost: Boolean = false,
+    /**
+     * The long vowels not held as their rule asks, when the reciter asked for that check
+     * ([app.hfd.data.AppSettings.reciteTajweed]): by word (counted from the first āya's first
+     * word). [timed]: how many long vowels with a set length were timed so far.
+     */
+    val tajweed: Map<Int, TajweedCheck.Finding> = emptyMap(),
+    val timed: Int = 0,
 ) {
     val done: Boolean get() = next == null
 }
@@ -116,6 +126,10 @@ class ReciteSession(
      * mistake shows when the reciter pauses, as the check would have it.
      */
     private val decided = BooleanArray(tracker.size)
+    /** The sound of the whole utterance just read, as the recogniser was given it (its check and its timing listen to the same). */
+    @Volatile private var prepared: FloatArray? = null
+    /** The stretches read right so far, each beat timed ([TajweedCheck]); a stretch said again replaces the first saying. */
+    private val stretches = ArrayList<List<TajweedCheck.Timed>>()
 
     private val _ui = MutableStateFlow(snapshot(ReciteUi(targets, emptyList(), null)))
     val ui: StateFlow<ReciteUi> = _ui.asStateFlow()
@@ -139,6 +153,7 @@ class ReciteSession(
                         // The phone's speech microphone is faint: at a normal level first (the bench
                         // does the same, Clarity.prepare).
                         val pcm = Clarity.prepare(u.pcm)
+                        if (u.final) prepared = pcm
                         if (u.final) {
                             heardChunks++
                             val st = AudioStats.of(u.pcm)
@@ -288,16 +303,47 @@ class ReciteSession(
      */
     private suspend fun onHeard(id: Int, text: String, final: Boolean, check: Utterance?): Int {
         val moved = follow(id, text, final)
-        if (check != null) follower.toCheck(id)?.let { c ->
-            val again = withContext(recognizer) { speech.reader()?.invoke(Clarity.prepare(check.pcm), c.expected) }
+        val sound = if (check != null) prepared ?: Clarity.prepare(check.pcm) else null
+        if (check != null && sound != null) follower.toCheck(id)?.let { c ->
+            val again = withContext(recognizer) { speech.reader()?.invoke(sound, c.expected) }
             val costs = again?.let(Follower.Check::costs)
             if (costs != null) {
                 val right = follower.checked(c, costs)
                 Diag.log("recite.check", "id" to id, "words" to c.words.joinToString(","), "right" to right, "reading" to again)
             }
         }
+        if (sound != null && tajweed() && speech.timing) follower.read(id)?.let { time(id, it, sound) }
         afterProgress(text.ifBlank { null }, final)
         return moved
+    }
+
+    /**
+     * The long vowels of a stretch read right, timed on its sound: the recogniser says where each
+     * letter lies, and what is held from a consonant to the next is compared with the recitation's
+     * own natural madd ([TajweedCheck]).
+     */
+    private suspend fun time(id: Int, read: Follower.Read, sound: FloatArray) {
+        val beats = TajweedCheck.stretch(targets.map { it.words }, read.from, read.to, read.opening)
+        if (beats.isEmpty()) return
+        val reading = withContext(recognizer) { speech.reader()?.invoke(sound, CtcRecognizer.TIMES + read.text) } ?: return
+        val (frames, placed) = CtcRecognizer.times(reading) ?: return
+        val now = TajweedCheck.time(beats, placed, TajweedCheck.pauses(sound, frames))
+        if (now.isEmpty()) return
+        stretches.removeAll { old -> old.first().beat.word < read.to && old.last().beat.word >= read.from }
+        stretches += now
+        val natural = TajweedCheck.natural(stretches.flatten())
+        val found = stretches.flatMap { TajweedCheck.check(it, natural) }
+        val held = stretches.sumOf { s -> s.count { it.beat.madd == Rule.MADD_MUTTASIL || it.beat.madd == Rule.MADD_LAZIM || (it.beat.madd == Rule.MADD_MUNFASIL && !it.paused && !it.last) } }
+        _ui.value = _ui.value.copy(tajweed = found.associateBy { it.word }, timed = held)
+        Diag.log(
+            "recite.tajweed", "id" to id, "from" to read.from, "to" to read.to, "beats" to now.size, "natural" to (natural ?: 0f), "held" to held,
+            "found" to found.joinToString(",") { "${it.word}:${it.rule.name}:${it.fault.name}:${"%.2f".format(java.util.Locale.US, it.seconds)}" },
+        )
+    }
+
+    /** Long vowels shown as not held (the screenshot test). */
+    fun previewTajweed(found: List<TajweedCheck.Finding>, timed: Int) {
+        _ui.value = _ui.value.copy(tajweed = found.associateBy { it.word }, timed = timed)
     }
 
     private fun follow(id: Int, text: String, final: Boolean): Int {
@@ -400,6 +446,8 @@ class ReciteSession(
     companion object {
         /** The reference clip the models are tried on ([SpeechReader]), set by the app (a WAV in the assets). */
         @Volatile var referenceClip: () -> FloatArray? = { null }
+        /** Whether the reciter asked for the long vowels to be timed ([app.hfd.data.AppSettings.reciteTajweed]). */
+        @Volatile var tajweed: () -> Boolean = { false }
         /** Whether the owner asked for recordings to be sent ([Diag.attach]). */
         @Volatile var recordings: () -> Boolean = { false }
         /** The phone's audio (for connected earbuds' microphone), and whether to use earbuds when connected. */

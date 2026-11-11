@@ -427,4 +427,15 @@
     <string name="tajweed_silent_body">Écrite, non prononcée.</string>
     <string name="tajweed_tafkhim">Tafkhīm</string>
     <string name="tajweed_tafkhim_body">Lettre prononcée emphatique.</string>
+    <string name="recite_tajweed">Tajwīd</string>
+    <string name="recite_tajweed_body">Pendant que vous récitez, l\'app mesure combien de temps vous tenez les voyelles longues, par rapport à vos propres madd naturels : un madd de 4–5 ou de 6 temps qui ne dure pas plus qu\'un madd naturel est souligné. Vos arrêts sont pris en compte, et un madd tenu juste quatre temps n\'est jamais corrigé. Ce contrôle ne juge ni la ghunna, ni les points d\'articulation, ni l\'emphase, ni un madd trop long : la mesure du temps ne le permet pas lettre par lettre de façon fiable.</string>
+    <string name="recite_tajweed_short45">Tenu %1$s s, comme vos madd naturels (%2$s s). Avant une hamza, la voyelle longue dure quatre ou cinq temps : au moins le double.</string>
+    <string name="recite_tajweed_short6">Tenu %1$s s ; vos madd naturels durent %2$s s. Ce madd dure six temps : trois fois un madd naturel.</string>
+    <string name="recite_tajweed_how">Mesuré sur votre récitation : le temps entre cette consonne et la suivante, comparé à vos voyelles longues ordinaires.</string>
+    <string name="recite_tajweed_nothing">Aucune voyelle longue de 4 temps ou plus n\'a pu être mesurée (il faut des phrases récitées sans erreur, avec le nouveau modèle).</string>
+    <string name="recite_tajweed_some">%1$d voyelles longues tenues sur %2$d</string>
+    <plurals name="recite_tajweed_all">
+        <item quantity="one">%d voyelle longue mesurée, tenue comme il faut</item>
+        <item quantity="other">%d voyelles longues mesurées, toutes tenues comme il faut</item>
+    </plurals>
 </resources>

@@ -232,6 +232,22 @@ class Follower(
     /** The isti'ādha / basmala words the last final reading began with. */
     private var finalOpening: List<String> = emptyList()
 
+    /**
+     * What whole utterance [id] (just followed) read, when every word of it is right: words
+     * [from] until [to] of the text, and the [text] said (with the isti'ādha or basmala it began
+     * with: [opening] words). The timing of its long vowels can then be read on the sound
+     * ([app.hfd.core.tajweed.TajweedCheck]).
+     */
+    class Read internal constructor(val from: Int, val to: Int, val text: String, val opening: List<String>)
+
+    fun read(id: Int): Read? {
+        if (id != current) return null
+        val from = before?.position ?: return null
+        val to = tracker.position
+        if (to <= from || (from until to).any { tracker.status[it] != WordStatus.OK }) return null
+        return Read(from, to, (finalOpening + tracker.text(from, to)).joinToString(" "), finalOpening)
+    }
+
     /** The mistakes whole utterance [id] (just followed) left in what it covered, if any. */
     fun toCheck(id: Int): Check? {
         if (id != current) return null

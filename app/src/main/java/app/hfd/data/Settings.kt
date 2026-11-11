@@ -74,6 +74,8 @@ data class AppSettings(
     val tajweed: Boolean = true,
     /** The colours switched off ([app.hfd.core.tajweed.Family] names): the heavy rāʾ, until asked for. */
     val tajweedOff: Set<String> = setOf("TAFKHIM"),
+    /** Recite also times the long vowels and says which were not held as their rule asks. */
+    val reciteTajweed: Boolean = false,
 ) {
     val reminders: ReminderConfig
         get() = ReminderConfig(reviews = remindReviews, reviewsAt = LocalTime.of(reviewsAt / 60, reviewsAt % 60))
@@ -161,6 +163,7 @@ class Settings(context: Context) {
             hiddenFadail = prefs.getStringSet("hiddenFadail", null)?.toSet() ?: d.hiddenFadail,
             tajweed = prefs.getBoolean("tajweed", d.tajweed),
             tajweedOff = prefs.getStringSet("tajweedOff", null)?.toSet() ?: d.tajweedOff,
+            reciteTajweed = prefs.getBoolean("reciteTajweed", d.reciteTajweed),
         )
     }
 
@@ -192,6 +195,7 @@ class Settings(context: Context) {
             .putStringSet("hiddenFadail", s.hiddenFadail)
             .putBoolean("tajweed", s.tajweed)
             .putStringSet("tajweedOff", s.tajweedOff)
+            .putBoolean("reciteTajweed", s.reciteTajweed)
             // Settings of removed features (1.6.0: passage reminders, the location they needed).
             .remove("showWeak").remove("remindKursi").remove("remindMulk").remove("mulkAt")
             .remove("remindKahf").remove("kahfAt").remove("latitude").remove("longitude").remove("prayerMethod")

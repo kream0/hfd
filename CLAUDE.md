@@ -413,6 +413,46 @@
   test: `listen`, `fadail-listening`). The smoke tour counts the listening buttons on a sūra's
   screen (one), opens the full player, and recites from the bar.
 
+## Tajwīd (2.5.0, the owner: coloured letters as in some muṣḥafs, configurable; an accurate check in Recite)
+- `:core` `tajweed/Tajweed.kt`: `Tajweed.annotate(āya)` → `Span(from, to, rule, part, word, letter)`.
+  The rules are read from Tanzil's Uthmani text itself, whose signs carry the muṣḥaf's rulings (a
+  nūn with its sukūn is said clearly, without it hidden or merged; the madda sign; the small mīm of
+  an iqlāb; the round zero on a letter never read; the upright zero on one read only at a stop),
+  and the letters' rules name each case; `doubts` lists what the two disagree on: none in the
+  6,236 āyāt (`TajweedTest.theWholeTextIsPlaced`). The āya is read in one breath and stops at its
+  end (qalqala and madd ʿāriḍ there; a madda sign on an āya's last vowel is for joining the next:
+  `MADD_MUNFASIL`). `Part.DROPPED` is a letter merged into the next (shown grey). Heavy rāʾ and the
+  Name's lām: `TAFKHIM` (at a stop the rāʾ follows what is before it; يَسْرِ light).
+- Write Kotlin that has `\u` escapes with a shell heredoc or Edit, **not the Write tool**: it
+  turned every escape into the character itself (combining signs in the source).
+- The reference: alquran.cloud's `quran-tajweed` edition (`[code[letters]`; api.alquran.cloud and
+  api.quran.com answer here; `add_repo` for cpfair/quran-tajweed was refused, not worked around).
+  `tools/tajweed/compare.sh` → `TajweedReferenceBench.compare`: equal on every rule but where the
+  reference misses one (a ghunna on نّ/مّ that also carries a tanwīn, the lām of لِلنَّاسِ, بَسَطتَ, a madd
+  before ئِ, a nūn hidden inside a word ending on a tanwīn, أَنَا۠) or is wrong (ٱلْتَقَى's lām, مَنْ رَاقٍ
+  merged, a madd on ٱبْنَىْ ءَادَمَ); it has no mutamāthilayn nor tafkhīm. `HFD_TAJWEED_DUMP="1:1 2:255"`
+  (or `ra`, `name`, `beats:<āyāt>`) prints an āya's rules word by word.
+- The colours (`ui/components/TajweedColors.kt`): `LocalTajweed` (from `AppSettings.tajweed`,
+  `tajweedOff`: Family names; TAFKHIM off by default) → `QuranText` adds colour spans; a sign alone
+  takes its colour (a tanwīn, a dagger alif: Android shapes the run whole, the screenshots show
+  it). Of the natural madds only those written with a small letter are coloured, as the muṣḥafs
+  do. `tajweedSheet` is the legend and the switches; `ayahTajweedSheet` an āya's rules.
+- The check in Recite (`TajweedCheck`, `AppSettings.reciteTajweed`, off by default; needs the CTC
+  model): `Tajweed.beats` (a consonant and what is held until the next), `Ctc.placed` (the frame
+  each character is written at; asked through the recogniser with "@\n<text>"), the recitation's
+  own usual natural madd as the yardstick. After a whole utterance read right (`Follower.read`),
+  its beats are timed on the same sound; a madd of 4–5 under 1.45 natural ones, or of 6 under
+  1.9, is a `Finding` (the word underlined; `recite.tajweed` in the diagnostics).
+- Measured (`tools/tajweed/fetch.sh` + `timing.py` for the durations, `TajweedCheckBench` with the
+  app's code; 137 āyāt × 4 masters, 11 Nov): natural madd beat 0.28–0.56 s, a madd before a hamza
+  1.1–1.8 s (p10 0.78–1.5); false alarms 0/213 (and 0/4 lāzim); a madd cut down to the natural
+  length caught 50/50 (Ḥuṣarī), 49/53, 46/54, 25/54 (Muʿayqilī, natural 0.28 s: the cut vowel
+  still measures 1.5–1.9× with the hamza's closure). **Not kept:** "natural madd too long" (2 % of
+  the masters' flagged: stops inside an āya, hidden by a mosque's echo); the ghunna letter by
+  letter (the model writes a doubled nūn where the ghunna *ends*, so it is measured over two
+  beats: held, 1.8–2.5× the plain window on average, but one in eight of Muʿayqilī's under 1.25×).
+  A finer clock than the model's 40 ms frames (the mel's 10 ms) is the next lever.
+
 ## The Qur'an section and the look
 - Reciting a sūra (2.1.0): the sūra panel's Recite chip opens the passages' `ReciteSession` with
   the sūra's id (`AppViewModel.reciteSura`, from its start or the āya at the top of the screen);

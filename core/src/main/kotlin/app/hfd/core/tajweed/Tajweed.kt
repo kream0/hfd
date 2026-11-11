@@ -69,6 +69,27 @@ data class Span(val from: Int, val to: Int, val rule: Rule, val part: Part, val 
     val family: Family get() = if (part == Part.DROPPED) Family.SILENT else rule.family
 }
 
+/** What follows a consonant until the next: nothing, a short vowel, a long one. */
+enum class Vowel { NONE, SHORT, LONG }
+
+/**
+ * A consonant as it is said, and what is held from it until the next one: the unit a recitation's
+ * timing is read in. [at] is the consonant's place in the text (a recogniser places it in time).
+ * [madd] is the rule of its long vowel; [nasal] the rule of a ghunna in the beat (on the consonant
+ * itself: نّ, a hidden nūn; or after its vowel: a tanwīn hidden, a nūn merged into the next letter);
+ * [tanwin]: its vowel ends in the nūn of a tanwīn said clearly. [last]: the āya stops in this beat.
+ */
+data class Beat(
+    val at: Int,
+    val word: Int,
+    val vowel: Vowel,
+    val madd: Rule? = null,
+    val doubled: Boolean = false,
+    val nasal: Rule? = null,
+    val tanwin: Boolean = false,
+    val last: Boolean = false,
+)
+
 /**
  * The tajwīd of an āya read from its Uthmani text as Tanzil writes it. The script itself carries
  * most of the rulings of the muṣḥaf's scholars: a nūn with its sukūn is said clearly, one without
@@ -78,6 +99,9 @@ data class Span(val from: Int, val to: Int, val rule: Rule, val part: Part, val 
  */
 object Tajweed {
     fun annotate(text: String): List<Span> = Reading(text).spans
+
+    /** The āya as it sounds: its consonants in order, each with what is held until the next ([Beat]). */
+    fun beats(text: String): List<Beat> = Reading(text).beats()
 
     /** For the tests: what the reading could not place. */
     internal fun doubts(text: String): List<String> = Reading(text).doubts
@@ -274,7 +298,47 @@ internal class Reading(val text: String) {
 
     private fun mark(l: Letter, rule: Rule, part: Part = Part.SOUND, from: Int = l.from, to: Int = l.to) {
         spans += Span(from, to, rule, part, l.word, l.index)
+        // A consonant merged into the next is not said (a tanwīn merged leaves its letter said).
+        if (part == Part.DROPPED && from == l.from && l.kind == Kind.CONSONANT) unsaid += l.index
+        if (rule.family == Family.GHUNNAH && part == Part.SOUND) nasal[l.index] = rule
+        if (rule.counts != null && rule.family != Family.GHUNNAH) madd[l.index] = rule
     }
+
+    private val unsaid = HashSet<Int>()
+    private val nasal = HashMap<Int, Rule>()
+    private val madd = HashMap<Int, Rule>()
+
+    /** The consonants said, in order, each with what follows it until the next. */
+    fun beats(): List<Beat> {
+        val out = ArrayList<Beat>()
+        val said = letters.filter { (it.kind == Kind.CONSONANT || it.kind == Kind.LIN) && it.index !in unsaid && !(it.ch == TATWEEL && !it.hamzaAbove) }
+        for ((k, l) in said.withIndex()) {
+            val until = said.getOrNull(k + 1)?.index ?: letters.size
+            // A long vowel between this consonant and the next: its own dagger alif, or a letter of prolongation that is read.
+            val long = if (l.virtual) madd[l.index] else (l.index + 1 until until).firstNotNullOfOrNull { i -> madd[i]?.takeIf { letters[i].kind == Kind.MADD } }
+            val isLast = k == said.lastIndex
+            out += Beat(
+                at = l.from,
+                word = l.word,
+                vowel = when {
+                    long != null -> Vowel.LONG
+                    l.short || l.tanwin -> Vowel.SHORT
+                    else -> Vowel.NONE
+                },
+                madd = long,
+                doubled = l.shadda,
+                // The ghunna of a merging is held before the letter merged into: in the beat that ends on it.
+                nasal = nasal[l.index]?.takeIf { it != Rule.IDGHAM_GHUNNAH && it != Rule.IDGHAM_SHAFAWI }
+                    ?: said.getOrNull(k + 1)?.let { n -> nasal[n.index]?.takeIf { it == Rule.IDGHAM_GHUNNAH || it == Rule.IDGHAM_SHAFAWI } },
+                tanwin = l.tanwin && nasal[l.index] == null && !unsaidTanwin(l),
+                last = isLast,
+            )
+        }
+        return out
+    }
+
+    /** A tanwīn merged into the next letter, or dropped where the āya stops. */
+    private fun unsaidTanwin(l: Letter) = l === stop || spans.any { it.letter == l.index && it.part == Part.DROPPED && it.from == l.vowelAt }
 
     /** The last letter sounded when the reading stops at the āya's end, and whether it is a consonant the voice rests on. */
     private val last: Letter? by lazy { letters.lastOrNull { it.kind != Kind.SILENT || it.rect } }
