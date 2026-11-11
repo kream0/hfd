@@ -61,13 +61,15 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
       - name: ffmpeg, numpy, whisper.cpp, the app's model and decoding
         run: |
-          # (Ubuntu's mirrors didn't resolve for an hour on 11 Nov and every part failed there, after
-          # apt had waited the hour out: three tries of five minutes, then say so.)
-          for try in 1 2 3; do
-            if sudo timeout 300 apt-get update -qq && sudo timeout 300 apt-get install -y -qq ffmpeg >/dev/null; then break; fi
-            echo "apt: try $try failed"
-            sleep 30
-          done
+          # (Ubuntu's mirrors didn't resolve from the runners for hours on 11 Nov, and apt waits an hour
+          # before saying so: a few minutes for apt, else the static ffmpeg PyPI carries.)
+          if sudo timeout 240 apt-get update -qq && sudo timeout 300 apt-get install -y -qq ffmpeg >/dev/null; then
+            echo "ffmpeg: Ubuntu's"
+          else
+            echo "ffmpeg: apt failed, PyPI's imageio-ffmpeg"
+            pip install --quiet imageio-ffmpeg
+            sudo ln -sf "$(python3 -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')" /usr/local/bin/ffmpeg
+          fi
           ffmpeg -version | head -1
           pip install --quiet numpy
           mkdir -p work && cd work
