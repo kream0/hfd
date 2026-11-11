@@ -61,7 +61,14 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
       - name: ffmpeg, numpy, whisper.cpp, the app's model and decoding
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          # (Ubuntu's mirrors didn't resolve for an hour on 11 Nov and every part failed there, after
+          # apt had waited the hour out: three tries of five minutes, then say so.)
+          for try in 1 2 3; do
+            if sudo timeout 300 apt-get update -qq && sudo timeout 300 apt-get install -y -qq ffmpeg >/dev/null; then break; fi
+            echo "apt: try $try failed"
+            sleep 30
+          done
+          ffmpeg -version | head -1
           pip install --quiet numpy
           mkdir -p work && cd work
           git clone -q --depth 1 --branch v1.7.6 https://github.com/ggml-org/whisper.cpp
