@@ -1,6 +1,8 @@
 package app.hfd.ui.screens
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import app.hfd.ui.components.card
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -66,16 +68,19 @@ fun StatsScreen(onOpen: (String) -> Unit) {
     Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         ScreenHeader(stringResource(R.string.stats_title))
 
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            BigNumber(streak.current.toString(), stringResource(R.string.stats_streak), Modifier.weight(1f))
-            BigNumber(streak.best.toString(), stringResource(R.string.stats_best), Modifier.weight(1f))
-            BigNumber(Stats.memorisedCount(progress, content?.shownAyat).toString(), stringResource(R.string.stats_memorised), Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            BigNumber(formatDuration(Stats.totalListenMs(progress)), stringResource(R.string.stats_listening), Modifier.weight(1f))
-            BigNumber(progress.days.values.sumOf { it.ratings }.toString(), stringResource(R.string.stats_reviews), Modifier.weight(1f))
-            BigNumber(progress.days.values.sumOf { it.listens }.toString(), stringResource(R.string.stats_listens), Modifier.weight(1f))
+        // The numbers, as a card of two rows.
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).card().padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                BigNumber(streak.current.toString(), stringResource(R.string.stats_streak), Modifier.weight(1f))
+                BigNumber(streak.best.toString(), stringResource(R.string.stats_best), Modifier.weight(1f))
+                BigNumber(Stats.memorisedCount(progress, content?.shownAyat).toString(), stringResource(R.string.stats_memorised), Modifier.weight(1f))
+            }
+            Box(Modifier.fillMaxWidth().padding(vertical = 12.dp).height(1.dp).background(P.outline.copy(alpha = 0.7f)))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                BigNumber(formatDuration(Stats.totalListenMs(progress)), stringResource(R.string.stats_listening), Modifier.weight(1f))
+                BigNumber(progress.days.values.sumOf { it.ratings }.toString(), stringResource(R.string.stats_reviews), Modifier.weight(1f))
+                BigNumber(progress.days.values.sumOf { it.listens }.toString(), stringResource(R.string.stats_listens), Modifier.weight(1f))
+            }
         }
 
         // Recitations checked by speech recognition (Recite mode).
@@ -151,7 +156,7 @@ fun StatsScreen(onOpen: (String) -> Unit) {
 @Composable
 private fun BigNumber(value: String, label: String, modifier: Modifier = Modifier) {
     Column(modifier) {
-        Text(value, style = Type.display, color = P.text, maxLines = 1)
+        Text(value, style = Type.titleLarge.copy(fontFeatureSettings = "tnum, lnum"), color = P.text, maxLines = 1)
         Text(label, style = Type.label, color = P.textDim, maxLines = 2)
     }
 }

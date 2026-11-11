@@ -123,7 +123,7 @@ fun SuraScreen(
     var shown by remember(sura) { mutableStateOf<AyahRef?>(null) }
     LaunchedEffect(target, c, f) {
         if (target == null || c == null || f == null) return@LaunchedEffect
-        val index = readingIndex(c, f, target, leading = 1) ?: return@LaunchedEffect
+        val index = readingIndex(c, f, target, leading = 0) ?: return@LaunchedEffect
         autoScrolling = System.currentTimeMillis()
         listState.scrollToItem(index)
         autoScrolling = System.currentTimeMillis()
@@ -166,7 +166,7 @@ fun SuraScreen(
     LaunchedEffect(current, c, f) {
         if (current == null || c == null || f == null) return@LaunchedEffect
         if (System.currentTimeMillis() - userScrolledAt < 6_000) return@LaunchedEffect
-        val index = readingIndex(c, f, current, leading = 1) ?: return@LaunchedEffect
+        val index = readingIndex(c, f, current, leading = 0) ?: return@LaunchedEffect
         val info = listState.layoutInfo
         val visible = info.visibleItemsInfo.firstOrNull { it.index == index }
         if (visible != null && visible.offset >= info.viewportStartOffset && visible.offset + visible.size <= info.viewportEndOffset) return@LaunchedEffect
@@ -196,16 +196,6 @@ fun SuraScreen(
                 return@Column
             }
             LazyColumn(Modifier.fillMaxSize().testTag("reading"), state = listState) {
-                item(key = "intro") {
-                    Text(
-                        stringResource(if (meta.type == "Medinan") R.string.sura_medinan else R.string.sura_meccan) + " · " +
-                            pluralStringResource(R.plurals.ayat_count, meta.ayas, meta.ayas),
-                        style = Type.label,
-                        color = P.textDim,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                    )
-                }
                 readingItems(
                     content = c,
                     fadila = f,
@@ -213,6 +203,10 @@ fun SuraScreen(
                     translation = if (settings.showTranslation) translations[lang] else null,
                     current = current ?: shown,
                     playing = playing,
+                    caption = {
+                        stringResource(if (meta.type == "Medinan") R.string.sura_medinan else R.string.sura_meccan) + " · " +
+                            pluralStringResource(R.plurals.ayat_count, meta.ayas, meta.ayas)
+                    },
                     marks = { ref ->
                         if (ref.aya in marked) {
                             { Icon(Ic.Bookmark, contentDescription = stringResource(R.string.favorite_marked), tint = P.accent, modifier = Modifier.size(16.dp)) }

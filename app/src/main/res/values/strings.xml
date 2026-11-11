@@ -192,7 +192,11 @@
     </plurals>
     <string name="home_goal">Today</string>
     <string name="home_goal_value">%1$d / %2$d min</string>
-    <string name="home_streak">Streak %1$d</string>
+    <string name="home_streak_none">No streak yet</string>
+    <plurals name="home_streak_days">
+        <item quantity="one">%d-day streak</item>
+        <item quantity="other">%d-day streak</item>
+    </plurals>
     <string name="home_continue">Continue</string>
     <string name="home_continue_learn">Learning %1$s · %2$s</string>
     <string name="home_continue_listen">Listening to %1$s</string>

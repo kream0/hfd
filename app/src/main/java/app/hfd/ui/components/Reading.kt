@@ -68,6 +68,8 @@ fun LazyListScope.readingItems(
     current: AyahRef? = null,
     playing: PlayingWord? = null,
     marks: (AyahRef) -> (@Composable () -> Unit)? = { null },
+    /** What is said under a sūra's name, in place of its number and range (a whole sūra says its kind and length). */
+    caption: (@Composable (Int) -> String)? = null,
     /** A line over an āya (a juzʾ or a ḥizb begins there), or null. */
     heading: @Composable (AyahRef) -> String? = { null },
     onTap: ((AyahRef) -> Unit)? = null,
@@ -76,7 +78,7 @@ fun LazyListScope.readingItems(
     fadila.ranges.forEachIndexed { i, range ->
         val sura = content.sura(range.sura)
         item(key = "s-$i-${range.sura}-${range.from}") {
-            SuraHeader(range.sura, sura.name, sura.tname, range.toString())
+            SuraHeader(sura.name, caption?.invoke(range.sura) ?: stringResource(R.string.sura_header, range.sura, sura.tname, range.toString()))
         }
         val basmala = if (range.from == 1) content.quran.basmalaOf(range.sura) else null
         if (basmala != null) {
@@ -103,9 +105,9 @@ fun LazyListScope.readingItems(
 
 /** A sūra's heading as a muṣḥaf frames it: its name in a gold-lined cartouche, a star at each end. */
 @Composable
-private fun SuraHeader(index: Int, arabic: String, translit: String, range: String) {
+private fun SuraHeader(arabic: String, caption: String) {
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 22.dp, bottom = 8.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 14.dp, bottom = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
@@ -122,7 +124,7 @@ private fun SuraHeader(index: Int, arabic: String, translit: String, range: Stri
             Star(Modifier.size(14.dp), outline = true)
         }
         Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.sura_header, index, translit, range), style = Type.label, color = P.textDim, textAlign = TextAlign.Center)
+        Text(caption, style = Type.label, color = P.textDim, textAlign = TextAlign.Center)
     }
 }
 

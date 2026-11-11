@@ -1,6 +1,9 @@
 package app.hfd.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.unit.sp
+import app.hfd.ui.components.Star
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,30 +92,43 @@ fun HomeScreen(app: AppViewModel) {
         // (Of the passages shown: a hidden one's āyāt aren't asked for.)
         val due = remember(progress, c.shownAyat) { Stats.due(progress, now, zone, c.shownAyat) }
 
-        // Today: goal ring, streak, and what's due.
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).card().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        // Today, in one card: the goal's ring, the streak, the week at a glance, and what is due.
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).card().padding(18.dp)) {
             val fraction = (todayMs.toFloat() / goalMs).coerceIn(0f, 1f)
-            ProgressRing(fraction, Modifier.size(52.dp), color = if (fraction >= 1f) P.saveGreen else P.accent)
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.home_goal).uppercase(), style = Type.overline, color = P.textDim)
-                Text(stringResource(R.string.home_goal_value, (todayMs / 60_000).toInt(), settings.dailyGoalMin), style = Type.displaySmall, color = P.text)
-                Text(stringResource(R.string.home_streak, streak.current), style = Type.label, color = if (streak.todayDone) P.accent else P.textDim)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.home_goal).uppercase(), style = Type.overline, color = P.textDim, modifier = Modifier.weight(1f))
+                Text(remember(today) { dateLine(today) }, style = Type.label, color = P.textDim)
             }
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).card().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.home_due).uppercase(), style = Type.overline, color = P.textDim)
-                Text(pluralStringResource(R.plurals.home_due_count, due.size, due.size), style = Type.title, color = P.text)
+            Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(contentAlignment = Alignment.Center) {
+                    ProgressRing(fraction, Modifier.size(68.dp), color = if (fraction >= 1f) P.saveGreen else P.accent)
+                    if (fraction >= 1f) Icon(Ic.Check, contentDescription = null, tint = P.saveGreen, modifier = Modifier.size(26.dp))
+                    else Star(Modifier.size(12.dp), color = P.accent.copy(alpha = if (fraction > 0f) 1f else 0.5f))
+                }
+                Spacer(Modifier.width(18.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.home_goal_value, (todayMs / 60_000).toInt(), settings.dailyGoalMin), style = Type.titleLarge, color = P.text)
+                    Text(
+                        if (streak.current == 0) stringResource(R.string.home_streak_none) else pluralStringResource(R.plurals.home_streak_days, streak.current, streak.current),
+                        style = Type.label,
+                        color = if (streak.todayDone) P.accent else P.textDim,
+                    )
+                }
             }
-            PillButton(stringResource(R.string.review), { app.review() }, style = if (due.isNotEmpty()) PillStyle.Accent else PillStyle.Outline, enabled = due.isNotEmpty())
+            Spacer(Modifier.height(16.dp))
+            WeekStrip(progress.days, today, goalMs)
+            Spacer(Modifier.height(14.dp))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(P.outline.copy(alpha = 0.7f)))
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.home_due).uppercase(), style = Type.overline, color = P.textDim)
+                    Spacer(Modifier.height(2.dp))
+                    Text(pluralStringResource(R.plurals.home_due_count, due.size, due.size), style = Type.title, color = P.text)
+                }
+                PillButton(stringResource(R.string.review), { app.review() }, style = if (due.isNotEmpty()) PillStyle.Accent else PillStyle.Outline, enabled = due.isNotEmpty())
+            }
         }
 
         // Continue where you left off.
@@ -202,3 +218,26 @@ fun learnOrderSheet(context: android.content.Context, current: LearnOrder) = She
         }
     },
 )
+
+/** "mardi 11 novembre", in the app's language. */
+private fun dateLine(epochDay: Long): String =
+    java.time.LocalDate.ofEpochDay(epochDay).format(java.time.format.DateTimeFormatter.ofPattern("EEEE d MMMM", java.util.Locale.getDefault()))
+
+/**
+ * The last seven days, today last: a ring a day, filled as far as the goal was reached (gold once
+ * met), over the day's initial. Today's is marked.
+ */
+@Composable
+private fun WeekStrip(days: Map<Long, app.hfd.core.progress.DayStats>, today: Long, goalMs: Long) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        for (day in today - 6..today) {
+            val fraction = ((days[day]?.practiceMs ?: 0).toFloat() / maxOf(goalMs, 1)).coerceIn(0f, 1f)
+            val initial = java.time.LocalDate.ofEpochDay(day).dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.getDefault())
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                ProgressRing(fraction, Modifier.size(22.dp), color = if (fraction >= 1f) P.accent else P.textDim)
+                Spacer(Modifier.height(5.dp))
+                Text(initial.uppercase(), style = Type.label.copy(fontSize = 11.sp), color = if (day == today) P.text else P.textFaint)
+            }
+        }
+    }
+}
