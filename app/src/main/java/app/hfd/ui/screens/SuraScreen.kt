@@ -53,7 +53,9 @@ import app.hfd.ui.components.Ic
 import app.hfd.ui.components.IconBtn
 import app.hfd.ui.components.KeepScreenOn
 import app.hfd.ui.components.PillButton
+import app.hfd.ui.components.ayahTajweedSheet
 import app.hfd.ui.components.readingIndex
+import app.hfd.ui.components.tajweedSheet
 import app.hfd.ui.components.readingItems
 import app.hfd.ui.components.rememberPlayingWord
 import app.hfd.ui.theme.P
@@ -186,6 +188,7 @@ fun SuraScreen(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
                     )
+                    IconBtn(Ic.Palette, { sheets(tajweedSheet(context)) }, tint = P.textDim, contentDescription = stringResource(R.string.tajweed_open))
                 }
             }
             if (c == null || meta == null || f == null) {
@@ -234,6 +237,9 @@ fun SuraScreen(
                                         Graph.playSura(sura, ref)
                                     },
                                     SheetAction(context.getString(R.string.aya_recite_from), Ic.Mic) { onRecite(ref.aya) },
+                                    SheetAction(context.getString(R.string.tajweed_of_aya), Ic.Palette, next = {
+                                        ayahTajweedSheet(context, context.getString(R.string.quran_at, meta.tname, ref.aya), c.text(ref))
+                                    }),
                                 ),
                             ),
                         )

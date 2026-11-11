@@ -55,6 +55,7 @@ import app.hfd.core.playback.QuranListening
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.LocalSheets
 import app.hfd.ui.components.PlayerDock
+import app.hfd.ui.components.ProvideTajweed
 import app.hfd.ui.components.SheetAction
 import app.hfd.ui.components.SheetHost
 import app.hfd.ui.components.SheetSpec
@@ -106,6 +107,7 @@ fun AppRoot(app: AppViewModel) {
     var reciteSura by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     CompositionLocalProvider(LocalSheets provides openSheet) {
+        ProvideTajweed {
         Box(Modifier.fillMaxSize().background(P.background)) {
             Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) {
@@ -137,6 +139,7 @@ fun AppRoot(app: AppViewModel) {
             }
             ToastHost(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 6.dp))
             SheetHost(sheet, onShow = { sheet = it }) { sheet = null }
+        }
         }
     }
 }

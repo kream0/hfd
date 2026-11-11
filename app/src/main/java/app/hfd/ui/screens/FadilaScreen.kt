@@ -57,6 +57,8 @@ import app.hfd.ui.components.LocalSheets
 import app.hfd.ui.components.SheetAction
 import app.hfd.ui.components.SheetSpec
 import app.hfd.ui.components.autoAudio
+import app.hfd.ui.components.ayahTajweedSheet
+import app.hfd.ui.components.tajweedSheet
 import app.hfd.ui.components.rangesLabel
 import app.hfd.ui.components.readingIndex
 import app.hfd.ui.components.readingItems
@@ -124,6 +126,8 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconBtn(Ic.Back, onBack, contentDescription = stringResource(R.string.detail_back))
+                Spacer(Modifier.weight(1f))
+                IconBtn(Ic.Palette, { sheets(tajweedSheet(context)) }, tint = P.textDim, contentDescription = stringResource(R.string.tajweed_open))
             }
             if (c == null || f == null) {
                 Box(Modifier.fillMaxSize()) { Loader(Modifier.align(Alignment.Center)) }
@@ -194,6 +198,9 @@ private fun ayahActions(context: android.content.Context, app: AppViewModel, f: 
             SheetAction(context.getString(R.string.ayah_range_end)) {
                 Graph.ranges.set(f.id, SubRange(minOf(index, range.from), index))
             },
+            SheetAction(context.getString(R.string.tajweed_of_aya), Ic.Palette, next = {
+                ayahTajweedSheet(context, ref.toString(), Graph.content.content.value?.text(ref).orEmpty())
+            }),
         ),
     )
 }

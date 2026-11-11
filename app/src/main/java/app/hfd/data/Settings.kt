@@ -70,6 +70,10 @@ data class AppSettings(
     val reviewsAt: Int = 19 * 60,
     /** Passages of the reference list the owner doesn't want shown (ids; [app.hfd.data.Content.hidden]). */
     val hiddenFadail: Set<String> = emptySet(),
+    /** The Qur'an's letters in the colours of the rules of tajwīd. */
+    val tajweed: Boolean = true,
+    /** The colours switched off ([app.hfd.core.tajweed.Family] names): the heavy rāʾ, until asked for. */
+    val tajweedOff: Set<String> = setOf("TAFKHIM"),
 ) {
     val reminders: ReminderConfig
         get() = ReminderConfig(reviews = remindReviews, reviewsAt = LocalTime.of(reviewsAt / 60, reviewsAt % 60))
@@ -155,6 +159,8 @@ class Settings(context: Context) {
             remindReviews = prefs.getBoolean("remindReviews", d.remindReviews),
             reviewsAt = prefs.getInt("reviewsAt", d.reviewsAt).coerceIn(0, 24 * 60 - 1),
             hiddenFadail = prefs.getStringSet("hiddenFadail", null)?.toSet() ?: d.hiddenFadail,
+            tajweed = prefs.getBoolean("tajweed", d.tajweed),
+            tajweedOff = prefs.getStringSet("tajweedOff", null)?.toSet() ?: d.tajweedOff,
         )
     }
 
@@ -184,6 +190,8 @@ class Settings(context: Context) {
             .putBoolean("remindReviews", s.remindReviews)
             .putInt("reviewsAt", s.reviewsAt)
             .putStringSet("hiddenFadail", s.hiddenFadail)
+            .putBoolean("tajweed", s.tajweed)
+            .putStringSet("tajweedOff", s.tajweedOff)
             // Settings of removed features (1.6.0: passage reminders, the location they needed).
             .remove("showWeak").remove("remindKursi").remove("remindMulk").remove("mulkAt")
             .remove("remindKahf").remove("kahfAt").remove("latitude").remove("longitude").remove("prayerMethod")

@@ -98,9 +98,13 @@ fun QuranText(
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val range = remember(text, word) { word?.let { Arabic.wordRanges(text).getOrNull(it) } }
     val mark = P.wordMark
-    val shown = remember(text, end, range, mark) {
-        if (range == null) AnnotatedString(text + end)
-        else AnnotatedString(text + end, listOf(AnnotatedString.Range(SpanStyle(color = mark), range.first, range.second)))
+    val tajweed = LocalTajweed.current
+    val shown = remember(text, end, range, mark, tajweed) {
+        // The letters' colours show over the marked word's.
+        val spans = ArrayList<AnnotatedString.Range<SpanStyle>>()
+        if (range != null) spans += AnnotatedString.Range(SpanStyle(color = mark), range.first, range.second)
+        if (tajweed != null) spans += tajweed.spans(text)
+        AnnotatedString(text + end, spans)
     }
     Text(
         shown,

@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performSemanticsAction
@@ -195,6 +196,15 @@ class ScreenshotTest {
         // A sūra to read; then opened where a juzʾ begins, an āya kept as a favourite.
         ui { vm.openSura(18) }
         both("sura")
+        // The colours of tajwīd: their legend (where they are chosen), and one āya's rules.
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.tajweed_open)).performSemanticsAction(SemanticsActions.OnClick)
+        both("tajweed")
+        ui { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        rule.onNodeWithText("18:2", substring = true).performSemanticsAction(SemanticsActions.OnClick)
+        rule.mainClock.advanceTimeBy(600)
+        rule.onNodeWithText(rule.activity.getString(R.string.tajweed_of_aya)).performSemanticsAction(SemanticsActions.OnClick)
+        both("tajweed-aya")
+        ui { rule.activity.onBackPressedDispatcher.onBackPressed() }
         // The full player, behind the one bar the app listens from; then a passage's, with its repeats.
         rule.onNodeWithTag("player-open").performSemanticsAction(SemanticsActions.OnClick)
         both("player")

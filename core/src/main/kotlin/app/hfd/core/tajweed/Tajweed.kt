@@ -17,15 +17,15 @@ enum class Rule(val family: Family, val counts: IntRange? = null) {
     /** A nūn sākina or tanwīn merged into ي ن م و of the next word, with ghunna. */
     IDGHAM_GHUNNAH(Family.GHUNNAH, 2..2),
     /** A nūn sākina or tanwīn merged into ل or ر, without ghunna. */
-    IDGHAM_NO_GHUNNAH(Family.IDGHAM),
+    IDGHAM_NO_GHUNNAH(Family.SILENT),
     /** A mīm sākina merged into a mīm, with ghunna. */
     IDGHAM_SHAFAWI(Family.GHUNNAH, 2..2),
     /** A letter merged into the same letter (ٱضْرِب بِّعَصَاكَ). */
-    IDGHAM_MUTAMATHILAYN(Family.IDGHAM),
+    IDGHAM_MUTAMATHILAYN(Family.SILENT),
     /** A letter merged into one of the same articulation (قَد تَّبَيَّنَ). */
-    IDGHAM_MUTAJANISAYN(Family.IDGHAM),
+    IDGHAM_MUTAJANISAYN(Family.SILENT),
     /** A letter merged into one of a near articulation (قُل رَّبِّ). */
-    IDGHAM_MUTAQARIBAYN(Family.IDGHAM),
+    IDGHAM_MUTAQARIBAYN(Family.SILENT),
     /** ق ط ب ج د without a vowel: the letter rebounds. */
     QALQALAH(Family.QALQALAH),
     /** A long vowel of two ḥarakāt. */
@@ -50,8 +50,11 @@ enum class Rule(val family: Family, val counts: IntRange? = null) {
     TAFKHIM(Family.TAFKHIM),
 }
 
-/** The colours of a muṣḥaf of tajwīd: what a reader switches on or off. */
-enum class Family { GHUNNAH, IDGHAM, QALQALAH, MADD_2, MADD_246, MADD_45, MADD_6, SILENT, TAFKHIM }
+/**
+ * The colours of a muṣḥaf of tajwīd: what a reader switches on or off. A letter merged into the
+ * next ([Part.DROPPED]) is [SILENT]'s, whatever its rule.
+ */
+enum class Family { GHUNNAH, QALQALAH, MADD_2, MADD_246, MADD_45, MADD_6, SILENT, TAFKHIM }
 
 /** Where a rule is heard ([SOUND]), or the letter it leaves unsaid ([DROPPED]: merged into the next). */
 enum class Part { SOUND, DROPPED }
@@ -61,7 +64,10 @@ enum class Part { SOUND, DROPPED }
  * from 0 (the signs of pause are not words); [letter] is the first letter of the span, among the
  * āya's letters.
  */
-data class Span(val from: Int, val to: Int, val rule: Rule, val part: Part, val word: Int, val letter: Int)
+data class Span(val from: Int, val to: Int, val rule: Rule, val part: Part, val word: Int, val letter: Int) {
+    /** The colour it is shown in. */
+    val family: Family get() = if (part == Part.DROPPED) Family.SILENT else rule.family
+}
 
 /**
  * The tajwīd of an āya read from its Uthmani text as Tanzil writes it. The script itself carries

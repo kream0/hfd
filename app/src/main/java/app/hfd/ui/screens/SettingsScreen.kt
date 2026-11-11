@@ -35,6 +35,8 @@ import app.hfd.data.AppLocale
 import app.hfd.data.ThemeMode
 import app.hfd.data.TranslationChoice
 import app.hfd.ui.components.Segmented
+import app.hfd.ui.components.tajweedSheet
+import app.hfd.ui.components.Ic
 import app.hfd.ui.components.SettingBlock
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -319,6 +321,11 @@ private fun ReadingSection(settings: AppSettings) {
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             )
         }
+    }
+    val sheets = LocalSheets.current
+    val context = LocalContext.current
+    SettingLine(stringResource(R.string.settings_tajweed), stringResource(R.string.settings_tajweed_body)) {
+        PillButton(stringResource(R.string.settings_tajweed_choose), { sheets(tajweedSheet(context)) }, icon = Ic.Palette)
     }
     SettingLine(stringResource(R.string.settings_translation), stringResource(R.string.settings_translation_body)) {
         Toggle(settings.showTranslation, { on -> Graph.settings.update { it.copy(showTranslation = on) } })
