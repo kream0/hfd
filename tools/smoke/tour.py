@@ -339,20 +339,52 @@ def search_and_favourite():
     step("suras", is_("Sourates"), starts("Al-Baqara"))
 
 
+def one_player(when):
+    """A text's screen has one place to listen from: the bar (no panel, no second player under it)."""
+    seen = nodes()
+    n = sum(1 for text, desc, _ in seen if desc in ("Écouter", "Pause"))
+    report.setdefault("players", {})[when] = n
+    print(f"SMOKE players on the sūra's screen {when}: {n}", flush=True)
+    if n != 1:
+        failures.append(f"player: {n} listening buttons on the sūra's screen {when}")
+    if any(text in ("Lecture", "Récitation") for text, _, _ in seen):
+        failures.append("player: the switch at the top is back")
+
+
 sh("settings put secure show_ime_with_hard_keyboard 1")
 if step("quran", is_("Coran"), starts("Al-Baqara")):
     search_and_favourite()
     if step("sura", starts("Al-Baqara"), lambda t: "ذَٰلِكَ" in t, seconds=40):
         # Playing: the media service, its session, the stream.
-        if step("playing", is_("Lire"), is_("Pause")):
+        one_player("before listening")
+        if step("playing", is_("Écouter"), is_("Pause")):
             time.sleep(6)
             session = sh("dumpsys media_session")
             state = re.search(r"package=" + re.escape(PKG) + r".*?state=PlaybackState \{state=(\w+)", session, re.S)
             report["playback"] = state.group(1) if state else None
             print(f"SMOKE playback state: {report['playback']}", flush=True)
+            one_player("while listening")
             pause = find(is_("Pause"))
             if pause:
                 tap(pause)
+        # The full player behind the bar: the transport and the settings; Back closes it.
+        if step("player", is_("Ouvrir le lecteur"), is_("Vitesse")):
+            if not (find(is_("Récitateur")) and find(is_("Minuterie")) and find(is_("Āya précédente"))):
+                failures.append("player: its settings or its transport are missing")
+            sh("input keyevent 4")
+            time.sleep(1.0)
+        # Reciting the sūra from the bar, and back to its text.
+        if step("sura-recite", is_("Réciter")):
+            start = find(is_("Depuis le début de la sourate"))
+            if start:
+                tap(start)
+            if not wait(lambda t: t.startswith("Télécharger") or t.startswith("Commencer"), 25):
+                failures.append("sura-recite: the recitation didn't open")
+                shot("sura-recite-missing")
+            sh("input keyevent 4")
+            time.sleep(1.0)
+            if not wait(lambda t: "ذَٰلِكَ" in t or t == "Réciter", 20):
+                failures.append("sura-recite: the sūra didn't come back")
         sh(f"dumpsys gfxinfo {PKG} reset")
         for _ in range(12):
             sh(f"input swipe {W // 2} {int(H * 0.72)} {W // 2} {int(H * 0.28)} 220")

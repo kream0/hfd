@@ -9,7 +9,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,15 +52,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.playback.QuranListening
-import app.hfd.playback.NowPlaying
-import app.hfd.ui.components.Equalizer
 import app.hfd.ui.components.Ic
-import app.hfd.ui.components.itemLabel
 import app.hfd.ui.components.LocalSheets
+import app.hfd.ui.components.PlayerDock
 import app.hfd.ui.components.SheetAction
 import app.hfd.ui.components.SheetHost
 import app.hfd.ui.components.SheetSpec
-import app.hfd.ui.components.SeekBar
 import app.hfd.ui.screens.FadailScreen
 import app.hfd.ui.screens.FadilaScreen
 import app.hfd.ui.screens.HomeScreen
@@ -106,6 +102,9 @@ fun AppRoot(app: AppViewModel) {
     val loaded by Graph.content.content.collectAsStateWithLifecycle()
     ReportDrawnWhen { loaded != null }
 
+    // Reciting the open sūra, as its screen starts it (from the āya at the top of the text).
+    var reciteSura by remember { mutableStateOf<(() -> Unit)?>(null) }
+
     CompositionLocalProvider(LocalSheets provides openSheet) {
         Box(Modifier.fillMaxSize().background(P.background)) {
             Column(Modifier.fillMaxSize()) {
@@ -117,13 +116,19 @@ fun AppRoot(app: AppViewModel) {
                         Tab.STATS -> StatsScreen(onOpen = app::openFadila)
                         Tab.SETTINGS -> SettingsScreen(onEditFadail = { app.editingFadail = true })
                     }
-                    FadilaOverlay(app)
+                    FadilaOverlay(app) { reciteSura = it }
                 }
-                val np by Graph.nowPlaying.collectAsStateWithLifecycle()
-                val playing = np
-                if (playing != null && app.fadila != playing.fadilaId) {
-                    MiniPlayer(playing, onOpen = app::openPlaying)
-                }
+                // The one player: what plays, or the open text to listen to and to recite.
+                val open = app.fadila
+                PlayerDock(
+                    open = open,
+                    onOpen = app::openPlaying,
+                    onRecite = when {
+                        open == null -> null
+                        QuranListening.suraOf(open) != null -> reciteSura
+                        else -> ({ Graph.content.content.value?.fadila(open)?.let(app::recite); Unit })
+                    },
+                )
                 BottomNav(tab = app.tab, onTab = app::selectTab)
             }
             FlowOverlay(app)
@@ -161,7 +166,7 @@ private fun FlowOverlay(app: AppViewModel) {
 
 /** Faḍīla detail (or a sūra of the Qur'an section) slides over the current tab, keeping the bottom navigation visible. */
 @Composable
-private fun FadilaOverlay(app: AppViewModel) {
+private fun FadilaOverlay(app: AppViewModel, onReciteAction: ((() -> Unit)?) -> Unit) {
     var last by remember { mutableStateOf<String?>(null) }
     app.fadila?.let { last = it }
     AnimatedVisibility(
@@ -179,65 +184,12 @@ private fun FadilaOverlay(app: AppViewModel) {
                     onTargetShown = { app.suraTarget = null },
                     onOpen = { n -> app.openSura(n) },
                     onRecite = { from -> app.reciteSura(sura, from) },
+                    onReciteAction = onReciteAction,
                     onBack = { app.fadila = null },
                 )
             }
             else FadilaScreen(id, app, onBack = { app.fadila = null })
         }
-    }
-}
-
-@Composable
-private fun MiniPlayer(np: NowPlaying, onOpen: () -> Unit) {
-    val ui by Graph.player.state.collectAsStateWithLifecycle()
-    val progress by Graph.player.progress.collectAsStateWithLifecycle()
-    val fraction = if (ui.durationMs > 0) progress.positionMs.toFloat() / ui.durationMs else 0f
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(P.surfaceHigh)
-            .clickable(onClick = onOpen),
-    ) {
-        Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Equalizer(ui.playWhenReady, Modifier.size(16.dp))
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(np.title, style = Type.name.copy(fontSize = 16.sp), color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    listOf(itemLabel(np.item), np.reciter.short).filter { it.isNotBlank() }.joinToString("  ·  "),
-                    style = Type.label,
-                    color = P.textDim,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Box(
-                Modifier.size(44.dp).clip(CircleShape).clickable { Graph.player.togglePlay() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    if (ui.playWhenReady) Ic.Pause else Ic.Play,
-                    contentDescription = stringResource(if (ui.playWhenReady) R.string.player_pause else R.string.player_play),
-                    tint = P.text,
-                    modifier = Modifier.size(26.dp),
-                )
-            }
-            Box(
-                Modifier.size(44.dp).clip(CircleShape).clickable { Graph.player.nextAyah() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Ic.Next, contentDescription = stringResource(R.string.player_next), tint = P.textDim, modifier = Modifier.size(24.dp))
-            }
-        }
-        SeekBar(
-            progress = fraction,
-            modifier = Modifier.padding(horizontal = 14.dp),
-            height = 12.dp,
-            thickness = 3.dp,
-            showHead = false,
-        )
     }
 }
 

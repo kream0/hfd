@@ -155,12 +155,12 @@ fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit) {
         val playingSura = np?.session?.sura
         LazyColumn(Modifier.fillMaxSize().testTag("quran")) {
             item(key = "header") { ScreenHeader(stringResource(R.string.tab_quran)) }
-            // Where the listening stopped: the sūra playing now, else the last place.
-            val at = np?.takeIf { playingSura != null }?.item?.ref ?: place
-            if (at != null && query.isBlank()) {
+            // Where the listening of the Qur'an stopped, to take it up again; unless the player holds
+            // a sūra: the bar under the tabs is then that very offer, and the only one.
+            val at = place
+            if (at != null && playingSura == null && query.isBlank()) {
                 item(key = "resume") {
                     val meta = c.sura(at.sura)
-                    val playing = playingSura == at.sura && ui.playWhenReady
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -171,7 +171,7 @@ fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(stringResource(if (playing) R.string.quran_listening else R.string.quran_resume).uppercase(), style = Type.overline, color = P.textDim)
+                            Text(stringResource(R.string.quran_resume).uppercase(), style = Type.overline, color = P.textDim)
                             Spacer(Modifier.height(2.dp))
                             Text(
                                 stringResource(R.string.quran_resume_at, meta.tname, at.aya, meta.ayas),
@@ -182,11 +182,7 @@ fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit) {
                             )
                         }
                         Spacer(Modifier.width(10.dp))
-                        PillButton(
-                            stringResource(if (playing) R.string.player_pause else R.string.player_resume),
-                            onClick = { if (playingSura == at.sura) Graph.player.togglePlay() else Graph.playSura(at.sura, at) },
-                            style = if (playing) PillStyle.Outline else PillStyle.Filled,
-                        )
+                        PillButton(stringResource(R.string.player_resume), onClick = { Graph.playSura(at.sura, at) }, style = PillStyle.Filled)
                     }
                 }
             }

@@ -152,10 +152,29 @@ class ScreenshotTest {
         // The reading view: āya text, āya-end markers, translation.
         rule.onNodeWithTag("reading").performScrollToIndex(1)
         both("kursi-text")
-        // Listening: the word being recited lit (as if 2:255 were playing at its seventh word).
-        ui { app.hfd.ui.components.PlayingWord.preview.value = app.hfd.core.quran.AyahRef(2, 255) to 6 }
+        // Listening: the word being recited lit (as if 2:255 were playing at its seventh word),
+        // and the bar holding the passage.
+        ui {
+            val kursi = content.fadila("kursi")!!
+            val ayat = kursi.ayat
+            app.hfd.ui.components.PlayingWord.preview.value = app.hfd.core.quran.AyahRef(2, 255) to 6
+            Graph.playingPreview.value = app.hfd.playback.NowPlaying(
+                app.hfd.playback.PlaySession("kursi", "Āyat al-Kursī", ayat, 0, ayat.lastIndex),
+                app.hfd.core.playback.PlanSpec(ayat, repeatEach = 3),
+                Graph.settings.current.reciterInfo,
+                app.hfd.core.playback.PlanItem.Ayah(app.hfd.core.playback.Cursor(rep = 2), ayat[0], 3),
+                null,
+            )
+        }
         both("listen")
-        ui { app.hfd.ui.components.PlayingWord.preview.value = null }
+        // The same bar on a tab (what is listened to, a tap opens it), and under another text.
+        ui { vm.fadila = null }
+        both("fadail-listening")
+        ui { vm.openFadila("kursi") }
+        ui {
+            app.hfd.ui.components.PlayingWord.preview.value = null
+            Graph.playingPreview.value = null
+        }
         rule.onNodeWithTag("reading").performScrollToIndex(0)
         ui { vm.openFadila("tawba-end") }
         both("tawba-end")
@@ -173,9 +192,18 @@ class ScreenshotTest {
         rule.onNodeWithTag("search").performSemanticsAction(SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString("الحي القيوم")) }
         both("quran-search")
         rule.onNodeWithTag("search").performSemanticsAction(SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString("")) }
-        // A sūra in its reading mode; then opened where a juzʾ begins, an āya kept as a favourite.
+        // A sūra to read; then opened where a juzʾ begins, an āya kept as a favourite.
         ui { vm.openSura(18) }
         both("sura")
+        // The full player, behind the one bar the app listens from; then a passage's, with its repeats.
+        rule.onNodeWithTag("player-open").performSemanticsAction(SemanticsActions.OnClick)
+        both("player")
+        ui { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        ui { vm.openFadila("kursi") }
+        rule.onNodeWithTag("player-open").performSemanticsAction(SemanticsActions.OnClick)
+        both("player-passage")
+        ui { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        ui { vm.openSura(18) }
         ui {
             if (app.hfd.core.quran.AyahRef(18, 76) !in Graph.favorites) Graph.favorites.toggle(app.hfd.core.quran.AyahRef(18, 76))
             vm.openSura(18, 75)

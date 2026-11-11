@@ -3,7 +3,6 @@ package app.hfd.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,25 +13,29 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
@@ -47,6 +50,7 @@ import app.hfd.core.quran.AyahRef
 import app.hfd.data.AppSettings
 import app.hfd.data.SubRange
 import app.hfd.download.DlStatus
+import app.hfd.playback.NowPlaying
 import app.hfd.playback.PlaySession
 import app.hfd.playback.Sleep
 import app.hfd.ui.text
@@ -161,184 +165,281 @@ fun autoAudio(f: Fadila, s: AppSettings): List<AyahRef> {
 
 private const val LONG_PREFETCH = 10
 
-/** A listening setting under the player; [active]: other than its default, lit. */
+/** Whether the player holds [id] as its own screen plays it: not one āya of it a lesson or a review last played (their sessions carry a tag). */
+fun NowPlaying.plays(id: String): Boolean = fadilaId == id && session.tag == null
+
+/** What listening to a text is, for the bar and the full player: a passage, or a sūra of the Qur'an section. */
+private class Listening(val id: String, val title: String, val fadila: Fadila?, val sura: Int?, val ayat: List<AyahRef>)
+
 @Composable
-private fun SettingChip(text: String, onClick: () -> Unit, active: Boolean = false, icon: ImageVector? = null) {
-    Row(
+private fun listening(id: String): Listening? {
+    val content by Graph.content.content.collectAsStateWithLifecycle()
+    val c = content ?: return null
+    val sura = QuranListening.suraOf(id)
+    if (sura != null) {
+        val meta = c.suras.getOrNull(sura - 1) ?: return null
+        return remember(sura, meta) { Listening(id, meta.tname, null, sura, QuranListening.ayat(sura, meta.ayas)) }
+    }
+    val f = c.fadila(id) ?: return null
+    val title = f.title.text
+    return remember(f, title) { Listening(id, title, f, null, f.ayat) }
+}
+
+/** Starts listening to [l] as its screen does: a sūra from where it was left, a passage's chosen range. */
+private fun start(l: Listening) {
+    val f = l.fadila
+    if (f != null) Graph.player.play(sessionFor(f, l.title, Graph.ranges.get(f.id, f.size)))
+    else l.sura?.let { n -> Graph.playSura(n, Graph.quranPlace.place.value?.takeIf { it.sura == n && it.aya > 1 }) }
+}
+
+/** The round button that listens or pauses: the bar's and the full player's. */
+@Composable
+private fun PlayButton(playing: Boolean, size: androidx.compose.ui.unit.Dp, onClick: () -> Unit) {
+    val description = stringResource(if (playing) R.string.player_pause else R.string.player_listen)
+    Box(
         Modifier
+            .size(size)
             .clip(CircleShape)
-            .background(if (active) P.accent.copy(alpha = 0.14f) else Color.Transparent)
-            .border(1.dp, if (active) P.accent.copy(alpha = 0.7f) else P.outline, CircleShape)
+            .background(P.primary)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
     ) {
-        if (icon != null) {
-            Icon(icon, contentDescription = null, tint = if (active) P.accent else P.textDim, modifier = Modifier.size(15.dp))
-            if (text.isNotEmpty()) Spacer(Modifier.width(5.dp))
-        }
-        if (text.isNotEmpty()) Text(text, style = Type.labelBold, color = if (active) P.text else P.textDim, maxLines = 1)
+        Icon(if (playing) Ic.Pause else Ic.Play, contentDescription = null, tint = P.onPrimary, modifier = Modifier.size(size / 2))
     }
 }
 
-/** Bottom panel of the faḍīla screen: what's playing, transport, and the listening settings. */
+/**
+ * The one bar the app listens from, above the tabs: there is no other player on a screen. On a tab
+ * it is what the player holds (a tap opens it). With a passage or a sūra open ([open]) it is that
+ * text's: listen to it, recite it aloud ([onRecite]), and the full player behind it ([playerSheet]:
+ * the transport, the reciter, the repeats). Something else heard while that text is open stays in
+ * the bar until the text is left, so what sounds can always be paused.
+ */
 @Composable
-fun PlayerPanel(f: Fadila, modifier: Modifier = Modifier) {
+fun PlayerDock(open: String?, onOpen: () -> Unit, onRecite: (() -> Unit)?, modifier: Modifier = Modifier) {
+    val sheets = LocalSheets.current
+    val np by Graph.nowPlaying.collectAsStateWithLifecycle()
+    val ui by Graph.player.state.collectAsStateWithLifecycle()
+    val settings by Graph.settings.state.collectAsStateWithLifecycle()
+    val ranges by Graph.ranges.ranges.collectAsStateWithLifecycle()
+    val place by Graph.quranPlace.place.collectAsStateWithLifecycle()
+    val held = np
+    val own = open != null && held != null && held.plays(open)
+    // Another text than the open one, heard while it is open.
+    var heard by remember(open) { mutableStateOf<PlaySession?>(null) }
+    val other = open != null && held != null && !own && (ui.playWhenReady || heard === held.session)
+    LaunchedEffect(open, held?.session, ui.playWhenReady) {
+        if (open != null && held != null && !own && ui.playWhenReady) heard = held.session
+    }
+    val loaded = held != null && (open == null || own || other)
+    val id = if (loaded) held!!.fadilaId else open ?: return
+    val of = listening(id)
+    val title = if (loaded) held!!.title else of?.title ?: return
+    val playing = loaded && ui.playWhenReady
+    // The open text's own bar: it also recites, and a tap opens the full player (elsewhere, what plays).
+    val here = open != null && !other
+    val full = { sheets(playerSheet(id, title, strict = open == id)) }
+
+    val status = when {
+        loaded -> listOf(itemLabel(held!!.item), held.reciter.short)
+        else -> {
+            val reciter = if (of?.sura != null) remember(settings.quranChoice, of.ayat) { Graph.quranReciter(of.ayat, settings) } else settings.reciterInfo
+            val resume = place?.takeIf { it.sura == of?.sura && it.aya > 1 }
+            val range = of?.fadila?.let { f -> remember(ranges, f) { Graph.ranges.get(f.id, f.size) }.takeIf { it.from != 0 || it.to != f.ayat.lastIndex }?.let { rangeLabel(f, it) } }
+            listOf(resume?.let { stringResource(R.string.player_resume_at, it.toString()) } ?: range ?: stringResource(R.string.player_listen), reciter.short)
+        }
+    }.filter { it.isNotBlank() }.joinToString("  ·  ")
+
+    Column(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(P.surfaceHigh),
+    ) {
+        Row(Modifier.padding(start = 8.dp, end = 6.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            PlayButton(playing, 44.dp) {
+                if (loaded) Graph.player.togglePlay() else of?.let(::start)
+            }
+            Column(
+                Modifier
+                    .weight(1f)
+                    .padding(horizontal = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClickLabel = stringResource(if (here) R.string.player_open else R.string.player_show)) { if (here) full() else onOpen() }
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+            ) {
+                Text(title, style = Type.name.copy(fontSize = 16.sp), color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(status, style = Type.label, color = P.textDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (loaded) IconBtn(Ic.Next, { Graph.player.nextAyah() }, tint = P.textDim, size = 40.dp, iconSize = 24.dp, contentDescription = stringResource(R.string.player_next))
+            if (here && onRecite != null) {
+                // Reciting it aloud, the microphone following: the other way into the text.
+                Row(
+                    Modifier
+                        .padding(horizontal = 2.dp)
+                        .height(36.dp)
+                        .clip(CircleShape)
+                        .border(1.dp, P.outline, CircleShape)
+                        .clickable(onClick = onRecite)
+                        .padding(start = 10.dp, end = 13.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Ic.Mic, contentDescription = null, tint = P.accent, modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(stringResource(R.string.recite), style = Type.button.copy(fontSize = 14.sp), color = P.text, maxLines = 1)
+                }
+            }
+            IconBtn(Ic.Expand, full, tint = P.textDim, size = 40.dp, iconSize = 24.dp, contentDescription = stringResource(R.string.player_open), modifier = Modifier.testTag("player-open"))
+        }
+        if (loaded) DockProgress(ui.durationMs) else Spacer(Modifier.height(12.dp))
+    }
+}
+
+/** The āya's progress under the bar (on its own, as [PositionBar]: it moves ten times a second). */
+@Composable
+private fun DockProgress(durationMs: Long) {
+    val progress by Graph.player.progress.collectAsStateWithLifecycle()
+    SeekBar(
+        progress = if (durationMs > 0) progress.positionMs.toFloat() / durationMs else 0f,
+        modifier = Modifier.padding(start = 22.dp, end = 22.dp, bottom = 2.dp),
+        height = 10.dp,
+        thickness = 3.dp,
+        showHead = false,
+    )
+}
+
+/**
+ * The full player, behind the bar: where the listening is, the transport, and how it is listened
+ * to. [strict]: opened from the text's own screen, where an āya of it left by a lesson isn't the
+ * text being listened to (Play then starts the text).
+ */
+fun playerSheet(id: String, title: String, strict: Boolean): SheetSpec =
+    SheetSpec(title = title, content = { FullPlayer(id, title, strict) })
+
+@Composable
+private fun FullPlayer(id: String, title: String, strict: Boolean) {
     val sheets = LocalSheets.current
     val context = LocalContext.current
     val np by Graph.nowPlaying.collectAsStateWithLifecycle()
     val ui by Graph.player.state.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
     val ranges by Graph.ranges.ranges.collectAsStateWithLifecycle()
-    val range = remember(ranges, f) { Graph.ranges.get(f.id, f.size) }
-    val title = f.title.text
-    // The passage being listened to; not one āya of it a lesson or a review last played (their
-    // sessions carry a tag): Play then starts the passage, where it replayed that āya alone.
-    val isThis = np?.fadilaId == f.id && np?.session?.tag == null
-    val playing = isThis && ui.playWhenReady
+    val place by Graph.quranPlace.place.collectAsStateWithLifecycle()
+    val of = listening(id)
+    val f = of?.fadila
+    val sura = of?.sura
+    val held = np
+    val loaded = held != null && held.fadilaId == id && (!strict || held.session.tag == null)
+    val playing = loaded && ui.playWhenReady
+    val range = remember(ranges, f) { f?.let { Graph.ranges.get(it.id, it.size) } }
+    val resumeAt = place?.takeIf { it.sura == sura && it.aya > 1 }
+    // A sūra: the reciter chosen for the section, or the one who takes over where that one has no āyāt.
+    val choice = settings.quranChoice
+    val reciter = if (of != null && sura != null) remember(choice, of.ayat) { Graph.quranReciter(of.ayat, settings) } else settings.reciterInfo
+    // A setting's own sheet comes back here once chosen.
+    val back = { playerSheet(id, title, strict) }
 
-    Column(
-        modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-            .background(P.surface)
-            .padding(top = 14.dp, bottom = 12.dp),
-    ) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (isThis) itemLabel(np?.item) else rangeLabel(f, range),
+                when {
+                    loaded -> itemLabel(held?.item)
+                    f != null && range != null -> rangeLabel(f, range)
+                    else -> resumeAt?.let { stringResource(R.string.player_resume_at, it.toString()) } ?: stringResource(R.string.chip_all)
+                },
                 style = Type.clock,
                 color = P.text,
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            OfflineChip(f)
+            if (f != null) OfflineChip(f)
+            else if (of != null && sura != null) {
+                OfflineChip(reciter, remember(of.ayat) { if (sura != 1 && sura != 9) of.ayat + app.hfd.core.playback.EveryAyah.BASMALA else of.ayat }, optional = true)
+            }
         }
-        if (isThis) {
-            PositionBar(ui.durationMs)
-        } else {
-            Spacer(Modifier.height(8.dp))
-        }
+        if (loaded) PositionBar(ui.durationMs) else Spacer(Modifier.height(10.dp))
         Row(
-            Modifier.fillMaxWidth().padding(vertical = 2.dp),
+            Modifier.fillMaxWidth().padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TransportButton(Ic.Previous, stringResource(R.string.player_previous), enabled = isThis) { Graph.player.previousAyah() }
+            TransportButton(Ic.Previous, stringResource(R.string.player_previous), enabled = loaded) { Graph.player.previousAyah() }
             Spacer(Modifier.width(22.dp))
-            Box(
-                Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .background(P.primary)
-                    .clickable {
-                        if (isThis) Graph.player.togglePlay() else Graph.player.play(sessionFor(f, title, range))
-                    }
-                    .semantics { contentDescription = context.getString(if (playing) R.string.player_pause else R.string.player_play) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(if (playing) Ic.Pause else Ic.Play, contentDescription = null, tint = P.onPrimary, modifier = Modifier.size(30.dp))
-            }
+            PlayButton(playing, 60.dp) { if (loaded) Graph.player.togglePlay() else of?.let(::start) }
             Spacer(Modifier.width(22.dp))
-            TransportButton(Ic.Next, stringResource(R.string.player_next), enabled = isThis) { Graph.player.nextAyah() }
+            TransportButton(Ic.Next, stringResource(R.string.player_next), enabled = loaded) { Graph.player.nextAyah() }
         }
-        Spacer(Modifier.height(6.dp))
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            SettingChip(stringResource(R.string.chip_ayah, timesLabel(settings.repeatEach)), { sheets(repeatEachSheet(context)) }, settings.repeatEach != 1)
-            SettingChip(stringResource(R.string.chip_range, timesLabel(settings.repeatRange)), { sheets(repeatRangeSheet(context)) }, settings.repeatRange != 1)
-            SettingChip(stringResource(R.string.chip_gap, gapLabel(settings.gap)), { sheets(gapSheet(context)) }, settings.gap != GapMode.NONE)
-            SettingChip(speedLabel(settings.speed), { sheets(speedSheet(context)) }, settings.speed != 1f)
-            SettingChip(settings.reciterInfo.short, { sheets(reciterSheet(context, settings.reciter)) })
-            SettingChip(rangeLabel(f, range), { sheets(rangeSheet(context, f, title)) }, range.from != 0 || range.to != f.ayat.lastIndex)
-            val sleep = if (isThis) np?.sleep else null
-            SettingChip(sleepLabel(sleep), { sheets(sleepSheet(context)) }, sleep != null, icon = Ic.Moon)
+        Spacer(Modifier.height(8.dp))
+        // A sūra plays through, then the next: the repeats and the pauses are the passages'.
+        if (f != null) {
+            val each = AppSettings.REPEAT_EACH
+            Setting(stringResource(R.string.repeat_each)) {
+                Segmented(each.map { "×" + timesLabel(it) }, each.indexOf(settings.repeatEach).coerceAtLeast(0), { i -> Graph.settings.update { it.copy(repeatEach = each[i]) } })
+            }
+            val whole = AppSettings.REPEAT_RANGE
+            Setting(stringResource(R.string.repeat_range)) {
+                Segmented(whole.map { "×" + timesLabel(it) }, whole.indexOf(settings.repeatRange).coerceAtLeast(0), { i -> Graph.settings.update { it.copy(repeatRange = whole[i]) } })
+            }
+            Setting(stringResource(R.string.gap)) {
+                Segmented(
+                    GapMode.entries.map { if (it == GapMode.NONE) stringResource(R.string.gap_none) else gapLabel(it) },
+                    settings.gap.ordinal,
+                    { i -> Graph.settings.update { it.copy(gap = GapMode.entries[i]) } },
+                )
+            }
+        }
+        val speeds = AppSettings.SPEEDS
+        Setting(stringResource(R.string.speed)) {
+            Segmented(speeds.map { speedLabel(it) }, speeds.indexOf(settings.speed).let { if (it < 0) speeds.indexOf(1f) else it }, { i -> Graph.settings.update { it.copy(speed = speeds[i]) } })
+        }
+        Spacer(Modifier.height(4.dp))
+        if (sura != null) {
+            Choice(
+                stringResource(R.string.reciter),
+                if (reciter.id == choice.id) reciter.name else stringResource(R.string.quran_reciter_instead, reciter.short, choice.short),
+            ) { sheets(quranReciterSheet(context, choice.id).thenBack(back)) }
+        } else {
+            Choice(stringResource(R.string.reciter), settings.reciterInfo.name) { sheets(reciterSheet(context, settings.reciter).thenBack(back)) }
+        }
+        if (f != null && range != null) {
+            Choice(stringResource(R.string.range), rangeLabel(f, range), lit = range.from != 0 || range.to != f.ayat.lastIndex) { sheets(rangeSheet(context, f, title)) }
+        }
+        val sleep = if (loaded) held?.sleep else null
+        Choice(stringResource(R.string.sleep), sleepLabel(sleep).ifEmpty { stringResource(R.string.sleep_off) }, lit = sleep != null) {
+            sheets((if (sura != null) sleepSheet(context, context.getString(R.string.sleep_end_sura)) else sleepSheet(context)).thenBack(back))
         }
     }
 }
 
-/**
- * Bottom panel of a sūra of the Qur'an section: what's playing and the transport, with the speed,
- * the section's reciter and the timer. No repeats nor pauses: a sūra plays through, then the next.
- */
-@Composable
-fun SuraPlayerPanel(sura: Int, ayat: List<AyahRef>, modifier: Modifier = Modifier, onRecite: (() -> Unit)? = null) {
-    val sheets = LocalSheets.current
-    val context = LocalContext.current
-    val np by Graph.nowPlaying.collectAsStateWithLifecycle()
-    val ui by Graph.player.state.collectAsStateWithLifecycle()
-    val settings by Graph.settings.state.collectAsStateWithLifecycle()
-    val place by Graph.quranPlace.place.collectAsStateWithLifecycle()
-    val isThis = np?.session?.sura == sura
-    val playing = isThis && ui.playWhenReady
-    // The reciter chosen for the section, or the one who takes over for a sūra that one doesn't have.
-    val choice = settings.quranChoice
-    val reciter = remember(choice, ayat) { Graph.quranReciter(ayat, settings) }
-    // Where this sūra was left, if it is the one the section was last listened to.
-    val resumeAt = place?.takeIf { it.sura == sura && it.aya > 1 }
+/** A sheet whose choices come back to [back] (the full player) once made, where they closed everything. */
+private fun SheetSpec.thenBack(back: () -> SheetSpec): SheetSpec =
+    copy(actions = actions.map { a -> if (a.next != null) a else a.copy(next = { a.onClick(); back() }) })
 
-    Column(
-        modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-            .background(P.surface)
-            .padding(top = 14.dp, bottom = 12.dp),
-    ) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                if (isThis) itemLabel(np?.item) else resumeAt?.toString() ?: stringResource(R.string.chip_all),
-                style = Type.clock,
-                color = P.text,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            OfflineChip(reciter, remember(ayat) { if (sura != 1 && sura != 9) ayat + app.hfd.core.playback.EveryAyah.BASMALA else ayat }, optional = true)
-        }
-        if (isThis) {
-            PositionBar(ui.durationMs)
-        } else {
-            Spacer(Modifier.height(8.dp))
-        }
-        Row(
-            Modifier.fillMaxWidth().padding(vertical = 2.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TransportButton(Ic.Previous, stringResource(R.string.player_previous), enabled = isThis) { Graph.player.previousAyah() }
-            Spacer(Modifier.width(22.dp))
-            Box(
-                Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .background(P.primary)
-                    .clickable { if (isThis) Graph.player.togglePlay() else Graph.playSura(sura, resumeAt) }
-                    .semantics { contentDescription = context.getString(if (playing) R.string.player_pause else R.string.player_play) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(if (playing) Ic.Pause else Ic.Play, contentDescription = null, tint = P.onPrimary, modifier = Modifier.size(30.dp))
-            }
-            Spacer(Modifier.width(22.dp))
-            TransportButton(Ic.Next, stringResource(R.string.player_next), enabled = isThis) { Graph.player.nextAyah() }
-        }
+/** A listening setting with its choices under its name. */
+@Composable
+private fun Setting(label: String, control: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Text(label, style = Type.label, color = P.textDim)
         Spacer(Modifier.height(6.dp))
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            SettingChip(
-                if (reciter.id == choice.id) reciter.short else stringResource(R.string.quran_reciter_instead, reciter.short, choice.short),
-                { sheets(quranReciterSheet(context, choice.id)) },
-            )
-            SettingChip(speedLabel(settings.speed), { sheets(speedSheet(context)) }, settings.speed != 1f)
-            val sleep = if (isThis) np?.sleep else null
-            SettingChip(sleepLabel(sleep), { sheets(sleepSheet(context, context.getString(R.string.sleep_end_sura))) }, sleep != null, icon = Ic.Moon)
-            // Reciting the sūra aloud, the microphone following (Recite).
-            if (onRecite != null) SettingChip(stringResource(R.string.recite), onRecite, icon = Ic.Mic)
-        }
+        control()
+    }
+}
+
+/** A listening setting chosen in its own sheet: its name, what is chosen ([lit]: other than the usual). */
+@Composable
+private fun Choice(label: String, value: String, lit: Boolean = false, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = Type.label, color = P.textDim)
+        Spacer(Modifier.width(12.dp))
+        Text(value, style = Type.title, color = if (lit) P.accent else P.text, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(6.dp))
+        Text("›", style = Type.title, color = P.textFaint)
     }
 }
 
@@ -380,56 +481,6 @@ private fun TransportButton(icon: ImageVector, description: String, enabled: Boo
 }
 
 // ---------------------------------------------------------------------- sheets
-
-private fun optionsSheet(title: String, body: String, content: @Composable () -> Unit) =
-    SheetSpec(title = title, subtitle = null, content = {
-        Column {
-            content()
-            Spacer(Modifier.height(10.dp))
-            Text(body, style = Type.body, color = P.textDim)
-        }
-    })
-
-fun repeatEachSheet(context: android.content.Context) = optionsSheet(
-    context.getString(R.string.repeat_each), context.getString(R.string.repeat_each_body),
-) {
-    val s by Graph.settings.state.collectAsStateWithLifecycle()
-    val options = AppSettings.REPEAT_EACH
-    Segmented(options.map { "×" + timesLabel(it) }, options.indexOf(s.repeatEach).coerceAtLeast(0), { i ->
-        Graph.settings.update { it.copy(repeatEach = options[i]) }
-    })
-}
-
-fun repeatRangeSheet(context: android.content.Context) = optionsSheet(
-    context.getString(R.string.repeat_range), context.getString(R.string.repeat_range_body),
-) {
-    val s by Graph.settings.state.collectAsStateWithLifecycle()
-    val options = AppSettings.REPEAT_RANGE
-    Segmented(options.map { "×" + timesLabel(it) }, options.indexOf(s.repeatRange).coerceAtLeast(0), { i ->
-        Graph.settings.update { it.copy(repeatRange = options[i]) }
-    })
-}
-
-fun gapSheet(context: android.content.Context) = optionsSheet(
-    context.getString(R.string.gap), context.getString(R.string.gap_body),
-) {
-    val s by Graph.settings.state.collectAsStateWithLifecycle()
-    Segmented(
-        GapMode.entries.map { if (it == GapMode.NONE) context.getString(R.string.gap_none) else gapLabel(it) },
-        s.gap.ordinal,
-        { i -> Graph.settings.update { it.copy(gap = GapMode.entries[i]) } },
-    )
-}
-
-fun speedSheet(context: android.content.Context) = optionsSheet(
-    context.getString(R.string.speed), "",
-) {
-    val s by Graph.settings.state.collectAsStateWithLifecycle()
-    val options = AppSettings.SPEEDS
-    Segmented(options.map { speedLabel(it) }, options.indexOf(s.speed).let { if (it < 0) options.indexOf(1f) else it }, { i ->
-        Graph.settings.update { it.copy(speed = options[i]) }
-    })
-}
 
 fun reciterSheet(context: android.content.Context, current: String) = SheetSpec(
     title = context.getString(R.string.reciter),

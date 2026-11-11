@@ -88,7 +88,9 @@
     <string name="settings_tanzil_link">Open tanzil.net</string>
     <string name="basmala_label">Bismillāh</string>
     <string name="player_error">Can\'t play %1$s: %2$s</string>
-    <string name="player_play">Play</string>
+    <string name="player_resume_at">Resume at %1$s</string>
+    <string name="player_open">Open the player</string>
+    <string name="player_show">Show what is playing</string>
     <string name="player_pause">Pause</string>
     <string name="player_next">Next āya</string>
     <string name="player_previous">Previous āya</string>
@@ -297,7 +299,6 @@
     <string name="quran_search">Sūra, verse (2:255), word of the text…</string>
     <string name="quran_search_clear">Clear the search</string>
     <string name="quran_resume">Resume listening</string>
-    <string name="quran_listening">Listening now</string>
     <string name="quran_resume_at">%1$s · āya %2$d of %3$d</string>
     <string name="quran_reciter_body">For the Qur’an section; the passages’ reciter is set apart. A recitation published as whole sūras only recites here the sūras already cut into āyāt: for the others, %1$s takes over.</string>
     <string name="sura_title">%1$d · %2$s</string>
@@ -346,8 +347,6 @@
     <string name="quran_voice_stop">Stop listening</string>
     <string name="quran_voice_model">Searching by reciting uses the recitation\'s recognition model (%1$d MB), downloaded once.</string>
     <string name="quran_voice_to">%1$s %2$d → %3$d</string>
-    <string name="mode_read">Reading</string>
-    <string name="mode_recite">Reciting</string>
     <string name="favorite_add">Add to favourites</string>
     <string name="favorite_remove">Remove from favourites</string>
     <string name="favorite_added">Added to favourites</string>

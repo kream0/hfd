@@ -62,11 +62,15 @@ that the app updates itself from new releases. Android 8.0 or newer.
   ḥarakāt, waqf marks and āya numbers in Arabic-Indic digits between ornate brackets ﴿٤﴾. Each sūra's basmala
   is shown above its first āya. Optional translation of meanings under each āya (Hamidullah in
   French, Saheeh International in English; *Auto* follows the app language). Text size S–XL.
+- **One bar to listen from** (`PlayerDock`), above the tabs on every screen: what is being
+  listened to, or, with a passage or a sūra open, that text — listen, next āya, recite it aloud —
+  and behind it the full player (the place in the āya, previous / next, saving offline, and the
+  settings chosen in place). A text's screen has no other player.
 - **Per-āya player:** playback is built as an explicit plan, a flat list of items such as
   basmala, āya (repetition 1), gap, āya (repetition 2), gap, …, next āya. Settings: repeat each
   āya ×1/3/5/7/10/∞ (×1 by default: the passage plays through), repeat the range ×1/2/3/5/10/∞, a pause after each recitation of ½×, 1× or
   1½× the āya's length (to repeat it aloud), speed 0.75–1.25×, reciter, basmala before a sūra,
-  and a sub-range of the faḍīla (range chip, or long-press an āya). Changing a setting rebuilds
+  and a sub-range of the faḍīla (the full player's range, or long-press an āya). Changing a setting rebuilds
   the plan from the current āya. Gaps are `hfd://silence/<ms>` items (a WAV of silence made on
   the fly) sized from the āya's measured length.
 - **Reciters** (everyayah.com, one MP3 per āya): Māhir al-Muʿayqilī (default,
@@ -83,7 +87,7 @@ that the app updates itself from new releases. Android 8.0 or newer.
   byte range in `assets/audio/badr-alturki.json`; the app fetches just those bytes (HTTP Range)
   and plays and saves them like an everyayah file.
 - **Play all** (Faḍāʾil tab): every passage one after the other, without stopping, as one
-  playlist; the notification, the mini player and the passage screen follow the one playing.
+  playlist; the notification, the player bar and the passage screen follow the one playing.
 - **Media session:** notification, lock screen and Bluetooth earbuds. Next / previous jump to the
   next / previous āya (a `ForwardingPlayer`), not the next repetition; the title reads like
   "Āyat al-Kursī · 2:255 · 3/5". Play on the earbuds with the app closed resumes exactly where

@@ -32,16 +32,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -57,7 +54,6 @@ import app.hfd.ui.components.Loader
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.IconBtn
 import app.hfd.ui.components.LocalSheets
-import app.hfd.ui.components.PlayerPanel
 import app.hfd.ui.components.SheetAction
 import app.hfd.ui.components.SheetSpec
 import app.hfd.ui.components.autoAudio
@@ -83,7 +79,6 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val lang = settings.translationFor(uiLanguage)
     val listState = rememberLazyListState()
-    var panelPx by remember { mutableIntStateOf(0) }
     var userScrolledAt by remember { mutableLongStateOf(0L) }
     var autoScrolling by remember { mutableLongStateOf(0L) }
     LaunchedEffect(settings.showTranslation, lang) {
@@ -119,8 +114,7 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
         val index = readingIndex(c, f, current, leading = 1) ?: return@LaunchedEffect
         val info = listState.layoutInfo
         val visible = info.visibleItemsInfo.firstOrNull { it.index == index }
-        val bottom = info.viewportEndOffset - panelPx
-        if (visible != null && visible.offset >= info.viewportStartOffset && visible.offset + visible.size <= bottom) return@LaunchedEffect
+        if (visible != null && visible.offset >= info.viewportStartOffset && visible.offset + visible.size <= info.viewportEndOffset) return@LaunchedEffect
         autoScrolling = System.currentTimeMillis()
         listState.animateScrollToItem(index)
         autoScrolling = System.currentTimeMillis()
@@ -136,7 +130,6 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
                 return@Column
             }
             val title = f.title.text
-            val bottomSpace = with(LocalDensity.current) { panelPx.toDp() } + 24.dp
             val now = System.currentTimeMillis()
             LazyColumn(Modifier.fillMaxSize().testTag("reading"), state = listState) {
                 item(key = "intro") { Intro(f, app) }
@@ -156,11 +149,8 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
                     onTap = { ref -> playFrom(f, title, ref) },
                     onLongPress = { ref -> sheets(ayahActions(context, app, f, title, ref)) },
                 )
-                item(key = "end") { Spacer(Modifier.height(bottomSpace)) }
+                item(key = "end") { Spacer(Modifier.height(12.dp)) }
             }
-        }
-        if (f != null) {
-            PlayerPanel(f, Modifier.align(Alignment.BottomCenter).onSizeChanged { panelPx = it.height })
         }
     }
 }
@@ -250,7 +240,6 @@ private fun Intro(f: Fadila, app: AppViewModel) {
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PillButton(stringResource(R.string.learn), { app.learn(f) }, style = PillStyle.Filled)
-            PillButton(stringResource(R.string.recite), { app.recite(f) }, icon = Ic.Mic)
             if (p.started > 0) PillButton(stringResource(R.string.test), { app.test(f) })
         }
         Spacer(Modifier.height(10.dp))

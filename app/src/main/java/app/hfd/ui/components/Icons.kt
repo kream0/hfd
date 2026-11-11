@@ -78,6 +78,8 @@ object Ic {
     val BookmarkBorder by lazy {
         icon("bookmark_border", "M17,3H7c-1.1,0 -1.99,0.9 -1.99,2L5,21l7,-3 7,3V5c0,-1.1 -0.9,-2 -2,-2zM17,18l-5,-2.18L7,18V5h10v13z")
     }
+    /** Opening what lies behind a bar (the full player). */
+    val Expand by lazy { icon("expand", "M12,8l-6,6 1.41,1.41L12,10.83l4.59,4.58L18,14z") }
     val Tune by lazy {
         icon("tune", "M3,17v2h6v-2H3zM3,5v2h10V5H3zM13,21v-2h8v-2h-8v-2h-2v6h2zM7,9v2H3v2h4v2h2V9H7zM21,13v-2H11v2h10zM15,9h2V7h4V5h-4V3h-2v6z")
     }

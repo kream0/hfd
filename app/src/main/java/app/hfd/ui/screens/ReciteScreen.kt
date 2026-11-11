@@ -135,10 +135,6 @@ fun ReciteScreen(onClose: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(start = 4.dp),
             )
-            // A sūra of the Qur'an section has two modes: this one, and reading (back to its text).
-            if (QuranListening.suraOf(s.fadilaId) != null) {
-                ModeSwitch(reciting = true, onRead = onClose, onRecite = {}, modifier = Modifier.padding(end = 8.dp))
-            }
         }
         Text(statusLine(ui, s), style = Type.label, color = P.textDim, modifier = Modifier.padding(horizontal = 20.dp))
         ProgressLine(ui, Modifier.padding(horizontal = 20.dp, vertical = 8.dp))

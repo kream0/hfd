@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -181,10 +182,14 @@ object Graph {
     /** Set by [app.hfd.playback.PlaybackService] while it runs (same process). */
     val engine = MutableStateFlow<PlaybackEngine?>(null)
 
+    /** What the player is shown as holding, without playing (the screenshot test). */
+    val playingPreview = MutableStateFlow<NowPlaying?>(null)
+
     /** What's playing, from the service's engine: session, plan, current item, sleep timer. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val nowPlaying: StateFlow<NowPlaying?> by lazy {
-        engine.flatMapLatest { it?.state ?: flowOf(null) }.stateIn(scope, SharingStarted.Eagerly, null)
+        engine.flatMapLatest { it?.state ?: flowOf(null) }.combine(playingPreview) { real, shown -> shown ?: real }
+            .stateIn(scope, SharingStarted.Eagerly, null)
     }
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 16)

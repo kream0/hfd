@@ -88,7 +88,9 @@
     <string name="settings_tanzil_link">Ouvrir tanzil.net</string>
     <string name="basmala_label">Bismillāh</string>
     <string name="player_error">Lecture impossible de %1$s : %2$s</string>
-    <string name="player_play">Lire</string>
+    <string name="player_resume_at">Reprendre à %1$s</string>
+    <string name="player_open">Ouvrir le lecteur</string>
+    <string name="player_show">Voir ce qui est écouté</string>
     <string name="player_pause">Pause</string>
     <string name="player_next">Āya suivante</string>
     <string name="player_previous">Āya précédente</string>
@@ -298,7 +300,6 @@
     <string name="quran_search">Sourate, verset (2:255), mot du texte…</string>
     <string name="quran_search_clear">Effacer la recherche</string>
     <string name="quran_resume">Reprendre l’écoute</string>
-    <string name="quran_listening">En cours d’écoute</string>
     <string name="quran_resume_at">%1$s · āya %2$d sur %3$d</string>
     <string name="quran_reciter_body">Pour la section Coran ; celui des passages se règle à part. Une récitation publiée en sourates entières ne récite ici que les sourates déjà découpées en āyāt : pour les autres, %1$s prend le relais.</string>
     <string name="sura_title">%1$d · %2$s</string>
@@ -347,8 +348,6 @@
     <string name="quran_voice_stop">Arrêter l\'écoute</string>
     <string name="quran_voice_model">La recherche en récitant utilise le modèle de reconnaissance de la récitation (%1$d Mo), téléchargé une fois.</string>
     <string name="quran_voice_to">%1$s %2$d → %3$d</string>
-    <string name="mode_read">Lecture</string>
-    <string name="mode_recite">Récitation</string>
     <string name="favorite_add">Ajouter aux favoris</string>
     <string name="favorite_remove">Retirer des favoris</string>
     <string name="favorite_added">Ajouté aux favoris</string>
