@@ -305,6 +305,12 @@
   Whisper meanwhile), `WHISPER` keeps the old one; a session falls back to Whisper if it doesn't
   load or misreads the reference clip (`ctc.load`, `ctc.selftest`, `ctc.text` with ms). The APK
   grows by 10.7 MB (libonnxruntime.so).
+- On the owner's phone (2.5.0, 11 Nov, a search by reciting: 26 readings, phone mic, 2 threads
+  pinned): `ctc.load` 978 ms; a reading 34 ms for 0.5 s of audio, 95 ms for 3 s, 143 ms for 5.3 s,
+  201 ms for 7.8 s: about 22 ms + 23 ms per second, under the bench's 30 + 26, and under Whisper on
+  the NPU (127 ms at 0–3 s, 285 at 6–9). Nothing to tune. The 7.8 s recited found their āya
+  (`voice.heard` letters=84 hits=2:11). Not seen yet: a whole Recite session read by this model on
+  the phone (words right, `recite.tajweed`).
 - `CtcRecognizer` speaks the follower's protocol: the text read freely (nothing to steer), or
   "?\n<text>" held to the frames. A word's check cost is its **worst character** (each at its
   best frame) × 3/7: no character over 7 nats. `tools/ctc/coststudy.py` on the bench's āyāt (2,101
