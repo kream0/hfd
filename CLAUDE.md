@@ -132,6 +132,11 @@
   download here, and since 10 Nov EveryAyah too: `prepare.py <dir>` makes the 58 cases in 2 min,
   a 30 s case then runs in about a minute with `HFD_BENCH_FREE=0`; one gradle run at a time).
   Iterate here, then confirm on CI (a full run takes over an hour).
+- GitHub's `ubuntu-latest` is 26.04 since November; on 11 Nov its apt mirrors didn't resolve from
+  the runners for hours (apt waits an hour before failing: the bench run of 79d2e42 died there, all
+  parts, before any test). `recite.yml` gives apt a few minutes, then takes PyPI's static ffmpeg
+  (`imageio-ffmpeg`, "ffmpeg: …" in the step's log says which); the other workflows that install
+  ffmpeg (audio, model, npu, words, experiment, levels) still only use apt.
 - The owner's kept sessions are gone from the Actions cache (not read for a week: 12 Oct → 10 Nov,
   "Cache not found"): the bench has no "OWNER'S SESSION" until new ones come. diag.yml's two-hourly
   schedule had not fired once in its first hours (10 Nov): don't count on it, read the diagnostics
