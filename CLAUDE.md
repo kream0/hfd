@@ -329,6 +329,14 @@
   follower fixes 1953/2052 (95.2 %; wrong 30, missed 17, pending 52, swaps 4/5, red shown 16)
   against 2.1.0's 1939 (94.5 %; 42, 19, 52, 4/5, 9): the correction rule shows more words red
   then right. The CTC parts take 25 min, Whisper's over an hour.
+- CI again on beec78a (11 Nov, 2.5.0's and 2.6.0's Recite code: `Follower.read`, `Ctc.placed`, no
+  logic changed): ctc 2043/2052 (wrong 4, missed 0, pending 5), Whisper 1953/2052 (30, 17, 52,
+  4/5, shown 16): the same. One difference, ctc swaps 3/5: baqara-opening-husary-flow-swap3w8's
+  يُنفِقُونَ said يُؤْمِنُونَ was shown red, then righted (218 readings where the reference run and this
+  sandbox have 217; here the same commit catches it, 1/1). Not the audio: that run decoded with
+  PyPI's ffmpeg 9 (apt was down), whose WAVs are the same bit for bit as ffmpeg 6's here. What is
+  left is the int8 model's arithmetic on that runner's CPU: this swap is borderline for the CTC
+  check, on one machine in three so far. The phone is a fourth arithmetic (ARM): unknown there.
 - Not caught: يُولَدْ said يَلِدْ (the model writes يُولِدْ, the text's letters: no check runs). Checking
   every word of a whole utterance at a higher bar (10?) would, at some cost in words said: not
   tried. الٓمٓ itself costs 10 nats held to the bench's audio: the letters stay the tracker's.
