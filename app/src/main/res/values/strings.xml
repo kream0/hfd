@@ -88,14 +88,12 @@
     <string name="settings_tanzil_link">Open tanzil.net</string>
     <string name="basmala_label">Bismillāh</string>
     <string name="player_error">Can\'t play %1$s: %2$s</string>
-    <string name="player_resume_at">Resume at %1$s</string>
     <string name="player_open">Open the player</string>
     <string name="player_show">Show what is playing</string>
     <string name="player_pause">Pause</string>
     <string name="player_next">Next āya</string>
     <string name="player_previous">Previous āya</string>
     <string name="player_listen">Listen</string>
-    <string name="player_resume">Resume</string>
 
     <string name="repeat_each">Repeat each āya</string>
     <string name="repeat_each_body">How many times each āya is recited before the next. ∞ loops it until you skip.</string>
@@ -302,8 +300,6 @@
     <string name="quran_found">%1$d found</string>
     <string name="quran_search">Sūra, verse (2:255), word of the text…</string>
     <string name="quran_search_clear">Clear the search</string>
-    <string name="quran_resume">Resume listening</string>
-    <string name="quran_resume_at">%1$s · āya %2$d of %3$d</string>
     <string name="quran_reciter_body">For the Qur’an section; the passages’ reciter is set apart. A recitation published as whole sūras only recites here the sūras already cut into āyāt: for the others, %1$s takes over.</string>
     <string name="sura_title">%1$d · %2$s</string>
     <string name="sura_meccan">Meccan</string>
@@ -437,4 +433,12 @@
         <item quantity="one">%d long vowel measured, held as it should be</item>
         <item quantity="other">%d long vowels measured, all held as they should be</item>
     </plurals>
+    <string name="quran_read_at">Reading · āya %1$d of %2$d</string>
+    <string name="quran_go_title">Go to…</string>
+    <string name="reader_go">Search, go elsewhere in the Qur\'an</string>
+    <string name="reader_place">%1$s · %2$d</string>
+    <string name="reader_parts">Juzʾ %1$d · Ḥizb %2$d · āya %3$d of %4$d</string>
+    <string name="reader_playing_at">Back to āya %1$d, playing</string>
+    <string name="player_from_aya">Listen from āya %1$d</string>
+    <string name="passage_playing_at">Back to %1$s, playing</string>
 </resources>

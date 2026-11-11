@@ -185,11 +185,11 @@ private fun listening(id: String): Listening? {
     return remember(f, title) { Listening(id, title, f, null, f.ayat) }
 }
 
-/** Starts listening to [l] as its screen does: a sūra from where it was left, a passage's chosen range. */
+/** Starts listening to [l] as its screen does: a sūra from the āya at the top of its text (where it is being read), a passage's chosen range. */
 private fun start(l: Listening) {
     val f = l.fadila
     if (f != null) Graph.player.play(sessionFor(f, l.title, Graph.ranges.get(f.id, f.size)))
-    else l.sura?.let { n -> Graph.playSura(n, Graph.quranPlace.place.value?.takeIf { it.sura == n && it.aya > 1 }) }
+    else l.sura?.let { n -> Graph.playSura(n, Graph.reading.of(n)?.takeIf { it.aya > 1 }) }
 }
 
 /** The round button that listens or pauses: the bar's and the full player's. */
@@ -223,7 +223,7 @@ fun PlayerDock(open: String?, onOpen: () -> Unit, onRecite: (() -> Unit)?, modif
     val ui by Graph.player.state.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
     val ranges by Graph.ranges.ranges.collectAsStateWithLifecycle()
-    val place by Graph.quranPlace.place.collectAsStateWithLifecycle()
+    val place by Graph.reading.place.collectAsStateWithLifecycle()
     val held = np
     val own = open != null && held != null && held.plays(open)
     // Another text than the open one, heard while it is open. (An āya of the open text left by a
@@ -249,7 +249,7 @@ fun PlayerDock(open: String?, onOpen: () -> Unit, onRecite: (() -> Unit)?, modif
             val reciter = if (of?.sura != null) remember(settings.quranChoice, of.ayat) { Graph.quranReciter(of.ayat, settings) } else settings.reciterInfo
             val resume = place?.takeIf { it.sura == of?.sura && it.aya > 1 }
             val range = of?.fadila?.let { f -> remember(ranges, f) { Graph.ranges.get(f.id, f.size) }.takeIf { it.from != 0 || it.to != f.ayat.lastIndex }?.let { rangeLabel(f, it) } }
-            listOf(resume?.let { stringResource(R.string.player_resume_at, it.toString()) } ?: range ?: stringResource(R.string.player_listen), reciter.short)
+            listOf(resume?.let { stringResource(R.string.player_from_aya, it.aya) } ?: range ?: stringResource(R.string.player_listen), reciter.short)
         }
     }.filter { it.isNotBlank() }.joinToString("  ·  ")
 
@@ -328,7 +328,7 @@ private fun FullPlayer(id: String, title: String, strict: Boolean) {
     val ui by Graph.player.state.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
     val ranges by Graph.ranges.ranges.collectAsStateWithLifecycle()
-    val place by Graph.quranPlace.place.collectAsStateWithLifecycle()
+    val place by Graph.reading.place.collectAsStateWithLifecycle()
     val of = listening(id)
     val f = of?.fadila
     val sura = of?.sura
@@ -349,7 +349,7 @@ private fun FullPlayer(id: String, title: String, strict: Boolean) {
                 when {
                     loaded -> itemLabel(held?.item)
                     f != null && range != null -> rangeLabel(f, range)
-                    else -> resumeAt?.let { stringResource(R.string.player_resume_at, it.toString()) } ?: stringResource(R.string.chip_all)
+                    else -> resumeAt?.let { stringResource(R.string.player_from_aya, it.aya) } ?: stringResource(R.string.chip_all)
                 },
                 style = Type.clock,
                 color = P.text,

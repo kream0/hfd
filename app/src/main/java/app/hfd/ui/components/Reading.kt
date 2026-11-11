@@ -17,7 +17,21 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -210,6 +224,102 @@ fun AyahBlock(
                 color = P.textDim,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+    }
+}
+
+/**
+ * Whether a text follows the āya being recited. It does while that āya is in view: scrolled out
+ * of view (by hand, or by going to another place), the text stays where the reader put it, and a
+ * chip offers to come back ([PlayingChip]); scrolled back into view, or the recitation reaching
+ * what is on screen, it follows again. Never a jump the reader didn't ask for.
+ */
+@Stable
+class Follow internal constructor(private val state: LazyListState, private val fromStart: Boolean) {
+    var on by mutableStateOf(false)
+        internal set
+
+    /** The list item of the āya recited, or null. */
+    var index by mutableStateOf<Int?>(null)
+        internal set
+
+    /** Where the āya recited is from what is shown: −1 above, 1 below, 0 in view (or nothing recited). */
+    val away: Int
+        get() {
+            val i = index ?: return 0
+            val shown = state.layoutInfo.visibleItemsInfo
+            if (shown.isEmpty() || shown.any { it.index == i }) return 0
+            return if (i < shown.first().index) -1 else 1
+        }
+
+    internal fun inView(i: Int) = state.layoutInfo.visibleItemsInfo.any { it.index == i }
+
+    /** Whether the text, where it rests, follows item [i]: it is in view (or the text is still at its very start, [fromStart]). */
+    internal fun rests(i: Int) = inView(i) || (fromStart && state.firstVisibleItemIndex == 0 && state.firstVisibleItemScrollOffset == 0)
+
+    /** Back to the āya recited, and following it again. */
+    suspend fun resume() {
+        val i = index ?: return
+        on = true
+        state.animateScrollToItem(i)
+    }
+}
+
+/**
+ * [fromStart]: a text opened at its very start (a passage, under its introduction) follows what is
+ * recited from there; a sūra, opened where it is read, only what is in view.
+ */
+@Composable
+fun rememberFollow(state: LazyListState, index: Int?, fromStart: Boolean = false): Follow {
+    val follow = remember(state) { Follow(state, fromStart) }
+    follow.index = index
+    // Whenever the text has come to rest somewhere (after the reader's scroll, or a jump to another place):
+    // following is what is in view. (A jump may begin and end within a frame: the place itself is watched.)
+    LaunchedEffect(state) {
+        snapshotFlow { Triple(state.isScrollInProgress, state.firstVisibleItemIndex, state.layoutInfo.visibleItemsInfo.size) }.collect { (moving, _, shown) ->
+            val i = follow.index
+            if (!moving && shown > 0 && i != null) follow.on = follow.rests(i)
+        }
+    }
+    // The recitation moves on: into view if followed; and followed from the moment it is in view.
+    LaunchedEffect(index) {
+        // (Nothing recited: nothing followed. What is recited next is followed if it is in view.)
+        val i = index ?: run { follow.on = false; return@LaunchedEffect }
+        snapshotFlow { state.layoutInfo.visibleItemsInfo.isNotEmpty() }.first { it }
+        if (follow.rests(i)) follow.on = true
+        if (!follow.on) return@LaunchedEffect
+        val info = state.layoutInfo
+        val item = info.visibleItemsInfo.firstOrNull { it.index == i }
+        if (item != null && item.offset >= info.viewportStartOffset && item.offset + item.size <= info.viewportEndOffset) return@LaunchedEffect
+        state.animateScrollToItem(i)
+    }
+    return follow
+}
+
+/** Offers to come back to the āya being recited ([playing]), when the text was taken elsewhere. */
+@Composable
+fun PlayingChip(follow: Follow, playing: Boolean, label: String, modifier: Modifier = Modifier) {
+    val scope = rememberCoroutineScope()
+    val away by remember(follow) { derivedStateOf { follow.away } }
+    androidx.compose.animation.AnimatedVisibility(
+        visible = playing && away != 0 && !follow.on,
+        modifier = modifier,
+        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { it / 2 },
+        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { it / 2 },
+    ) {
+        Row(
+            Modifier
+                .padding(bottom = 10.dp)
+                .clip(CircleShape)
+                .background(P.surfaceHigh)
+                .border(1.dp, P.wordMark.copy(alpha = 0.6f), CircleShape)
+                .clickable { scope.launch { follow.resume() } }
+                .padding(start = 12.dp, end = 16.dp, top = 9.dp, bottom = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(if (away < 0) "↑" else "↓", style = Type.title, color = P.wordMark)
+            Spacer(Modifier.width(8.dp))
+            Text(label, style = Type.labelBold, color = P.text, maxLines = 1)
         }
     }
 }

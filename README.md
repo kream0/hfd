@@ -154,8 +154,14 @@ that the app updates itself from new releases. Android 8.0 or newer.
   Source Serif 4, which writes the transliteration's letters well (Faḍāʾil, Āl ʿImrān).
 - **The whole Qur'an** (*Coran* tab): the 114 sūras with their text, listed by sūra, by juzʾ (30)
   or by ḥizb (60), from Tanzil's metadata (`parts.json`); a sūra plays through and the next
-  follows, to the end, screen off included. Resume where the listening stopped; a reciter of its
-  own; a sūra can be saved offline. It stays out of the learning statistics.
+  follows, to the end, screen off included. A reciter of its own; a sūra can be saved offline. It
+  stays out of the learning statistics.
+  - **Where one is, and anywhere else from there.** Over a sūra's text a bar stays in place: the
+    sūra and the āya at the top of the screen, its juzʾ and ḥizb. A tap opens the search and the
+    lists over the text, without leaving it. The sūra reopens where it was left (the app as a
+    whole does: tab, text, place, what the player holds), and listening starts from there. The
+    text follows the recitation while the āya recited is on screen; taken elsewhere it stays
+    there, and a chip leads back to the āya recited.
   - **Search** (`:core` `QuranSearch`): a reference (`2:255`, `baqara 255`), a sūra's name or
     number, `juz 5` / `hizb 12`, words of the text typed in Arabic however spelt (compared
     without vowel signs or alif forms; the words found are lit in the results), or words of the

@@ -339,6 +339,44 @@ def search_and_favourite():
     step("suras", is_("Sourates"), starts("Al-Baqara"))
 
 
+def go_while_listening():
+    """While an āya is recited, the bar over the text goes to another: the text stays there (it used to
+    jump back to the āya recited), a chip offers the way back, and takes it."""
+    bar = find(is_("Chercher, aller ailleurs dans le Coran"))
+    if not bar:
+        failures.append("go: no bar over the text")
+        return
+    tap(bar)
+    if not wait(is_("Aller à…"), 15):
+        failures.append("go: the search didn't open over the text")
+        shot("go-missing")
+        return
+    time.sleep(1.0)
+    sh("input text 2:150")
+    if not wait(is_("Al-Baqara 150"), 20):
+        failures.append("go: 2:150 found nothing")
+        shot("go-missing")
+        sh("input keyevent 4")
+        return
+    tap(find(is_("Al-Baqara 150")))
+    arrived = wait(is_("2:150"), 20)
+    time.sleep(9)
+    stayed = find(is_("2:150")) is not None and find(is_("Al-Baqara · 150")) is not None
+    chip = find(starts("Revenir à l"))
+    report["go while listening"] = {"arrived": bool(arrived), "stayed": stayed, "chip": bool(chip)}
+    print(f"SMOKE going to 2:150 while 2:255 is recited: arrived {bool(arrived)}, still there after 9 s {stayed}, way back offered {bool(chip)}", flush=True)
+    shot("go-while-listening")
+    if not arrived or not stayed:
+        failures.append("go: the text went back to the āya recited")
+    if not chip:
+        failures.append("go: no way back to the āya recited")
+        return
+    tap(chip)
+    if not wait(is_("2:255"), 15):
+        failures.append("go: the way back didn't bring the āya recited")
+        shot("go-back-missing")
+
+
 def one_player(when):
     """A text's screen has one place to listen from: the bar (no panel, no second player under it)."""
     seen = nodes()
@@ -354,7 +392,14 @@ def one_player(when):
 sh("settings put secure show_ime_with_hard_keyboard 1")
 if step("quran", is_("Coran"), starts("Al-Baqara")):
     search_and_favourite()
-    if step("sura", starts("Al-Baqara"), lambda t: "ذَٰلِكَ" in t, seconds=40):
+    if step("sura", starts("Al-Baqara"), is_("Chercher, aller ailleurs dans le Coran"), seconds=40):
+        # The sūra comes back as it was left: at the āya the search opened it at.
+        back_there = wait(lambda t: t == "Al-Baqara · 255", 15)
+        report["reopened at"] = bool(back_there)
+        print(f"SMOKE sūra reopened where it was left (2:255): {bool(back_there)}", flush=True)
+        if not back_there:
+            failures.append("reader: the sūra didn't reopen where it was left")
+            shot("reopen-missing")
         # Playing: the media service, its session, the stream.
         one_player("before listening")
         # The colours of tajwīd: the legend opens from the text's screen, with its switch; Back closes it.
@@ -370,6 +415,7 @@ if step("quran", is_("Coran"), starts("Al-Baqara")):
             report["playback"] = state.group(1) if state else None
             print(f"SMOKE playback state: {report['playback']}", flush=True)
             one_player("while listening")
+            go_while_listening()
             pause = find(is_("Pause"))
             if pause:
                 tap(pause)

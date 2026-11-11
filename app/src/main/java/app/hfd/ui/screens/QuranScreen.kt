@@ -40,6 +40,10 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import app.hfd.ui.components.IconBtn
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -101,21 +105,26 @@ import kotlinx.coroutines.withContext
 /** What the Qur'an section lists. */
 private enum class QuranView { SURAS, JUZ, HIZB, FAVORITES }
 
+/** The Qur'an section's tab: [QuranBrowser]. */
+@Composable
+fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit) = QuranBrowser(onOpen)
+
 /**
- * The Qur'an section: every sūra to read and listen to, by sūra, juzʾ or ḥizb; the āyāt kept
- * while reading; and a search of the whole text (a reference, a name, words of the text or of
- * the translation, or a phrase recited aloud). A sūra plays through and the next one follows;
- * "resume" starts again where the listening stopped.
+ * The way into the Qur'an's text: a search of the whole of it (a reference, a name, words of the
+ * text or of the translation, or a phrase recited aloud), and its lists (sūras, ajzāʾ, aḥzāb, the
+ * āyāt kept). The same on the Coran tab and over a sūra being read ([onClose]: opened from the
+ * bar over the text, it starts in the search field and can be closed): one place to go anywhere
+ * from, wherever one is.
  */
 @Composable
-fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit) {
+fun QuranBrowser(onOpen: (sura: Int, aya: Int?) -> Unit, onClose: (() -> Unit)? = null) {
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val np by Graph.nowPlaying.collectAsStateWithLifecycle()
     val ui by Graph.player.state.collectAsStateWithLifecycle()
-    val place by Graph.quranPlace.place.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
     val translations by Graph.content.translations.collectAsStateWithLifecycle()
     val favorites by Graph.favorites.list.collectAsStateWithLifecycle()
+    val reading by Graph.reading.place.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
     var view by rememberSaveable { mutableIntStateOf(QuranView.SURAS.ordinal) }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -124,6 +133,15 @@ fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit) {
     val context = LocalContext.current
     val c = content
     val lang = settings.translationFor(uiLanguage)
+    // Opened over a text: straight into the search field, the keyboard up.
+    val field = remember { FocusRequester() }
+    if (onClose != null) LaunchedEffect(c != null) {
+        // (The field is laid out with the list: asked again until it is there.)
+        if (c != null) repeat(12) {
+            if (runCatching { field.requestFocus() }.isSuccess) return@LaunchedEffect
+            withFrameNanos { }
+        }
+    }
 
     // A result chosen: the keyboard goes (it stayed up over the sūra), then the text opens there.
     val open: (Int, Int?) -> Unit = { sura, aya ->
@@ -153,37 +171,12 @@ fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit) {
             return@Box
         }
         val playingSura = np?.session?.sura
-        LazyColumn(Modifier.fillMaxSize().testTag("quran")) {
-            item(key = "header") { ScreenHeader(stringResource(R.string.tab_quran)) }
-            // Where the listening of the Qur'an stopped, to take it up again; unless the player holds
-            // a sūra: the bar under the tabs is then that very offer, and the only one.
-            val at = place
-            if (at != null && playingSura == null && query.isBlank()) {
-                item(key = "resume") {
-                    val meta = c.sura(at.sura)
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .card()
-                            .clickable { open(at.sura, at.aya) }
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.quran_resume).uppercase(), style = Type.overline, color = P.textDim)
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                stringResource(R.string.quran_resume_at, meta.tname, at.aya, meta.ayas),
-                                style = Type.name,
-                                color = P.text,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        Spacer(Modifier.width(10.dp))
-                        PillButton(stringResource(R.string.player_resume), onClick = { Graph.playSura(at.sura, at) }, style = PillStyle.Filled)
-                    }
+        LazyColumn(Modifier.fillMaxSize().testTag(if (onClose == null) "quran" else "go")) {
+            item(key = "header") {
+                if (onClose == null) ScreenHeader(stringResource(R.string.tab_quran))
+                else Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconBtn(Ic.Close, { keyboard?.hide(); onClose() }, contentDescription = stringResource(R.string.close))
+                    Text(stringResource(R.string.quran_go_title), style = Type.name, color = P.text, modifier = Modifier.padding(start = 4.dp))
                 }
             }
             item(key = "search") {
@@ -191,6 +184,8 @@ fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit) {
                     query,
                     onChange = { query = it },
                     onDone = { keyboard?.hide() },
+                    focus = field,
+                    tag = if (onClose == null) "search" else "go-search",
                     onVoice = {
                         keyboard?.hide()
                         focus.clearFocus()
@@ -222,7 +217,7 @@ fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit) {
                     QuranView.SURAS -> {
                         item(key = "count") { ListLabel(stringResource(R.string.quran_count, c.suras.size)) }
                         items(c.suras, key = { "s${it.index}" }) { s ->
-                            SuraRow(s, playing = playingSura == s.index, active = playingSura == s.index && ui.playWhenReady, onClick = { open(s.index, null) })
+                            SuraRow(s, playing = playingSura == s.index, active = playingSura == s.index && ui.playWhenReady, readAt = reading?.takeIf { it.sura == s.index && it.aya > 1 }?.aya, onClick = { open(s.index, null) })
                         }
                     }
                     QuranView.JUZ -> itemsIndexed(c.parts.juz, key = { i, _ -> "j$i" }) { i, start ->
@@ -420,7 +415,7 @@ private fun PartRow(c: Content, title: String, number: Int, start: AyahRef, onCl
 }
 
 @Composable
-private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () -> Unit, onVoice: () -> Unit) {
+private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () -> Unit, focus: FocusRequester, tag: String, onVoice: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -445,7 +440,7 @@ private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () ->
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onDone() }),
                 // The field lies over its hint, which a screen reader then doesn't see: it says it itself.
-                modifier = Modifier.fillMaxWidth().testTag("search").semantics { contentDescription = hint },
+                modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag(tag).semantics { contentDescription = hint },
             )
         }
         val label = stringResource(if (query.isNotEmpty()) R.string.quran_search_clear else R.string.quran_voice)
@@ -577,7 +572,7 @@ private fun VoiceSearchSheet(c: Content, onOpen: (AyahRef) -> Unit) {
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun SuraRow(s: SuraMeta, playing: Boolean, active: Boolean, onClick: () -> Unit) {
+private fun SuraRow(s: SuraMeta, playing: Boolean, active: Boolean, readAt: Int? = null, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -595,7 +590,9 @@ private fun SuraRow(s: SuraMeta, playing: Boolean, active: Boolean, onClick: () 
         Column(Modifier.weight(1f)) {
             Text(s.tname, style = Type.name, color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(3.dp))
-            Text(
+            // The sūra being read says where: it opens there.
+            if (readAt != null) Text(stringResource(R.string.quran_read_at, readAt, s.ayas), style = Type.label, color = P.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            else Text(
                 stringResource(if (s.type == "Medinan") R.string.sura_medinan else R.string.sura_meccan) + " · " +
                     pluralStringResource(R.plurals.ayat_count, s.ayas, s.ayas),
                 style = Type.label,

@@ -10,9 +10,9 @@ import app.hfd.data.ContentRepo
 import app.hfd.data.Favorites
 import app.hfd.diag.Diag
 import app.hfd.data.ProgressRepo
-import app.hfd.data.QuranPlace
 import app.hfd.data.SessionStore
 import app.hfd.data.RangeStore
+import app.hfd.data.ReadingPlace
 import app.hfd.data.Settings
 import app.hfd.download.AudioDownloader
 import app.hfd.download.AudioStore
@@ -77,8 +77,8 @@ object Graph {
     val downloads: AudioDownloader by lazy { AudioDownloader(app, audio, http, scope, timings) }
     val player: PlayerConnection by lazy { PlayerConnection(app) }
     val ranges: RangeStore by lazy { RangeStore(app) }
-    /** Where the Qur'an section was last listened to. */
-    val quranPlace: QuranPlace by lazy { QuranPlace(app) }
+    /** Where the Qur'an was last being read: the one place a sūra reopens at and listening starts from. */
+    val reading: ReadingPlace by lazy { ReadingPlace(app, scope) }
     /** Āyāt marked while reading the Qur'an section. */
     val favorites: Favorites by lazy { Favorites(app) }
     val progress: ProgressRepo by lazy { ProgressRepo(app, scope) }

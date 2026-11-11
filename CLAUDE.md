@@ -407,11 +407,32 @@
   so what sounds can always be paused; « Réciter » is only on a text's own bar.
 - A sūra's screen hands the bar how it starts a recitation (`onReciteAction`: from the āya at the
   top, a sheet asking "from āya N / from the start"). A passage's Recite pill left its intro for
-  the bar. `ReciteScreen` has no switch (its ✕ did the same). The Coran tab's resume card shows
-  only when the player holds no sūra.
+  the bar. `ReciteScreen` has no switch (its ✕ did the same).
 - `Graph.playingPreview` shows the player as holding something without playing (the screenshot
   test: `listen`, `fadail-listening`). The smoke tour counts the listening buttons on a sūra's
   screen (one), opens the full player, and recites from the bar.
+
+## Where one is (2.6.0, the owner: a bar always there to search from; no jump back to the āya played; no resume card, the app as it was left)
+- `SuraScreen`'s `PlaceBar` (fixed over the text): the sūra and the āya at the top (`topAya`), its
+  juzʾ and ḥizb; a tap opens `QuranBrowser` over the text (the Coran tab's own search and lists,
+  `onClose`: focused in the search field; tags `go` / `go-search`, the tab's `quran` / `search`).
+- `ReadingPlace` (`Graph.reading`, progress/reading.json; `QuranPlace` and the Coran tab's resume
+  card are gone): the āya at the top of the sūra last read, and whether the text was following the
+  recitation there. A sūra opens at: the place asked for (`suraTarget`); else the āya recited, if
+  it was being followed; else the reading place. While followed (screen off and app closed
+  included) the player moves the place on (`PlaybackEngine.keepPlace`). The list's row of that sūra says so ("Lecture en
+  cours · āya N"); the bar listens from there (`player_from_aya`). `AppViewModel` already kept the
+  tab and the open text: the app reopens as it was left.
+- `Follow` (`components/Reading.kt`, both the sūra's and the passage's screens): the text follows
+  the āya recited only while that āya is in view where the text rests (a passage also from its
+  very start, `fromStart`); otherwise it stays, and `PlayingChip` (while playing) leads back. The
+  bug it replaces: a search result opened while the sūra played was left for the āya played (the
+  old "scroll back unless touched in the last 6 s"). The next sūra takes the screen only if the
+  recitation was followed. `ScreenshotTest` checks both ways with `Graph.playingPreview` (the bar's
+  text after the āya recited moves); the smoke tour goes to 2:150 while 2:255 plays, waits 9 s,
+  takes the chip back, and checks the sūra reopens at the āya it was left at.
+- A paused player holding another āya of the sūra read resumes there (the bar says which); "listen
+  from here" is the āya's sheet.
 
 ## Tajwīd (2.5.0, the owner: coloured letters as in some muṣḥafs, configurable; an accurate check in Recite)
 - `:core` `tajweed/Tajweed.kt`: `Tajweed.annotate(āya)` → `Span(from, to, rule, part, word, letter)`.
@@ -472,8 +493,7 @@
   next (`continueQuran`; next / previous cross sūras). Its reciter is `AppSettings.quranChoice`;
   a whole-sūra recitation recites the sūras all of whose āyāt are cut, else
   `QuranListening.FALLBACK` takes over (`Graph.quranReciter`, 1.16.1: the owner chose at-Turkī
-  for al-Kahf; since 2.0.1 he is cut for all 114 sūras, 87 of 6,236 cuts "to look at"). It stays out of the progress log (`ListenTracker`). `QuranPlace` keeps the last
-  āya (resume). Sūra names: `SuraNames` (the passages' transliteration, checked against Tanzil's).
+  for al-Kahf; since 2.0.1 he is cut for all 114 sūras, 87 of 6,236 cuts "to look at"). It stays out of the progress log (`ListenTracker`). Sūra names: `SuraNames` (the passages' transliteration, checked against Tanzil's).
 - The look (2.0.0, the owner: drop the Nothing theme for one fit for the app): `ui/theme/Theme.kt`.
   Night (deep green, cream, gold) or paper (cream, ink, deep green buttons, ochre). `accent` is
   what is lit, `primary` the main button, `error` mistakes alone, `wordMark` (turquoise) the word

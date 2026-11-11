@@ -316,7 +316,15 @@ class PlaybackEngine(
         saveJob?.cancel()
         val snap = snapshot() ?: return
         resumeFile.write(snap)
-        if (snap.session.sura != null) currentItem()?.ref?.let { Graph.quranPlace.set(it) }
+        keepPlace(snap)
+    }
+
+    /**
+     * A sūra listened to while its text follows (or with the screen off, the app closed): the
+     * place read goes on with it. Read elsewhere meanwhile, the place stays the reader's.
+     */
+    private fun keepPlace(snap: Resume) {
+        if (snap.session.sura != null && Graph.reading.following) currentItem()?.ref?.let { Graph.reading.set(it) }
     }
 
     fun pause() = player.pause()
@@ -461,12 +469,8 @@ class PlaybackEngine(
         saveJob = scope.launch {
             delay(1_000)
             val snap = snapshot() ?: return@launch
-            val place = currentItem()?.ref?.takeIf { snap.session.sura != null }
-            launch(Dispatchers.IO) {
-                resumeFile.write(snap)
-                // Where the Qur'an section resumes, whatever is listened to in between.
-                if (place != null) Graph.quranPlace.set(place)
-            }
+            keepPlace(snap)
+            launch(Dispatchers.IO) { resumeFile.write(snap) }
         }
     }
 

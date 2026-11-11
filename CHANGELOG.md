@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.6.0
+In a sūra, a bar at the top always says where you are and opens the search; the text no longer jumps back to the verse being played.
+- **Where you are, always in view.** Over a sūra's text a bar stays in place while you scroll: the sūra and the āya at the top of the screen, with its juzʾ and ḥizb. Tap it: the search and the lists (sūras, juzʾ, ḥizb, favourites) open right there, the keyboard up, with no going back to the Coran tab. Type 2:150, a word, or recite a few words, and the text goes there.
+- **Fixed: the text jumped back to the verse being played.** Opening a search result while a sūra was playing showed it for an instant, then returned to the āya recited. The text now follows the recitation only while the āya recited is on screen. Go elsewhere and it stays where you put it; a chip at the bottom ("Back to āya N, playing") brings you back, and following starts again.
+- **The app reopens as you left it.** A sūra opens at the āya you were reading, not at its beginning; the list shows which sūra you are reading and where. The "Resume" card of the Coran tab is gone: nothing to resume, you are already there. The play button listens from the āya at the top of the screen ("Listen from āya N").
+- When a sūra ends, the next one takes the screen only if you were following the recitation; reading elsewhere, you stay where you are.
+- Passages behave the same: scroll away from the āya played and the text stays, with the chip to come back.
+
 ## 2.5.0
 Tajwīd: the letters in the colours of their rules, and Recite can time your long vowels.
 - **Coloured letters.** The Qur'an's text now shows the rules of tajwīd as the printed muṣḥafs of tajwīd do: the reds of the long vowels deepen with their length (2, 2-4-6, 4-5, 6 counts), green for the ghunna (ikhfāʾ, iqlāb, idghām), sky blue for the qalqala, grey for what is not pronounced. The palette button on a text's screen (or Settings → Reading) opens the legend, where each colour, or all of them, can be switched off; the heavy rāʾ and the lām of the Name have a colour too, off until you ask for it.

@@ -179,10 +179,9 @@ class ScreenshotTest {
         rule.onNodeWithTag("reading").performScrollToIndex(0)
         ui { vm.openFadila("tawba-end") }
         both("tawba-end")
-        // The Qur'an section: the sūras (the listening left at 18:10), and one open.
+        // The Qur'an section: the sūras, and one open.
         ui {
             vm.fadila = null
-            Graph.quranPlace.set(app.hfd.core.quran.AyahRef(18, 10))
             vm.selectTab(Tab.QURAN)
         }
         both("quran")
@@ -196,6 +195,10 @@ class ScreenshotTest {
         // A sūra to read; then opened where a juzʾ begins, an āya kept as a favourite.
         ui { vm.openSura(18) }
         both("sura")
+        // The way anywhere else, from the bar over the text: the search and the lists.
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.reader_go)).performSemanticsAction(SemanticsActions.OnClick)
+        both("go")
+        ui { rule.activity.onBackPressedDispatcher.onBackPressed() }
         // The colours of tajwīd: their legend (where they are chosen), and one āya's rules.
         rule.onNodeWithContentDescription(rule.activity.getString(R.string.tajweed_open)).performSemanticsAction(SemanticsActions.OnClick)
         both("tajweed")
@@ -219,6 +222,36 @@ class ScreenshotTest {
             vm.openSura(18, 75)
         }
         both("sura-part")
+        // The text never leaves the place it is read at for the āya recited elsewhere (it did: a search
+        // result opened while the sūra played was left at once); it follows the recitation it shows.
+        fun recited(aya: Int) = ui {
+            val ayat = app.hfd.core.playback.QuranListening.ayat(18, 110)
+            Graph.playingPreview.value = app.hfd.playback.NowPlaying(
+                app.hfd.playback.PlaySession(app.hfd.core.playback.QuranListening.id(18), "Al-Kahf", ayat, 0, ayat.lastIndex),
+                app.hfd.core.playback.PlanSpec(ayat, repeatEach = 1),
+                Graph.settings.current.reciterInfo,
+                app.hfd.core.playback.PlanItem.Ayah(app.hfd.core.playback.Cursor(), ayat[aya - 1], 1),
+                null,
+            )
+        }
+        fun at(aya: Int) {
+            rule.mainClock.advanceTimeBy(2_000)
+            rule.onNodeWithText("Al-Kahf · $aya").assertExists()
+        }
+        recited(10)
+        at(75)
+        recited(11)
+        at(75)
+        ui { vm.openSura(18, 40) }
+        at(40)
+        recited(12)
+        at(40)
+        // Recited where it is read, it is followed: on to an āya further down, the text goes there.
+        recited(40)
+        at(40)
+        recited(48)
+        at(48)
+        ui { Graph.playingPreview.value = null }
         ui {
             vm.fadila = null
             vm.selectTab(Tab.STATS)

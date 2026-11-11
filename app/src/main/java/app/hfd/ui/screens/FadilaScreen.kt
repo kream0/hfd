@@ -32,7 +32,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,7 +60,9 @@ import app.hfd.ui.components.ayahTajweedSheet
 import app.hfd.ui.components.tajweedSheet
 import app.hfd.ui.components.rangesLabel
 import app.hfd.ui.components.readingIndex
+import app.hfd.ui.components.PlayingChip
 import app.hfd.ui.components.readingItems
+import app.hfd.ui.components.rememberFollow
 import app.hfd.ui.components.rememberPlayingWord
 import app.hfd.ui.components.sessionFor
 import app.hfd.ui.text
@@ -76,13 +77,12 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
     val translations by Graph.content.translations.collectAsStateWithLifecycle()
     val np by Graph.nowPlaying.collectAsStateWithLifecycle()
+    val player by Graph.player.state.collectAsStateWithLifecycle()
     val progress by Graph.progress.state.collectAsStateWithLifecycle()
     val sheets = LocalSheets.current
     val context = LocalContext.current
     val lang = settings.translationFor(uiLanguage)
     val listState = rememberLazyListState()
-    var userScrolledAt by remember { mutableLongStateOf(0L) }
-    var autoScrolling by remember { mutableLongStateOf(0L) }
     LaunchedEffect(settings.showTranslation, lang) {
         if (settings.showTranslation) Graph.content.ensureTranslation(lang)
     }
@@ -102,25 +102,10 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
     val current: AyahRef? = np?.takeIf { it.fadilaId == id }?.item?.ref
     val playing = rememberPlayingWord()
 
-    // Keep the playing āya in view, unless the reader has just scrolled away by hand.
-    LaunchedEffect(listState.isScrollInProgress) {
-        if (listState.isScrollInProgress && System.currentTimeMillis() - autoScrolling > 800) {
-            userScrolledAt = System.currentTimeMillis()
-        }
-    }
     // Reopened on a passage that no longer exists (saved before the list changed): go back.
     LaunchedEffect(c, f) { if (c != null && f == null) onBack() }
-    LaunchedEffect(current, c, f) {
-        if (current == null || c == null || f == null) return@LaunchedEffect
-        if (System.currentTimeMillis() - userScrolledAt < 6_000) return@LaunchedEffect
-        val index = readingIndex(c, f, current, leading = 1) ?: return@LaunchedEffect
-        val info = listState.layoutInfo
-        val visible = info.visibleItemsInfo.firstOrNull { it.index == index }
-        if (visible != null && visible.offset >= info.viewportStartOffset && visible.offset + visible.size <= info.viewportEndOffset) return@LaunchedEffect
-        autoScrolling = System.currentTimeMillis()
-        listState.animateScrollToItem(index)
-        autoScrolling = System.currentTimeMillis()
-    }
+    // The text follows the āya recited while it is in view; taken elsewhere, it stays there (Follow).
+    val follow = rememberFollow(listState, if (current != null && c != null && f != null) readingIndex(c, f, current, leading = 1) else null, fromStart = true)
 
     Box(Modifier.fillMaxSize().background(P.background)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -156,6 +141,7 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
                 item(key = "end") { Spacer(Modifier.height(12.dp)) }
             }
         }
+        PlayingChip(follow, player.playWhenReady, current?.let { stringResource(R.string.passage_playing_at, it.toString()) }.orEmpty(), Modifier.align(Alignment.BottomCenter))
     }
 }
 

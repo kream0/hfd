@@ -88,14 +88,12 @@
     <string name="settings_tanzil_link">Ouvrir tanzil.net</string>
     <string name="basmala_label">Bismillāh</string>
     <string name="player_error">Lecture impossible de %1$s : %2$s</string>
-    <string name="player_resume_at">Reprendre à %1$s</string>
     <string name="player_open">Ouvrir le lecteur</string>
     <string name="player_show">Voir ce qui est écouté</string>
     <string name="player_pause">Pause</string>
     <string name="player_next">Āya suivante</string>
     <string name="player_previous">Āya précédente</string>
     <string name="player_listen">Écouter</string>
-    <string name="player_resume">Reprendre</string>
 
     <string name="repeat_each">Répéter chaque āya</string>
     <string name="repeat_each_body">Nombre de récitations de chaque āya avant la suivante. ∞ la répète jusqu\'à ce que vous passiez.</string>
@@ -303,8 +301,6 @@
     <string name="quran_found">%1$d trouvées</string>
     <string name="quran_search">Sourate, verset (2:255), mot du texte…</string>
     <string name="quran_search_clear">Effacer la recherche</string>
-    <string name="quran_resume">Reprendre l’écoute</string>
-    <string name="quran_resume_at">%1$s · āya %2$d sur %3$d</string>
     <string name="quran_reciter_body">Pour la section Coran ; celui des passages se règle à part. Une récitation publiée en sourates entières ne récite ici que les sourates déjà découpées en āyāt : pour les autres, %1$s prend le relais.</string>
     <string name="sura_title">%1$d · %2$s</string>
     <string name="sura_meccan">Mecquoise</string>
@@ -438,4 +434,12 @@
         <item quantity="one">%d voyelle longue mesurée, tenue comme il faut</item>
         <item quantity="other">%d voyelles longues mesurées, toutes tenues comme il faut</item>
     </plurals>
+    <string name="quran_read_at">Lecture en cours · āya %1$d sur %2$d</string>
+    <string name="quran_go_title">Aller à…</string>
+    <string name="reader_go">Chercher, aller ailleurs dans le Coran</string>
+    <string name="reader_place">%1$s · %2$d</string>
+    <string name="reader_parts">Juzʾ %1$d · Ḥizb %2$d · āya %3$d sur %4$d</string>
+    <string name="reader_playing_at">Revenir à l\'āya %1$d, en cours</string>
+    <string name="player_from_aya">Écouter depuis l\'āya %1$d</string>
+    <string name="passage_playing_at">Revenir à %1$s, en cours</string>
 </resources>

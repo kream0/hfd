@@ -186,6 +186,7 @@ private fun FadilaOverlay(app: AppViewModel, onReciteAction: ((() -> Unit)?) -> 
                     target = app.suraTarget?.takeIf { it.sura == sura },
                     onTargetShown = { app.suraTarget = null },
                     onOpen = { n -> app.openSura(n) },
+                    onGo = { s, a -> app.openSura(s, a) },
                     onRecite = { from -> app.reciteSura(sura, from) },
                     onReciteAction = onReciteAction,
                     onBack = { app.fadila = null },
