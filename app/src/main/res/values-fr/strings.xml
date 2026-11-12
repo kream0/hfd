@@ -117,7 +117,7 @@
     <string name="sleep_active_minutes">Arrêt dans %d min</string>
     <string name="sleep_active_end">Arrêt à la fin du faḍīla</string>
 
-    <string name="offline_saved">Hors ligne</string>
+    <string name="offline_saved">Enregistré</string>
     <string name="offline_saving">Téléchargement %d %%</string>
     <string name="offline_waiting">En attente du réseau</string>
     <string name="offline_failed">Échec · réessayer</string>
@@ -241,7 +241,7 @@
     <string name="remind_reviews">Āyāt à réviser</string>
     <string name="remind_at">À %1$s</string>
     <string name="time_title">Heure</string>
-    <string name="offline_partial">%d %% hors ligne · tout enregistrer</string>
+    <string name="offline_partial">%d %% · tout enregistrer</string>
     <string name="notifications_denied">Notifications de HFD désactivées : les rappels ne peuvent pas s\'afficher.</string>
     <string name="fadail_count">%1$d passages</string>
     <string name="fadail_edit_title">Passages affichés</string>
@@ -316,7 +316,7 @@
     <string name="sleep_end_sura">Fin de la sourate</string>
     <string name="quran_reciter_body_all">Pour la section Coran ; celui des passages se règle à part.</string>
     <string name="quran_reciter">Récitateur du Coran</string>
-    <string name="offline_save">Enregistrer hors ligne</string>
+    <string name="offline_save">Enregistrer</string>
     <string name="quran_reciter_suras">%1$d sourates sur %2$d</string>
     <string name="quran_reciter_instead">%1$s (pas %2$s ici)</string>
     <string name="sleep_chip_end">Arrêt à la fin</string>

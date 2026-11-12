@@ -456,11 +456,11 @@ if step("quran", is_("Coran"), starts("Al-Baqara")):
         if find(is_("Couleurs du tajwīd")):
             failures.append("tajweed: a palette button is back at the top of the text")
         tap(find(is_("2:255")))
-        if step("tajweed-aya", is_("Tajwīd de cette āya"), is_("Couleurs du tajwīd")) and step("tajweed", is_("Couleurs du tajwīd"), is_("Lettres en couleurs")):
+        if step("tajweed-aya", is_("Tajwīd de ce verset"), is_("Couleurs du tajwīd")) and step("tajweed", is_("Couleurs du tajwīd"), is_("Lettres en couleurs")):
             if not find(starts("Madd de 6")):
                 failures.append("tajweed: the legend has no colours")
         for _ in range(2):
-            if find(is_("Lettres en couleurs")) or find(is_("Tajwīd de cette āya")) or find(is_("Ajouter aux favoris")) or find(is_("Retirer des favoris")):
+            if find(is_("Lettres en couleurs")) or find(is_("Tajwīd de ce verset")) or find(is_("Ajouter aux favoris")) or find(is_("Retirer des favoris")):
                 sh("input keyevent 4")
                 time.sleep(1.0)
         # The one button, held: "Écouter" listens, and the button then pauses.

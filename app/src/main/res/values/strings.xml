@@ -117,7 +117,7 @@
     <string name="sleep_active_minutes">Stops in %d min</string>
     <string name="sleep_active_end">Stops at the end of the faḍīla</string>
 
-    <string name="offline_saved">Offline</string>
+    <string name="offline_saved">Saved</string>
     <string name="offline_saving">Saving %d%%</string>
     <string name="offline_waiting">Waiting for network</string>
     <string name="offline_failed">Download failed · retry</string>
@@ -240,7 +240,7 @@
     <string name="remind_reviews">Āyāt due for review</string>
     <string name="remind_at">At %1$s</string>
     <string name="time_title">Time</string>
-    <string name="offline_partial">%d%% offline · save all</string>
+    <string name="offline_partial">%d%% · save all</string>
     <string name="notifications_denied">Notifications are off for HFD: reminders can\'t show.</string>
     <string name="fadail_edit_title">Passages shown</string>
     <string name="fadail_edit_body">A hidden passage is no longer listed, offered to learn, reviewed or played with the others. What you learnt of it is kept and comes back with it.</string>
@@ -315,7 +315,7 @@
     <string name="sleep_end_sura">End of the sūra</string>
     <string name="quran_reciter_body_all">For the Qur’an section; the passages’ reciter is set apart.</string>
     <string name="quran_reciter">Qur’an reciter</string>
-    <string name="offline_save">Save offline</string>
+    <string name="offline_save">Save</string>
     <string name="quran_reciter_suras">%1$d sūras of %2$d</string>
     <string name="quran_reciter_instead">%1$s (not %2$s here)</string>
     <string name="sleep_chip_end">Stops at the end</string>
