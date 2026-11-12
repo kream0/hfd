@@ -156,7 +156,9 @@ def frames(name):
 
 
 def recite(name="reciting"):
-    """The speech model: downloaded, loaded (ONNX Runtime or the JNI), listening (to the emulator's silence)."""
+    """The speech model: downloaded, loaded (ONNX Runtime or the JNI), listening (to the emulator's silence).
+    Opened by the microphone, Recite listens by itself once the model is on the phone."""
+    sh("logcat -c")
     download = find(starts("Télécharger"))
     if download:
         tap(download)
@@ -168,12 +170,12 @@ def recite(name="reciting"):
             failures.append(f"{name}: the model didn't download")
             shot(name + "-missing")
             return
-    sh("logcat -c")
     mic = find(is_("Commencer à réciter"))
-    if not mic:
-        failures.append(f"{name}: nothing to start it")
+    if mic:
+        tap(mic)
+    elif not wait(is_("Arrêter"), 60):
+        failures.append(f"{name}: it neither listens nor offers to")
         return
-    tap(mic)
     heard = wait(lambda t: t.startswith("À l") or t.startswith("La reconnaissance vocale n"), 240)
     time.sleep(3)
     shot(name)
@@ -249,7 +251,7 @@ size = re.search(r"(\d+)x(\d+)", sh("wm size"))
 W, H = (int(size.group(1)), int(size.group(2))) if size else (1080, 2400)
 if step("passages", is_("Faḍāʾil"), is_("Āyat al-Kursī")):
     if step("passage", is_("Āyat al-Kursī"), is_("Réciter")):
-        if step("recite", is_("Réciter"), lambda t: t.startswith("Télécharger") or t.startswith("Commencer")):
+        if step("recite", is_("Réciter"), lambda t: t.startswith("Télécharger") or t.startswith("Commencer") or t == "Arrêter"):
             recite()
         sh("input keyevent 4")
         time.sleep(1.0)
@@ -260,30 +262,29 @@ def keyboard_shown():
     return shown.group(1) == "true" if shown else None
 
 
-def voice_search():
-    """The search by reciting opens, loads the recogniser and listens (the emulator's microphone is silent)."""
-    mic = find(is_("Chercher en récitant"))
+def recite_anywhere(name, want):
+    """The microphone that recites anywhere ([want] finds it): the screen that listens for any passage
+    opens and listens (the emulator's microphone is silent: nothing is found); Back closes it."""
+    mic = find(want)
     if not mic:
-        failures.append("voice: no microphone button in the search field")
+        failures.append(f"{name}: no microphone")
         return
     sh("logcat -c")
     tap(mic)
-    listening = wait(lambda t: t.startswith("Récitez quelques mots") or t.startswith("À l"), 240)
-    shot("voice")
+    opened = wait(is_("Récitez n'importe quel passage"), 30)
+    listening = opened and wait(starts("À l"), 240)
+    shot(name)
     for line in sh("logcat -d -s Diag:D").splitlines():
-        if re.search(r"(ctc|whisper)\.(load|selftest)|voice\.|mic\.(open|device)", line):
+        if re.search(r"(ctc|whisper)\.(load|selftest)|recite\.(start|locate|placed)|mic\.(open|device)", line):
             print("   " + line[-220:], flush=True)
-    print(f"SMOKE voice search: {'listening' if listening else 'not listening'}", flush=True)
+    report[name] = "listening" if listening else "opened" if opened else "missing"
+    print(f"SMOKE {name}: {report[name]}", flush=True)
     if not listening:
-        failures.append("voice: the search by reciting didn't listen")
-    stop = find(starts("Arrêter l"))
-    if stop:
-        tap(stop)
-        if not wait(lambda t: t.startswith("Je n") or t.startswith("Ce que j") or t == "Réessayer", 60):
-            failures.append("voice: it didn't stop")
-    # The sheet goes at a tap above it.
-    sh(f"input tap {W // 2} {int(H * 0.08)}")
-    time.sleep(1.0)
+        failures.append(f"{name}: reciting anywhere didn't listen")
+    sh("input keyevent 4")
+    time.sleep(1.5)
+    if find(is_("Récitez n'importe quel passage")):
+        failures.append(f"{name}: it didn't close")
 
 
 def search_and_favourite():
@@ -332,7 +333,7 @@ def search_and_favourite():
         sh("input keyevent 4")
         time.sleep(0.8)
     shot("after-search")
-    voice_search()
+    recite_anywhere("recite from the search", is_("Réciter pour retrouver un passage"))
     step("favourites", is_("Favoris"), is_("Al-Baqara 255"))
     step("juz", is_("Juzʾ"), is_("Juzʾ 2"))
     step("hizb", is_("Ḥizb"), is_("Ḥizb 3"))
@@ -434,17 +435,15 @@ if step("quran", is_("Coran"), starts("Al-Baqara")):
             sh("input keyevent 4")
             time.sleep(1.0)
         # Reciting the sūra from the bar, and back to its text.
-        if step("sura-recite", is_("Réciter")):
-            start = find(is_("Depuis le début de la sourate"))
-            if start:
-                tap(start)
-            if not wait(lambda t: t.startswith("Télécharger") or t.startswith("Commencer"), 25):
-                failures.append("sura-recite: the recitation didn't open")
-                shot("sura-recite-missing")
+        # The bar's microphone: how to recite (its menu), then reciting anywhere, and back to the text.
+        if step("recite-how", is_("Façon de réciter"), is_("De mémoire")):
+            if not find(is_("En lisant")):
+                failures.append("recite-how: the ways to recite are missing")
             sh("input keyevent 4")
             time.sleep(1.0)
-            if not wait(lambda t: "ذَٰلِكَ" in t or t == "Réciter", 20):
-                failures.append("sura-recite: the sūra didn't come back")
+        recite_anywhere("recite from the bar", is_("Réciter"))
+        if not wait(lambda t: t.startswith("Al-Baqara · "), 20):
+            failures.append("recite from the bar: the sūra didn't come back")
         sh(f"dumpsys gfxinfo {PKG} reset")
         for _ in range(12):
             sh(f"input swipe {W // 2} {int(H * 0.72)} {W // 2} {int(H * 0.28)} 220")
@@ -468,7 +467,7 @@ if step("settings", is_("Réglages")):
         time.sleep(0.8)
     if step("settings-whisper", starts("Tarteel ·")):
         if step("passages-2", is_("Faḍāʾil"), is_("Āyat al-Kursī")) and step("passage-2", is_("Āyat al-Kursī"), is_("Réciter")):
-            if step("recite-whisper", is_("Réciter"), lambda t: t.startswith("Télécharger") or t.startswith("Commencer")):
+            if step("recite-whisper", is_("Réciter"), lambda t: t.startswith("Télécharger") or t.startswith("Commencer") or t == "Arrêter"):
                 recite("reciting-whisper")
             sh("input keyevent 4")
             time.sleep(1.0)

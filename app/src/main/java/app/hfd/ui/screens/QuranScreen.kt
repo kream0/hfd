@@ -81,7 +81,6 @@ import app.hfd.core.recite.Arabic
 import app.hfd.data.Content
 import app.hfd.recite.ModelState
 import app.hfd.recite.ReciteSession
-import app.hfd.recite.VoiceSearch
 import app.hfd.ui.components.Equalizer
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.Loader
@@ -107,7 +106,7 @@ private enum class QuranView { SURAS, JUZ, HIZB, FAVORITES }
 
 /** The Qur'an section's tab: [QuranBrowser]. */
 @Composable
-fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit) = QuranBrowser(onOpen)
+fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit, onRecite: () -> Unit) = QuranBrowser(onOpen, onRecite = onRecite)
 
 /**
  * The way into the Qur'an's text: a search of the whole of it (a reference, a name, words of the
@@ -117,7 +116,7 @@ fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit) = QuranBrowser(onOpen)
  * from, wherever one is.
  */
 @Composable
-fun QuranBrowser(onOpen: (sura: Int, aya: Int?) -> Unit, onClose: (() -> Unit)? = null) {
+fun QuranBrowser(onOpen: (sura: Int, aya: Int?) -> Unit, onClose: (() -> Unit)? = null, onRecite: () -> Unit) {
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val np by Graph.nowPlaying.collectAsStateWithLifecycle()
     val ui by Graph.player.state.collectAsStateWithLifecycle()
@@ -186,15 +185,12 @@ fun QuranBrowser(onOpen: (sura: Int, aya: Int?) -> Unit, onClose: (() -> Unit)? 
                     onDone = { keyboard?.hide() },
                     focus = field,
                     tag = if (onClose == null) "search" else "go-search",
+                    // The microphone: recite a few words of anything, the app finds where they are
+                    // and follows from there (closing it leaves the text open at that place).
                     onVoice = {
                         keyboard?.hide()
                         focus.clearFocus()
-                        sheets(
-                            SheetSpec(
-                                title = context.getString(R.string.quran_voice_title),
-                                content = { VoiceSearchSheet(c, onOpen = { ref -> open(ref.sura, ref.aya) }) },
-                            ),
-                        )
+                        onRecite()
                     },
                 )
             }
@@ -455,119 +451,6 @@ private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () ->
             Icon(if (query.isNotEmpty()) Ic.Close else Ic.Mic, contentDescription = null, tint = if (query.isNotEmpty()) P.textDim else P.accent, modifier = Modifier.size(20.dp))
         }
     }
-}
-
-/**
- * The search by reciting, in a sheet: it listens at once (asking for the microphone first), shows
- * what it hears and where that is in the text; a place chosen opens there.
- */
-@Composable
-private fun VoiceSearchSheet(c: Content, onOpen: (AyahRef) -> Unit) {
-    val close = LocalSheetClose.current
-    val context = LocalContext.current
-    val whisper by Graph.speech.state.collectAsStateWithLifecycle()
-    val ctc by Graph.speechCtc.state.collectAsStateWithLifecycle()
-    val ready = whisper is ModelState.Ready || ctc is ModelState.Ready
-    if (!ready) {
-        // No model on the phone yet: the one Recite uses, downloaded here as there.
-        val mb = (Graph.speechCtc.model.bytes / 1_000_000).toInt()
-        Text(stringResource(R.string.quran_voice_model, mb), style = Type.body, color = P.text)
-        Spacer(Modifier.height(12.dp))
-        when (val state = ctc) {
-            is ModelState.Downloading -> Text(stringResource(R.string.recite_downloading, (state.progress * 100).toInt()), style = Type.labelBold, color = P.textDim)
-            else -> {
-                if (state is ModelState.Failed) {
-                    Text(stringResource(R.string.recite_download_failed, state.message), style = Type.label, color = P.error)
-                    Spacer(Modifier.height(8.dp))
-                }
-                PillButton(stringResource(R.string.recite_download, mb), { Graph.speechCtc.download() }, style = PillStyle.Accent)
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        return
-    }
-    // On the app's scope, not the sheet's: closing frees the models after the sheet is gone.
-    val voice = remember { VoiceSearch(Graph.scope, Graph::reciteModels) { heard -> c.search.recited(heard) } }
-    DisposableEffect(voice) { onDispose { voice.close() } }
-    val ui by voice.ui.collectAsStateWithLifecycle()
-    val wave by voice.wave.collectAsStateWithLifecycle()
-    val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) voice.start() else Graph.toast(R.string.recite_mic_denied)
-    }
-    fun listen() {
-        // What plays would be heard by the microphone.
-        if (Graph.player.state.value.playWhenReady) Graph.player.pause()
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) voice.start()
-        else mic.launch(Manifest.permission.RECORD_AUDIO)
-    }
-    LaunchedEffect(voice) { listen() }
-
-    Text(
-        when {
-            ui.error == ReciteSession.ERROR_MODEL -> stringResource(R.string.recite_unavailable)
-            ui.error == ReciteSession.ERROR_MIC -> stringResource(R.string.recite_mic_denied)
-            ui.loading -> stringResource(R.string.recite_loading)
-            ui.listening && ui.heard.isBlank() -> stringResource(R.string.quran_voice_hint)
-            ui.listening -> stringResource(R.string.quran_voice_listening)
-            ui.hits.isNotEmpty() -> ""
-            ui.heard.isBlank() -> stringResource(R.string.quran_voice_silent)
-            else -> stringResource(R.string.quran_voice_none)
-        },
-        style = Type.body,
-        color = P.textDim,
-        modifier = Modifier.testTag("voice-status"),
-    )
-    if (ui.listening) {
-        Spacer(Modifier.height(10.dp))
-        Waveform(wave)
-    }
-    if (ui.heard.isNotBlank()) {
-        Spacer(Modifier.height(8.dp))
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            Text(
-                ui.heard, style = Type.quran(20).copy(textDirection = TextDirection.Rtl), color = P.textFaint, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-    }
-    Spacer(Modifier.height(6.dp))
-    for (hit in ui.hits) {
-        val text = c.text(hit.ref)
-        // From the word the phrase begins at.
-        val from = hit.word.takeIf { it > 0 } ?: -1
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .clickable {
-                    close()
-                    onOpen(hit.ref)
-                }
-                .padding(horizontal = 6.dp, vertical = 10.dp),
-        ) {
-            Text(
-                if (hit.last.sura == hit.ref.sura && hit.last.aya > hit.ref.aya) stringResource(R.string.quran_voice_to, c.sura(hit.ref.sura).tname, hit.ref.aya, hit.last.aya)
-                else stringResource(R.string.quran_at, c.sura(hit.ref.sura).tname, hit.ref.aya),
-                style = Type.labelBold,
-                color = P.text,
-            )
-            Spacer(Modifier.height(2.dp))
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                Text(
-                    if (from > 0) arabic(text, from, Int.MAX_VALUE, P.textDim) else AnnotatedString(text),
-                    style = Type.quran(22).copy(textDirection = TextDirection.Rtl),
-                    color = P.textDim,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-    }
-    Spacer(Modifier.height(6.dp))
-    if (ui.listening) PillButton(stringResource(R.string.quran_voice_stop), { voice.stop() }, icon = Ic.Stop)
-    else if (ui.done) PillButton(stringResource(R.string.quran_voice_again), { listen() }, icon = Ic.Mic, style = if (ui.hits.isEmpty()) PillStyle.Accent else PillStyle.Outline)
-    Spacer(Modifier.height(8.dp))
 }
 
 @OptIn(ExperimentalComposeUiApi::class)

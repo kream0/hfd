@@ -102,6 +102,8 @@ class ScreenshotTest {
         File(out, "hang.txt").delete()
         val watchdog = watchdog(180_000)
         Graph.player.connectable = false
+        // (No microphone here: Recite's screen is shown as opened, not listening.)
+        app.hfd.recite.ReciteSession.listensAtOnce = false
         // The speech model "downloaded", so Recite shows its screen rather than the download card.
         File(rule.activity.noBackupFilesDir, "models/${app.hfd.recite.SpeechModel.DEFAULT.file}").apply {
             parentFile?.mkdirs()
@@ -296,6 +298,61 @@ class ScreenshotTest {
         }
         both("recite-tajweed")
         ui { Graph.settings.update { it.copy(reciteTajweed = false) } }
+        ui {
+            Graph.closeRecite()
+            vm.flow = null
+        }
+        // Reciting anywhere, from the bar's microphone: how (its menu), then the screen that listens.
+        rule.onNodeWithContentDescription(rule.activity.getString(R.string.recite_how)).performSemanticsAction(SemanticsActions.OnClick)
+        both("recite-how")
+        ui { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        ui { vm.reciteAnywhere() }
+        both("recite-anywhere")
+        // A phrase six sūras say: the places are listed, and nothing is followed yet.
+        ui { Graph.recite.value!!.onHeard("ومما رزقناهم ينفقون") }
+        org.junit.Assert.assertTrue(Graph.recite.value!!.ui.value.locating)
+        org.junit.Assert.assertTrue(Graph.recite.value!!.ui.value.candidates.size > 1)
+        both("recite-places")
+        // What is said next tells them apart: al-Anfāl, followed from the phrase's first word (8:3's last three).
+        ui { Graph.recite.value!!.onHeard("أولئك هم المؤمنون حقا لهم درجات عند ربهم") }
+        Graph.recite.value!!.ui.value.let { u ->
+            org.junit.Assert.assertEquals("sura:8", u.id)
+            org.junit.Assert.assertFalse(u.locating)
+            org.junit.Assert.assertEquals(app.hfd.core.quran.AyahRef(8, 4), u.targets[u.next!!.first].ref)
+            // (8:3: its last three words said, those before them neither said nor missed.)
+            org.junit.Assert.assertEquals(app.hfd.core.recite.WordStatus.PENDING, u.status[2].first())
+            org.junit.Assert.assertEquals(app.hfd.core.recite.WordStatus.OK, u.status[2].last())
+        }
+        both("recite-found")
+        // Closed, the sūra found is open at the āya reached: reciting is also how a passage is found.
+        ui { vm.closeRecite() }
+        rule.mainClock.advanceTimeBy(1_500)
+        rule.onNodeWithText("Al-Anfāl · 4").assertExists()
+        ui { vm.fadila = null }
+        // From a sūra's page (its bar's microphone): the page stays shown where it was read while the place is looked for.
+        ui { vm.reciteAnywhere(near = app.hfd.core.quran.AyahRef(18, 10), show = true) }
+        Graph.recite.value!!.ui.value.let { u ->
+            org.junit.Assert.assertTrue(u.locating)
+            org.junit.Assert.assertEquals("sura:18", u.id)
+            org.junit.Assert.assertEquals(9, u.view)
+        }
+        both("recite-page")
+        // Recited from another āya of it: followed there. Closed before anything is found, nothing opens.
+        ui { Graph.recite.value!!.onHeard(content.text(app.hfd.core.quran.AyahRef(18, 13))) }
+        Graph.recite.value!!.ui.value.let { u ->
+            org.junit.Assert.assertFalse(u.locating)
+            org.junit.Assert.assertEquals(app.hfd.core.quran.AyahRef(18, 14), u.targets[u.next!!.first].ref)
+        }
+        ui {
+            Graph.closeRecite()
+            vm.flow = null
+        }
+        // "Recite from here" on an āya: no looking, the sūra from that āya.
+        ui { vm.reciteAnywhere(start = app.hfd.core.quran.AyahRef(36, 2)) }
+        Graph.recite.value!!.ui.value.let { u ->
+            org.junit.Assert.assertEquals("sura:36", u.id)
+            org.junit.Assert.assertEquals(app.hfd.core.quran.AyahRef(36, 2), u.targets[u.next!!.first].ref)
+        }
         ui {
             Graph.closeRecite()
             vm.flow = null

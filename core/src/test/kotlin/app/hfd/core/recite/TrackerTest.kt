@@ -273,4 +273,17 @@ class TrackerTest {
         // A speaking voice: 9 dB between them.
         assertTrue("after ${tilt(out)}", tilt(out) in -14.0..-4.0)
     }
+
+    @Test
+    fun aPlaceFoundInsideTheTextIsFollowedFromThere() {
+        val t = Tracker(listOf(target(1, 1), target(1, 2), target(1, 3)))
+        t.startAt(6)
+        assertEquals(6, t.position)
+        assertEquals(2, t.feed("رب العالمين"))
+        // What is before the place is neither said nor missed; from it on, as followed.
+        assertEquals(List(6) { WordStatus.PENDING }, t.status.take(6))
+        assertEquals(listOf(WordStatus.OK, WordStatus.OK), t.status.slice(6..7))
+        // Going back to before the place is still a going back.
+        assertTrue(t.feed("الحمد لله رب العالمين") < 0 || t.position == 8)
+    }
 }

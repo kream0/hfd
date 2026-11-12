@@ -36,8 +36,25 @@ class QuranSearch(private val suras: List<SuraMeta>, private val quran: QuranTex
         val isEmpty: Boolean get() = references.isEmpty() && suras.isEmpty() && parts.isEmpty() && text.isEmpty() && translation.isEmpty()
     }
 
-    /** Where a recited phrase is in the text: from word [word] of āya [ref] to āya [last]; [score] of its letters found (0‥1). */
-    data class Recited(val ref: AyahRef, val word: Int, val last: AyahRef, val score: Float)
+    /**
+     * Where a recited phrase is in the text: from word [word] of āya [ref] to āya [last]; [score] of
+     * its letters found (0‥1); [whole]: the text's words there it says letter for letter; [tight]:
+     * the letters found over those of the stretch itself, when it is longer than the phrase (a
+     * phrase whose letters are found scattered over twice as many words is not said there).
+     */
+    data class Recited(val ref: AyahRef, val word: Int, val last: AyahRef, val score: Float, val whole: Int = 0, val tight: Float = 1f)
+
+    /** Whether [word], as heard, is a word of the text (by its letters). */
+    fun known(word: String): Boolean = occurrences.containsKey(Arabic.skeleton(word))
+
+    /** Word [word] of āya [ref], as it is compared (its letters); null past the text's end. */
+    fun wordAt(ref: AyahRef, word: Int): String? = ayaIndex[ref]?.let { words.getOrNull(ayaStart[it] + word) }
+
+    /** The words of āya [ref]. */
+    fun wordCount(ref: AyahRef): Int {
+        val i = ayaIndex[ref] ?: return 0
+        return (if (i + 1 < ayaStart.size) ayaStart[i + 1] else words.size) - ayaStart[i]
+    }
 
     // ------------------------------------------------------------------ the text, as it is compared
 
@@ -68,6 +85,8 @@ class QuranSearch(private val suras: List<SuraMeta>, private val quran: QuranTex
         words.forEachIndexed { i, w -> lists.getOrPut(w) { ArrayList() }.add(i) }
         lists.mapValues { it.value.toIntArray() }
     }
+
+    private val ayaIndex: Map<AyahRef, Int> by lazy { ayat.withIndex().associate { it.value.ref to it.index } }
 
     private fun skeletons(text: String): List<String> = Arabic.words(text).map { Arabic.skeleton(it) }
 
@@ -212,14 +231,14 @@ class QuranSearch(private val suras: List<SuraMeta>, private val quran: QuranTex
             val match = align(letters, from, to) ?: continue
             if (match.same < MIN_RECITED_LETTERS || match.same < RECITED_FRACTION * letters.length) continue
             val first = ayat[wordAya[match.first]]
-            out += Recited(first.ref, match.first - ayaStart[wordAya[match.first]], ayat[wordAya[match.last]].ref, match.same.toFloat() / letters.length)
+            out += Recited(first.ref, match.first - ayaStart[wordAya[match.first]], ayat[wordAya[match.last]].ref, match.same.toFloat() / letters.length, match.whole, match.same.toFloat() / maxOf(letters.length, match.span))
         }
         return out.sortedWith(compareByDescending<Recited> { it.score }.thenBy { it.ref })
             .distinctBy { it.ref }
             .take(limit)
     }
 
-    private class Match(val first: Int, val last: Int, val same: Int)
+    private class Match(val first: Int, val last: Int, val same: Int, val whole: Int, val span: Int)
 
     /** [heard]'s letters against words [from] until [to]: the stretch of them it says, and how many of its letters are there. */
     private fun align(heard: String, from: Int, to: Int): Match? {
@@ -245,19 +264,26 @@ class QuranSearch(private val suras: List<SuraMeta>, private val quran: QuranTex
         var i = best
         var j = m
         var same = 0
-        var first = owner[best - 1]
+        // How many of each word's letters the phrase says.
+        val said = IntArray(to - from)
         while (i > 0 && j > 0) {
             val eq = e[i - 1] == heard[j - 1]
             when {
                 d[i][j] == d[i - 1][j - 1] + (if (eq) 2 else -1) -> {
-                    if (eq) { same++; first = owner[i - 1] }
+                    if (eq) { same++; said[owner[i - 1] - from]++ }
                     i--; j--
                 }
                 d[i][j] == d[i - 1][j] - 1 -> i--
                 else -> j--
             }
         }
-        return Match(first, owner[best - 1], same)
+        // The stretch is from the first word mostly said to the last: a few letters of the word
+        // before (what was heard before the phrase, a breath, half a word) are not its beginning.
+        // (A sūra's first words were found in the last āya of the sūra before.)
+        fun mostly(w: Int) = said[w - from] * 2 >= words[w].length
+        val first = (from until to).firstOrNull(::mostly) ?: return null
+        val last = (from until to).last(::mostly)
+        return Match(first, last, same, (first..last).count { said[it - from] == words[it].length }, (first..last).sumOf { words[it].length })
     }
 
     companion object {

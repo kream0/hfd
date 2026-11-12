@@ -69,6 +69,16 @@ class Tracker(
     val size: Int get() = flat.size
     val done: Boolean get() = position >= flat.size
 
+    /**
+     * The recitation is at word [word] (flat index): a place found in the text by what was heard
+     * ([app.hfd.core.quran.Locator]), not reached by following. What was recited before stays as
+     * it is; the words passed over are neither said nor missed.
+     */
+    fun startAt(word: Int) {
+        position = word.coerceIn(0, flat.size)
+        cut = null
+    }
+
     /** Āya index and word index within it of flat word [i]. */
     fun locate(i: Int): Pair<Int, Int> {
         var a = 0

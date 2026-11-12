@@ -28,6 +28,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -41,9 +44,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -86,16 +92,26 @@ import app.hfd.ui.components.tajweedColor
 import androidx.compose.ui.unit.sp
 import app.hfd.ui.components.KeepScreenOn
 import app.hfd.ui.components.Ic
+import app.hfd.core.quran.QuranSearch
 import app.hfd.ui.components.IconBtn
 import app.hfd.ui.components.PillButton
 import app.hfd.ui.components.PillStyle
 import app.hfd.ui.components.SectionLabel
+import app.hfd.ui.components.Star
 import app.hfd.ui.components.card
 import app.hfd.ui.text
 import app.hfd.ui.theme.P
 import app.hfd.ui.theme.Type
 
-/** Reciting a passage aloud from memory: words light up as they are recited, mistakes in red. */
+/** Āyāt away past which a place found is shown at once (not scrolled to). */
+private const val FAR_AYAT = 6
+
+/**
+ * Reciting aloud: words light up as they are recited, mistakes in red. A passage given, or
+ * anywhere in the Qur'an: the screen then listens for what is being said, shows what it hears
+ * while it looks for it, and becomes that place's sūra once it is found, followed from there
+ * ([ReciteSession.Anywhere]). Opened by the microphone, it listens at once.
+ */
 @Composable
 fun ReciteScreen(onClose: () -> Unit) {
     val session by Graph.recite.collectAsStateWithLifecycle()
@@ -125,17 +141,30 @@ fun ReciteScreen(onClose: () -> Unit) {
         else mic.launch(Manifest.permission.RECORD_AUDIO)
     }
     BackHandler(onBack = onClose)
+    // The microphone opened this: it listens without another tap, once the model is on the phone.
+    var began by remember(s) { mutableStateOf(false) }
+    LaunchedEffect(s, ready) {
+        if (ready && !began && !ui.listening && !ui.done && ReciteSession.listensAtOnce) {
+            began = true
+            listen()
+        }
+    }
 
     // The screen stays on while the verses are shown (listening or not).
     KeepScreenOn()
 
-    // A passage, or a sūra of the Qur'an section.
-    val name = QuranListening.suraOf(s.fadilaId)?.let { n -> content?.suras?.getOrNull(n - 1)?.tname } ?: content?.fadila(s.fadilaId)?.title?.text
+    // A passage; or a sūra of the Qur'an section, with the āya the recitation is at.
+    val sura = QuranListening.suraOf(ui.id)
+    val name = when {
+        ui.locating -> sura?.let { content?.suras?.getOrNull(it - 1)?.tname }
+        sura != null -> content?.suras?.getOrNull(sura - 1)?.tname?.let { n -> ui.targets.getOrNull(ui.next?.first ?: 0)?.ref?.let { stringResource(R.string.reader_place, n, it.aya) } ?: n }
+        else -> content?.fadila(ui.id)?.title?.text
+    }
     Column(Modifier.fillMaxSize().background(P.background).statusBarsPadding().navigationBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconBtn(Ic.Close, onClose, contentDescription = stringResource(R.string.close))
             Text(
-                name?.let { stringResource(R.string.recite_title, it) }.orEmpty(),
+                name?.let { stringResource(R.string.recite_title, it) } ?: stringResource(R.string.recite),
                 style = Type.name,
                 color = P.text,
                 maxLines = 1,
@@ -146,7 +175,8 @@ fun ReciteScreen(onClose: () -> Unit) {
             if (best && ctcModel is ModelState.Ready) TajweedToggle(settings.reciteTajweed)
         }
         Text(statusLine(ui, s), style = Type.label, color = P.textDim, modifier = Modifier.padding(horizontal = 20.dp))
-        ProgressLine(ui, Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+        // (How far through a passage; a sūra recited from anywhere has no such end.)
+        if (sura == null && !ui.locating) ProgressLine(ui, Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) else Spacer(Modifier.height(8.dp))
         when {
             !best -> ModelCard(Graph.speech, whisperModel, R.string.recite_model_needed)
             whisperModel is ModelState.Ready -> ModelCard(Graph.speechCtc, ctcModel, R.string.recite_model_upgrade, keepOld = true)
@@ -156,14 +186,20 @@ fun ReciteScreen(onClose: () -> Unit) {
         val list = rememberLazyListState()
         // The āya being recited comes into view when it isn't (its word then keeps itself there,
         // AyahWords: a long āya runs over more lines than the screen holds).
-        LaunchedEffect(ui.next?.first) {
-            val a = ui.next?.first ?: return@LaunchedEffect
-            if (list.layoutInfo.visibleItemsInfo.none { it.index == a }) list.animateScrollToItem(a)
+        LaunchedEffect(ui.id, ui.next?.first ?: ui.view) {
+            val a = ui.next?.first ?: ui.view ?: return@LaunchedEffect
+            val seen = list.layoutInfo.visibleItemsInfo
+            // (A place found far into a sūra is shown at once, not scrolled to through the sūra.)
+            if (seen.none { it.index == a }) {
+                if (seen.isEmpty() || kotlin.math.abs(a - list.firstVisibleItemIndex) > FAR_AYAT) list.scrollToItem(a) else list.animateScrollToItem(a)
+            }
         }
         // Where each āya's words begin among all the words (the long vowels not held are named by word).
         val firstWord = remember(ui.targets) { ui.targets.runningFold(0) { n, t -> n + t.words.size } }
         val sheets = LocalSheets.current
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list) {
+        // No place yet. Nothing to show meanwhile: what to do. A page was open: it stays, to read from.
+        if (ui.locating && ui.targets.isEmpty()) Locating(ui, content, onChoose = { s.choose(it) }, Modifier.weight(1f))
+        else LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list) {
             itemsIndexed(ui.targets) { a, t ->
                 val faults = if (ui.tajweed.isEmpty()) emptyMap() else t.words.indices.mapNotNull { w -> ui.tajweed[firstWord[a] + w]?.let { w to it } }.toMap()
                 AyahWords(
@@ -172,18 +208,29 @@ fun ReciteScreen(onClose: () -> Unit) {
                 )
             }
             if (ui.done && ui.results.isNotEmpty()) item {
-                Summary(ui.results, onAgain = { Graph.openRecite(s.fadilaId, ui.targets.map { t -> t.ref }) }, onClose)
+                Summary(ui.results, onAgain = { Graph.openRecite(ui.id, ui.targets.map { t -> t.ref }) }, onClose)
                 if (settings.reciteTajweed) TajweedSummary(ui, firstWord)
             }
         }
 
         if (ui.lost && ui.listening && !ui.done) {
-            // Phrases heard that aren't the text from the marker: where to take it up again.
+            // Phrases heard that aren't the text from the marker (nor found anywhere else): where to take it up again.
             Text(
                 stringResource(if (showText) R.string.recite_lost else R.string.recite_lost_hidden), style = Type.label, color = P.wordMark, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
             )
-        } else ui.heard?.let {
+        } else if (ui.locating && ui.targets.isNotEmpty()) {
+            // Looked for under the page: what is heard, and the places that say it when there are several.
+            ui.heard?.let {
+                Text(it, style = Type.arabicTitle.copy(fontSize = 18.sp, lineHeight = 30.sp, textAlign = TextAlign.Center), color = P.textDim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp))
+            }
+            if (ui.candidates.isNotEmpty() && content != null) {
+                Text(stringResource(R.string.recite_places), style = Type.label, color = P.textDim, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp))
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
+                    ui.candidates.forEach { hit -> PillButton(stringResource(R.string.quran_at, content!!.sura(hit.ref.sura).tname, hit.ref.aya), { s.choose(hit) }) }
+                }
+            }
+        } else if (!ui.locating) ui.heard?.let {
             Text(it, style = Type.label, color = P.textFaint, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp))
         }
         if (ui.muffled && ui.listening) {
@@ -219,7 +266,7 @@ fun ReciteScreen(onClose: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            IconBtn(Ic.Hint, { s.hint() }, bordered = true, size = 48.dp, contentDescription = stringResource(R.string.recite_hint))
+            IconBtn(Ic.Hint, { s.hint() }, tint = if (ui.locating) P.textFaint else P.text, bordered = true, size = 48.dp, contentDescription = stringResource(R.string.recite_hint))
             MicButton(listening = ui.listening, level = level, enabled = ready && !ui.done) {
                 if (ui.listening) s.stop() else listen()
             }
@@ -238,11 +285,48 @@ private fun statusLine(ui: ReciteUi, s: ReciteSession): String {
         ui.error == ReciteSession.ERROR_MODEL -> stringResource(R.string.recite_unavailable)
         ui.error == ReciteSession.ERROR_MIC -> stringResource(R.string.recite_mic_denied)
         ui.loading -> stringResource(R.string.recite_loading)
+        ui.locating && ui.listening && ui.heard != null -> stringResource(R.string.recite_locating)
+        ui.locating && ui.listening -> stringResource(R.string.recite_listening_anywhere)
+        ui.locating -> stringResource(R.string.recite_tap)
         next == null -> stringResource(R.string.recite_done)
         ui.pending > 0 -> stringResource(R.string.recite_recognising)
         ui.listening -> stringResource(R.string.recite_listening)
         // (From the state shown: a session just replaced by another may not have the same āyāt.)
         else -> stringResource(R.string.recite_position, next.first + 1, ui.targets.size, ui.targets.getOrNull(next.first)?.ref?.toString().orEmpty())
+    }
+}
+
+/**
+ * Before the place is found: what to do, what is heard meanwhile, and the places that say it when
+ * the text says it in several (going on reciting tells them apart; one can also be chosen).
+ */
+@Composable
+private fun Locating(ui: ReciteUi, content: app.hfd.data.Content?, onChoose: (QuranSearch.Recited) -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 28.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Star(Modifier.size(52.dp), color = if (ui.listening) P.accent else P.outline, outline = true)
+        Spacer(Modifier.height(18.dp))
+        Text(stringResource(R.string.recite_anywhere_title), style = Type.displaySmall, color = P.text, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(R.string.recite_anywhere_body), style = Type.body, color = P.textDim, textAlign = TextAlign.Center)
+        ui.heard?.let { heard ->
+            Spacer(Modifier.height(22.dp))
+            Text(
+                heard, style = Type.arabicTitle.copy(fontSize = 22.sp, lineHeight = 40.sp, textAlign = TextAlign.Center), color = P.text,
+                maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().testTag("recite-heard"),
+            )
+        }
+        if (ui.candidates.isNotEmpty() && content != null) {
+            Spacer(Modifier.height(18.dp))
+            Text(stringResource(R.string.recite_places), style = Type.label, color = P.textDim, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(8.dp))
+            ui.candidates.forEach { hit ->
+                PillButton(stringResource(R.string.quran_at, content.sura(hit.ref.sura).tname, hit.ref.aya), { onChoose(hit) }, modifier = Modifier.padding(vertical = 3.dp))
+            }
+        }
     }
 }
 

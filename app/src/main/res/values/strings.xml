@@ -254,6 +254,19 @@
     <string name="fadail_count">%1$d passages</string>
     <string name="stats_none">Nothing learnt yet: open a passage and tap Learn.</string>
     <string name="recite">Recite</string>
+    <string name="recite_anywhere_hint">Recite any passage: the app finds it and follows you.</string>
+    <string name="recite_how">How to recite</string>
+    <string name="recite_way_memory">From memory</string>
+    <string name="recite_way_memory_body">The text is hidden; each word shows as you say it.</string>
+    <string name="recite_way_reading">Reading</string>
+    <string name="recite_way_reading_body">The text is shown; the marker follows your voice.</string>
+    <string name="recite_anywhere_title">Recite any passage</string>
+    <string name="recite_anywhere_body">From a sūra\'s beginning or the middle of a verse: the app finds it in the whole Qur\'an, shows the page and follows you. Your voice stays on the phone.</string>
+    <string name="recite_listening_anywhere">Listening · recite any passage</string>
+    <string name="recite_locating">Listening · looking for this passage…</string>
+    <string name="recite_tap">Tap the microphone and recite</string>
+    <string name="recite_places">Several places say this. Go on reciting, or choose:</string>
+    <string name="quran_voice">Recite to find a passage</string>
     <string name="recite_title">Recite · %1$s</string>
     <string name="recite_model_needed">Reciting aloud uses Tarteel\'s Qur\'an speech model (%1$d MB), downloaded once. It runs on the phone: your voice is never recorded or sent.</string>
     <string name="recite_download">Download (%1$d MB)</string>
@@ -281,8 +294,6 @@
         <item quantity="other">%1$d / %2$d words · %3$d mistakes</item>
     </plurals>
     <string name="recite_total">%1$d / %2$d words right · %3$d %%</string>
-    <string name="recite_from_aya">From āya %1$d</string>
-    <string name="recite_from_start">From the start of the sūra</string>
     <string name="recite_again">Again</string>
     <string name="stats_recited">Recited aloud</string>
     <string name="stats_recited_value">%1$d recitations · %2$d%% of words right</string>
@@ -337,16 +348,6 @@
     <string name="quran_found_none">Nothing found. Try a sūra\'s name, a reference like 2:255, "juz 5", words of the text in Arabic or of the translation.</string>
     <string name="quran_favorites_empty">No favourites yet. Reading a sūra, tap a verse to keep it here.</string>
     <string name="quran_favorites_count">%1$d favourites</string>
-    <string name="quran_voice">Search by reciting</string>
-    <string name="quran_voice_title">Find a passage by reciting</string>
-    <string name="quran_voice_hint">Recite a few words of the passage: it is looked for in the whole Qur\'an. Your voice stays on the phone.</string>
-    <string name="quran_voice_listening">Listening…</string>
-    <string name="quran_voice_none">What I heard is nowhere in the text. Try again with a few more words.</string>
-    <string name="quran_voice_silent">I heard nothing.</string>
-    <string name="quran_voice_again">Try again</string>
-    <string name="quran_voice_stop">Stop listening</string>
-    <string name="quran_voice_model">Searching by reciting uses the recitation\'s recognition model (%1$d MB), downloaded once.</string>
-    <string name="quran_voice_to">%1$s %2$d → %3$d</string>
     <string name="favorite_add">Add to favourites</string>
     <string name="favorite_remove">Remove from favourites</string>
     <string name="favorite_added">Added to favourites</string>

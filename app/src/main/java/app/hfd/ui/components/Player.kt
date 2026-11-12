@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -210,14 +211,93 @@ private fun PlayButton(playing: Boolean, size: androidx.compose.ui.unit.Dp, onCl
 }
 
 /**
- * The one bar the app listens from, above the tabs: there is no other player on a screen. On a tab
- * it is what the player holds (a tap opens it). With a passage or a sūra open ([open]) it is that
- * text's: listen to it, recite it aloud ([onRecite]), and the full player behind it ([playerSheet]:
- * the transport, the reciter, the repeats). Something else heard while that text is open stays in
- * the bar until the text is left, so what sounds can always be paused.
+ * The microphone of the bar: a tap recites ([onRecite]: the passage open, or anywhere in the
+ * Qur'an, the app finding what is said and following it there); the arrow beside it opens how
+ * ([reciteSheet]: from memory, the text hidden, or reading, the text shown).
  */
 @Composable
-fun PlayerDock(open: String?, onOpen: () -> Unit, onRecite: (() -> Unit)?, modifier: Modifier = Modifier) {
+private fun ReciteButton(onRecite: () -> Unit, modifier: Modifier = Modifier) {
+    val sheets = LocalSheets.current
+    val context = LocalContext.current
+    Row(
+        modifier
+            .height(36.dp)
+            .clip(CircleShape)
+            .border(1.dp, P.outline, CircleShape),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            Modifier.fillMaxHeight().clickable(onClickLabel = stringResource(R.string.recite_anywhere_hint), onClick = onRecite).padding(start = 10.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Ic.Mic, contentDescription = null, tint = P.accent, modifier = Modifier.size(17.dp))
+            Spacer(Modifier.width(5.dp))
+            Text(stringResource(R.string.recite), style = Type.button.copy(fontSize = 14.sp), color = P.text, maxLines = 1)
+        }
+        Box(Modifier.width(1.dp).height(18.dp).background(P.outline))
+        val how = stringResource(R.string.recite_how)
+        Box(
+            Modifier.fillMaxHeight().clickable { sheets(reciteSheet(context, onRecite)) }.semantics { contentDescription = how }.padding(start = 5.dp, end = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Ic.ChevronDown, contentDescription = null, tint = P.textDim, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+/** How to recite: from memory (the text hidden, each word showing as it is said) or reading (the text shown, followed by the voice). Choosing one starts. */
+fun reciteSheet(context: android.content.Context, onRecite: () -> Unit) = SheetSpec(
+    title = context.getString(R.string.recite),
+    subtitle = context.getString(R.string.recite_anywhere_hint),
+    content = {
+        val settings by Graph.settings.state.collectAsStateWithLifecycle()
+        val close = LocalSheetClose.current
+        @Composable
+        fun way(shown: Boolean, title: Int, body: Int, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+            val chosen = settings.reciteShowText == shown
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 5.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (chosen) P.accent.copy(alpha = if (P.isDark) 0.14f else 0.12f) else P.surfaceHigh)
+                    .border(1.dp, if (chosen) P.accent.copy(alpha = 0.7f) else P.outline, RoundedCornerShape(16.dp))
+                    .clickable {
+                        Graph.settings.update { it.copy(reciteShowText = shown) }
+                        close()
+                        onRecite()
+                    }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(icon, contentDescription = null, tint = if (chosen) P.accent else P.textDim, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(title), style = Type.title, color = P.text)
+                    Spacer(Modifier.height(2.dp))
+                    Text(stringResource(body), style = Type.label, color = P.textDim)
+                }
+                Spacer(Modifier.width(8.dp))
+                Icon(Ic.Mic, contentDescription = null, tint = if (chosen) P.accent else P.textFaint, modifier = Modifier.size(18.dp))
+            }
+        }
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 12.dp)) {
+            way(false, R.string.recite_way_memory, R.string.recite_way_memory_body, Ic.Hidden)
+            way(true, R.string.recite_way_reading, R.string.recite_way_reading_body, Ic.Visible)
+        }
+    },
+)
+
+/**
+ * The one bar the app listens and recites from, above the tabs: there is no other player on a
+ * screen. On a tab it is what the player holds (a tap opens it). With a passage or a sūra open
+ * ([open]) it is that text's: listen to it, and the full player behind it ([playerSheet]: the
+ * transport, the reciter, the repeats). Something else heard while that text is open stays in
+ * the bar until the text is left, so what sounds can always be paused. And everywhere, the
+ * microphone ([onRecite], [ReciteButton]): with nothing to listen to, the bar is that alone.
+ */
+@Composable
+fun PlayerDock(open: String?, onOpen: () -> Unit, onRecite: () -> Unit, modifier: Modifier = Modifier) {
     val sheets = LocalSheets.current
     val np by Graph.nowPlaying.collectAsStateWithLifecycle()
     val ui by Graph.player.state.collectAsStateWithLifecycle()
@@ -235,9 +315,26 @@ fun PlayerDock(open: String?, onOpen: () -> Unit, onRecite: (() -> Unit)?, modif
         if (foreign && ui.playWhenReady) heard = held?.session
     }
     val loaded = held != null && (open == null || own || other)
-    val id = if (loaded) held!!.fadilaId else open ?: return
-    val of = listening(id)
-    val title = if (loaded) held!!.title else of?.title ?: return
+    val id = if (loaded) held!!.fadilaId else open
+    val of = id?.let { listening(it) }
+    val title = if (loaded) held!!.title else of?.title
+    if (id == null || title == null) {
+        // Nothing to listen to here: the microphone, and what it does.
+        Row(
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(P.surfaceHigh)
+                .padding(start = 18.dp, end = 10.dp, top = 9.dp, bottom = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.recite_anywhere_hint), style = Type.label, color = P.textDim, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(10.dp))
+            ReciteButton(onRecite)
+        }
+        return
+    }
     val playing = loaded && ui.playWhenReady
     // The open text's own bar: it also recites, and a tap opens the full player (elsewhere, what plays).
     val here = open != null && !other
@@ -276,23 +373,8 @@ fun PlayerDock(open: String?, onOpen: () -> Unit, onRecite: (() -> Unit)?, modif
                 Text(status, style = Type.label, color = P.textDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (loaded) IconBtn(Ic.Next, { Graph.player.nextAyah() }, tint = P.textDim, size = 40.dp, iconSize = 24.dp, contentDescription = stringResource(R.string.player_next))
-            if (here && onRecite != null) {
-                // Reciting it aloud, the microphone following: the other way into the text.
-                Row(
-                    Modifier
-                        .padding(horizontal = 2.dp)
-                        .height(36.dp)
-                        .clip(CircleShape)
-                        .border(1.dp, P.outline, CircleShape)
-                        .clickable(onClick = onRecite)
-                        .padding(start = 10.dp, end = 13.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Ic.Mic, contentDescription = null, tint = P.accent, modifier = Modifier.size(17.dp))
-                    Spacer(Modifier.width(5.dp))
-                    Text(stringResource(R.string.recite), style = Type.button.copy(fontSize = 14.sp), color = P.text, maxLines = 1)
-                }
-            }
+            // Reciting aloud, the microphone following: the passage open, or anywhere in the Qur'an.
+            ReciteButton(onRecite, Modifier.padding(horizontal = 2.dp))
             IconBtn(Ic.Expand, full, tint = P.textDim, size = 40.dp, iconSize = 24.dp, contentDescription = stringResource(R.string.player_open), modifier = Modifier.testTag("player-open"))
         }
         if (loaded) DockProgress(ui.durationMs) else Spacer(Modifier.height(12.dp))

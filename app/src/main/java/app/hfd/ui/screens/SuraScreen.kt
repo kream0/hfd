@@ -28,13 +28,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -90,9 +88,9 @@ private fun asPassage(s: SuraMeta): Fadila =
  * was last read ([app.hfd.data.ReadingPlace]): the app comes back as it was left. It follows the
  * recitation while the āya recited is in view and never pulls the reader back from elsewhere
  * ([app.hfd.ui.components.Follow]). Listening and reciting are the bar's, under every screen
- * ([app.hfd.ui.components.PlayerDock]); [onReciteAction] gives it how this screen starts a
- * recitation (from the āya at its top). A tap on an āya doesn't play it: it offers to keep it,
- * to listen or to recite from there. When the sūra ends the next one follows, and this screen
+ * ([app.hfd.ui.components.PlayerDock]). A tap on an āya doesn't play it: it offers to keep it,
+ * to listen or to recite from there ([onRecite] with its number; without, anywhere: the search's
+ * microphone). When the sūra ends the next one follows, and this screen
  * with it ([onOpen]).
  */
 @Composable
@@ -102,8 +100,7 @@ fun SuraScreen(
     onTargetShown: () -> Unit,
     onOpen: (Int) -> Unit,
     onGo: (sura: Int, aya: Int?) -> Unit,
-    onRecite: (from: Int) -> Unit,
-    onReciteAction: ((() -> Unit)?) -> Unit,
+    onRecite: (from: Int?) -> Unit,
     onBack: () -> Unit,
 ) {
     KeepScreenOn()
@@ -115,7 +112,7 @@ fun SuraScreen(
         Box(Modifier.fillMaxSize().background(P.background)) { Loader(Modifier.align(Alignment.Center)) }
         return
     }
-    SuraReader(c, meta, target, onTargetShown, onOpen, onGo, onRecite, onReciteAction, onBack)
+    SuraReader(c, meta, target, onTargetShown, onOpen, onGo, onRecite, onBack)
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -127,8 +124,7 @@ private fun SuraReader(
     onTargetShown: () -> Unit,
     onOpen: (Int) -> Unit,
     onGo: (sura: Int, aya: Int?) -> Unit,
-    onRecite: (from: Int) -> Unit,
-    onReciteAction: ((() -> Unit)?) -> Unit,
+    onRecite: (from: Int?) -> Unit,
     onBack: () -> Unit,
 ) {
     val sura = meta.index
@@ -184,25 +180,6 @@ private fun SuraReader(
     LaunchedEffect(laidTop) { laidTop?.let { Graph.reading.set(AyahRef(sura, it)) } }
     // (Read while nothing of it is recited, or elsewhere than the āya recited: the place is the reader's alone.)
     LaunchedEffect(follow.on, current != null) { Graph.reading.following = current != null && follow.on }
-
-    fun recite() {
-        if (top <= 1) onRecite(1)
-        else sheets(
-            SheetSpec(
-                title = context.getString(R.string.recite),
-                actions = listOf(
-                    SheetAction(context.getString(R.string.recite_from_aya, top), Ic.Mic) { onRecite(top) },
-                    SheetAction(context.getString(R.string.recite_from_start)) { onRecite(1) },
-                ),
-            ),
-        )
-    }
-    val reciteNow by rememberUpdatedState(::recite)
-    DisposableEffect(sura) {
-        val action = { reciteNow() }
-        onReciteAction(action)
-        onDispose { onReciteAction(null) }
-    }
 
     var going by remember { mutableStateOf(false) }
 
@@ -285,6 +262,7 @@ private fun SuraReader(
                         onGo(s, a ?: if (s == sura) 1 else null)
                     },
                     onClose = { going = false },
+                    onRecite = { going = false; onRecite(null) },
                 )
             }
         }

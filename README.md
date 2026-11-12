@@ -165,12 +165,20 @@ that the app updates itself from new releases. Android 8.0 or newer.
   - **Search** (`:core` `QuranSearch`): a reference (`2:255`, `baqara 255`), a sūra's name or
     number, `juz 5` / `hizb 12`, words of the text typed in Arabic however spelt (compared
     without vowel signs or alif forms; the words found are lit in the results), or words of the
-    translation. And **by reciting**: the microphone in the search field listens to a few words
-    (the Recite recogniser, on the phone) and shows where they are in the text: each word heard
-    votes for the places it occurs at, the likeliest are compared letter by letter.
-  - **Two modes** for a sūra. *Reading*: the text, the juzʾ and ḥizb that begin in it marked; a
-    tap on an āya plays nothing and offers to keep it as a **favourite** (listed in the tab,
-    saved in backups), to listen or to recite from there. *Reciting*: Recite on that sūra.
+    translation.
+  - **One microphone: recite anywhere.** The bar's microphone (and the search field's) listens
+    at once: recite any passage, from a sūra's beginning or the middle of a verse, and the app
+    finds where it is in the whole Qur'an (`:core` `Locator`: each reading of what is being said
+    is looked for until one place stands out; the isti'ādha, the basmala and a sūra's opening
+    letters are known for what they are), shows that sūra's page and follows the recitation
+    from the word it was found at. Go elsewhere and it finds you again; a sūra finished goes on
+    into the next; closing it leaves the page open where you were. So finding a passage and
+    reciting it are one thing. The arrow beside the microphone chooses how: from memory (the
+    text hidden, each word showing as it is said) or reading (the text shown, the marker
+    following the voice).
+  - **Reading** a sūra: the text, the juzʾ and ḥizb that begin in it marked; a tap on an āya
+    plays nothing and offers to keep it as a **favourite** (listed in the tab, saved in
+    backups), to listen or to recite from there.
 - **Home and Stats:** today's goal (minutes of practice), streak, due reviews, continue where
   you left off, per-faḍīla progress (memorised / total, next review), a calendar of practice,
   total āyāt memorised and listening time.

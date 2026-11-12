@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.hfd.Graph
 import app.hfd.R
 import app.hfd.core.playback.QuranListening
+import app.hfd.core.quran.AyahRef
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.LocalSheets
 import app.hfd.ui.components.PlayerDock
@@ -103,9 +104,6 @@ fun AppRoot(app: AppViewModel) {
     val loaded by Graph.content.content.collectAsStateWithLifecycle()
     ReportDrawnWhen { loaded != null }
 
-    // Reciting the open sūra, as its screen starts it (from the āya at the top of the text).
-    var reciteSura by remember { mutableStateOf<(() -> Unit)?>(null) }
-
     CompositionLocalProvider(LocalSheets provides openSheet) {
         ProvideTajweed {
         Box(Modifier.fillMaxSize().background(P.background)) {
@@ -114,21 +112,25 @@ fun AppRoot(app: AppViewModel) {
                     when (app.tab) {
                         Tab.HOME -> HomeScreen(app)
                         Tab.FADAIL -> FadailScreen(onOpen = app::openFadila, onEdit = { app.editingFadail = true })
-                        Tab.QURAN -> QuranScreen(onOpen = app::openSura)
+                        Tab.QURAN -> QuranScreen(onOpen = app::openSura, onRecite = { app.reciteAnywhere(near = Graph.reading.place.value) })
                         Tab.STATS -> StatsScreen(onOpen = app::openFadila)
                         Tab.SETTINGS -> SettingsScreen(onEditFadail = { app.editingFadail = true })
                     }
-                    FadilaOverlay(app) { reciteSura = it }
+                    FadilaOverlay(app)
                 }
-                // The one player: what plays, or the open text to listen to and to recite.
+                // The one bar: what plays, or the open text to listen to; and the microphone, which
+                // recites the passage open, or anywhere in the Qur'an (the app finds what is said:
+                // near the place read in the sūra open, when the text says it in several places).
                 val open = app.fadila
                 PlayerDock(
                     open = open,
                     onOpen = app::openPlaying,
-                    onRecite = when {
-                        open == null -> null
-                        QuranListening.suraOf(open) != null -> reciteSura
-                        else -> ({ Graph.content.content.value?.fadila(open)?.let(app::recite); Unit })
+                    onRecite = {
+                        val sura = QuranListening.suraOf(open)
+                        val passage = if (open != null && sura == null) Graph.content.content.value?.fadila(open) else null
+                        if (passage != null) app.recite(passage)
+                        else if (sura != null) app.reciteAnywhere(near = Graph.reading.of(sura) ?: AyahRef(sura, 1), show = true)
+                        else app.reciteAnywhere(near = Graph.reading.place.value)
                     },
                 )
                 BottomNav(tab = app.tab, onTab = app::selectTab)
@@ -158,10 +160,7 @@ private fun FlowOverlay(app: AppViewModel) {
             PracticeFlow.Learn -> LearnScreen(onClose = { app.flow = null })
             is PracticeFlow.Review -> ReviewScreen(testOf = null, only = f.only, onClose = { app.flow = null })
             is PracticeFlow.Test -> ReviewScreen(testOf = f.fadilaId, only = null, onClose = { app.flow = null })
-            is PracticeFlow.Recite -> ReciteScreen(onClose = {
-                Graph.closeRecite()
-                app.flow = null
-            })
+            is PracticeFlow.Recite -> ReciteScreen(onClose = app::closeRecite)
             null -> Unit
         }
     }
@@ -169,7 +168,7 @@ private fun FlowOverlay(app: AppViewModel) {
 
 /** Faḍīla detail (or a sūra of the Qur'an section) slides over the current tab, keeping the bottom navigation visible. */
 @Composable
-private fun FadilaOverlay(app: AppViewModel, onReciteAction: ((() -> Unit)?) -> Unit) {
+private fun FadilaOverlay(app: AppViewModel) {
     var last by remember { mutableStateOf<String?>(null) }
     app.fadila?.let { last = it }
     AnimatedVisibility(
@@ -187,8 +186,7 @@ private fun FadilaOverlay(app: AppViewModel, onReciteAction: ((() -> Unit)?) -> 
                     onTargetShown = { app.suraTarget = null },
                     onOpen = { n -> app.openSura(n) },
                     onGo = { s, a -> app.openSura(s, a) },
-                    onRecite = { from -> app.reciteSura(sura, from) },
-                    onReciteAction = onReciteAction,
+                    onRecite = { from -> if (from != null) app.reciteAnywhere(start = AyahRef(sura, from)) else app.reciteAnywhere(near = Graph.reading.of(sura) ?: AyahRef(sura, 1), show = true) },
                     onBack = { app.fadila = null },
                 )
             }

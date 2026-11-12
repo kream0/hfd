@@ -1,0 +1,114 @@
+name: Locate bench
+
+# Finding where a recitation is in the whole Qur'an, as Recite does when nothing was given to
+# recite (:core Locator, QuranSearch.recited): places taken at random and beginnings of sūras
+# (tools/locate/sample.py), by four reciters of EveryAyah, streamed through the Segmenter and the
+# CTC recogniser. Prints per kind the places right, wrong and not found, and after how many
+# seconds of recitation (the "Report" step of each part; the summary adds them up).
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'core/src/main/kotlin/app/hfd/core/quran/Locator.kt'
+      - 'core/src/main/kotlin/app/hfd/core/quran/QuranSearch.kt'
+      - 'core/src/test/kotlin/app/hfd/core/quran/LocateBench.kt'
+      - 'tools/locate/**'
+      - '.github/workflows/locate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: locate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['0/4', '1/4', '2/4', '3/4']
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+      - name: ffmpeg, the recordings, the recogniser's model
+        run: |
+          # (As recite.yml: apt's mirrors may not answer; PyPI carries a static ffmpeg.)
+          if sudo timeout 240 apt-get update -qq && sudo timeout 300 apt-get install -y -qq ffmpeg >/dev/null; then
+            echo "ffmpeg: Ubuntu's"
+          else
+            echo "ffmpeg: apt failed, PyPI's imageio-ffmpeg"
+            pip install --quiet imageio-ffmpeg
+            sudo ln -sf "$(python3 -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')" /usr/local/bin/ffmpeg
+          fi
+          ffmpeg -version | head -1
+          mkdir -p work/locate
+          python3 tools/locate/sample.py app/src/main/assets/quran/quran-uthmani.txt work/locate
+          # Only this part's cases are fetched (every fourth).
+          k=${{ matrix.shard }}
+          awk -v k="${k%%/*}" -v n="${k##*/}" '(NR - 1) % n == k' work/locate/cases.tsv > work/locate/part.tsv
+          cp work/locate/cases.tsv work/locate/all.tsv
+          cp work/locate/part.tsv work/locate/cases.tsv
+          bash tools/locate/fetch.sh work/locate
+          cp work/locate/all.tsv work/locate/cases.tsv
+          curl -sSfL -o work/ctc.onnx https://github.com/kream0/hfd/releases/download/speech-model/quran-fastconformer-ctc-ar-int8.onnx
+          echo "acfecea696b8ab2e99cf40cd7463bc3a4e323a4771dd7e54db372d076d51a97c  work/ctc.onnx" | sha256sum -c
+      - name: Bench
+        env:
+          HFD_LOCATE: ${{ github.workspace }}/work/locate
+          HFD_CTC: ${{ github.workspace }}/work/ctc.onnx
+          HFD_LOCATE_SHARD: ${{ matrix.shard }}
+        run: ./gradlew --no-daemon -q :core:test --tests 'app.hfd.core.quran.LocateBench'
+      - name: Report
+        if: always()
+        run: cat work/locate/locate.txt
+      - name: Name the part
+        if: always()
+        run: echo "PART=$(echo '${{ matrix.shard }}' | tr '/' '-')" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: locate-${{ env.PART }}
+          path: work/locate/locate.txt
+  summary:
+    needs: bench
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: parts
+      - name: Report
+        run: |
+          # Each part's totals, added up; and every place not right.
+          python3 - <<'PY'
+          import glob, re
+          kinds = {}
+          for path in sorted(glob.glob("parts/*/locate.txt")):
+              for line in open(path, encoding="utf-8"):
+                  m = re.match(r"(.+): right (\d+)/(\d+) \(.*\), wrong (\d+), not found (\d+)", line)
+                  if m and m.group(1) != "ALL":
+                      k = kinds.setdefault(m.group(1), [0, 0, 0, 0])
+                      for i, g in enumerate((2, 3, 4, 5)):
+                          k[i] += int(m.group(g))
+                  elif not m and line.strip():
+                      print(line.rstrip()[:400])
+          total = [0, 0, 0, 0]
+          for name, k in kinds.items():
+              print(f"{name}: right {k[0]}/{k[1]} ({100 * k[0] / max(1, k[1]):.1f} %), wrong {k[2]}, not found {k[3]}")
+              total = [a + b for a, b in zip(total, k)]
+          print(f"ALL: right {total[0]}/{total[1]} ({100 * total[0] / max(1, total[1]):.1f} %), wrong {total[2]}, not found {total[3]}")
+          PY

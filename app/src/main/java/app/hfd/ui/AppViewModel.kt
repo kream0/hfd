@@ -121,12 +121,27 @@ class AppViewModel : ViewModel() {
         flow = PracticeFlow.Recite(f.id)
     }
 
-    /** Recite sūra [sura] of the Qur'an section aloud, from āya [from] to its end. */
-    fun reciteSura(sura: Int, from: Int = 1) {
-        val meta = Graph.content.content.value?.suras?.getOrNull(sura - 1) ?: return
-        val id = QuranListening.id(sura)
-        Graph.openRecite(id, QuranListening.ayat(sura, meta.ayas).drop((from - 1).coerceIn(0, meta.ayas - 1)))
-        flow = PracticeFlow.Recite(id)
+    /**
+     * Recite anywhere in the Qur'an: the app finds what is being said and follows it there.
+     * [near]: where the reciter is likely to be (the sūra open; [show]: its page stays shown
+     * meanwhile); [start]: an āya to begin at without looking ("recite from here").
+     */
+    fun reciteAnywhere(near: AyahRef? = null, start: AyahRef? = null, show: Boolean = false) {
+        Graph.reciteAnywhere(near, start, show)
+        flow = PracticeFlow.Recite("")
+    }
+
+    /**
+     * The recitation is closed. One found (or begun) in a sūra leaves that sūra open where it was
+     * reached: reciting a few words is also how a passage is found.
+     */
+    fun closeRecite() {
+        val s = Graph.recite.value
+        val ui = s?.ui?.value
+        val reached = ui?.takeIf { QuranListening.suraOf(it.id) != null && !it.locating }?.let { u -> u.targets.getOrNull(u.next?.first ?: u.targets.lastIndex)?.ref }
+        Graph.closeRecite()
+        flow = null
+        if (reached != null) openSura(reached.sura, reached.aya)
     }
 
     fun test(f: Fadila) {

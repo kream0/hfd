@@ -122,6 +122,32 @@ object Graph {
     }
 
     /**
+     * Starts reciting anywhere in the Qur'an: what is said is looked for in the whole text and
+     * followed in its sūra from where it was found ([ReciteSession.Anywhere]). [near]: where the
+     * reciter is likely to be (the sūra open, the place last read); [show]: its page is shown
+     * from there while the place is looked for (it was open: one may be reading from it).
+     * [start]: an āya to begin at without looking ("recite from here"). Nothing goes to the
+     * progress log: the Qur'an section is outside what is being learnt.
+     */
+    fun reciteAnywhere(near: AyahRef? = null, start: AyahRef? = null, show: Boolean = false) {
+        closeRecite()
+        val c = content.content.value ?: return
+        if (player.state.value.playWhenReady) player.pause()
+        _recite.value = ReciteSession(
+            "",
+            emptyList(),
+            scope,
+            models = ::reciteModels,
+            record = {},
+            anywhere = ReciteSession.Anywhere(
+                c.search, near ?: start, start, near.takeIf { show },
+                id = QuranListening::id,
+                text = { n -> c.suras.getOrNull(n - 1)?.let { meta -> ReciteSession.targets(QuranListening.ayat(n, meta.ayas)) { c.quran.text(it) } } },
+            ),
+        )
+    }
+
+    /**
      * Takes passage [id] out of the list ([hide]) or puts it back. Hidden, it is neither listed,
      * offered to learn, reviewed nor played with the others; what was learnt of it is kept. What
      * was in progress with it stops: listening, the lesson or the test to resume.
