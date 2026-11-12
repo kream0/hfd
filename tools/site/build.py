@@ -116,7 +116,7 @@ SHOTS = [
      "Écouter avec le texte, répéter dans les pauses, le premier mot seul, puis de mémoire.",
      "Apprendre Al-Ikhlāṣ, āya 4 sur 4 : étape Écouter, le texte de 112:4 et sa traduction, boutons Réécouter, Passer et Suivant."),
     ("recite", "Réciter",
-     "Récitez au micro&nbsp;: les mots s'allument un à un, le mot sauté est barré en rouge&nbsp;; sur demande, les madd non tenus sont soulignés.",
+     "Touchez le micro et récitez n'importe quel passage&nbsp;: l'app le retrouve et vous suit. Les mots s'allument un à un, le mot sauté est barré en rouge.",
      "Réciter Al-Ikhlāṣ : les trois premières āyāt reconnues, « wa-lam » barré en rouge, la quatrième encore en attente, bouton micro."),
     ("review", "Réviser",
      "Ce qui est dû aujourd'hui, texte caché&nbsp;: réciter de mémoire, dévoiler, noter.",
