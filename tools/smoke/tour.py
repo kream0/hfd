@@ -104,6 +104,39 @@ def is_(s):
     return lambda t: t == s
 
 
+def find_text(s):
+    """The node whose text (not its description) is [s]: an item of a menu, beside a button described the same."""
+    for text, _, box in nodes():
+        if text == s:
+            return box
+    return None
+
+
+# The bar's one button, by what it does now (its description).
+BUTTON = ("Réciter", "Écouter", "Pause")
+
+
+def hold_button():
+    """Holds the bar's button down: its choice (listen, recite from memory, recite reading) opens above it."""
+    box = find(lambda t: t in BUTTON)
+    if not box:
+        return False
+    x, y = (box[0] + box[2]) // 2, (box[1] + box[3]) // 2
+    sh(f"input swipe {x} {y} {x} {y} 900")
+    time.sleep(1.2)
+    return find_text("Réciter de mémoire") is not None and find_text("Réciter en lisant") is not None and find_text("Écouter") is not None
+
+
+def choose(what):
+    """Holds the bar's button and takes [what] in its choice."""
+    if not hold_button():
+        failures.append(f"menu: the button's choice didn't open (for {what})")
+        shot("menu-missing")
+        return False
+    tap(find_text(what))
+    return True
+
+
 def starts(s):
     return lambda t: t.startswith(s)
 
@@ -262,16 +295,14 @@ def keyboard_shown():
     return shown.group(1) == "true" if shown else None
 
 
-def recite_anywhere(name, want, shows=is_("Récitez n'importe quel passage")):
-    """The microphone that recites anywhere ([want] finds it): the screen that listens for any passage
-    opens ([shows]: what it says to do, or the page that was open) and listens (the emulator's
-    microphone is silent: nothing is found); Back closes it."""
-    mic = find(want)
-    if not mic:
-        failures.append(f"{name}: no microphone")
-        return
+def recite_anywhere(name, start, shows=is_("Récitez n'importe quel passage")):
+    """Reciting anywhere, begun by [start] (the bar's button, or its choice): the screen that listens
+    for any passage opens ([shows]: what it says to do, or the page that was open) and listens (the
+    emulator's microphone is silent: nothing is found); Back closes it."""
     sh("logcat -c")
-    tap(mic)
+    if not start():
+        failures.append(f"{name}: nothing to begin it with")
+        return
     opened = wait(shows, 30)
     listening = opened and wait(starts("À l"), 240)
     shot(name)
@@ -334,7 +365,16 @@ def search_and_favourite():
         sh("input keyevent 4")
         time.sleep(0.8)
     shot("after-search")
-    recite_anywhere("recite from the search", is_("Réciter pour retrouver un passage"))
+    # The bar's button on a tab (alone there, over the screen's corner): reciting anywhere.
+    if find(is_("Réciter pour retrouver un passage")):
+        failures.append("search: a second microphone is back in the field")
+
+    def from_tab():
+        mic = find(is_("Réciter"))
+        if mic:
+            tap(mic)
+        return mic is not None
+    recite_anywhere("recite from a tab", from_tab)
     step("favourites", is_("Favoris"), is_("Al-Baqara 255"))
     step("juz", is_("Juzʾ"), is_("Juzʾ 2"))
     step("hizb", is_("Ḥizb"), is_("Ḥizb 3"))
@@ -390,11 +430,11 @@ def go_while_listening():
 def one_player(when):
     """A text's screen has one place to listen from: the bar (no panel, no second player under it)."""
     seen = nodes()
-    n = sum(1 for text, desc, _ in seen if desc in ("Écouter", "Pause"))
+    n = sum(1 for text, desc, _ in seen if desc in BUTTON)
     report.setdefault("players", {})[when] = n
     print(f"SMOKE players on the sūra's screen {when}: {n}", flush=True)
     if n != 1:
-        failures.append(f"player: {n} listening buttons on the sūra's screen {when}")
+        failures.append(f"player: {n} buttons in the bar on the sūra's screen {when} (one does everything)")
     if any(text in ("Lecture", "Récitation") for text, _, _ in seen):
         failures.append("player: the switch at the top is back")
 
@@ -412,13 +452,19 @@ if step("quran", is_("Coran"), starts("Al-Baqara")):
             shot("reopen-missing")
         # Playing: the media service, its session, the stream.
         one_player("before listening")
-        # The colours of tajwīd: the legend opens from the text's screen, with its switch; Back closes it.
-        if step("tajweed", is_("Couleurs du tajwīd"), is_("Lettres en couleurs")):
+        # The colours of tajwīd: an āya's rules (its sheet), and from there the legend with its switches.
+        if find(is_("Couleurs du tajwīd")):
+            failures.append("tajweed: a palette button is back at the top of the text")
+        tap(find(is_("2:255")))
+        if step("tajweed-aya", is_("Tajwīd de cette āya"), is_("Couleurs du tajwīd")) and step("tajweed", is_("Couleurs du tajwīd"), is_("Lettres en couleurs")):
             if not find(starts("Madd de 6")):
                 failures.append("tajweed: the legend has no colours")
-            sh("input keyevent 4")
-            time.sleep(1.0)
-        if step("playing", is_("Écouter"), is_("Pause")):
+        for _ in range(2):
+            if find(is_("Lettres en couleurs")) or find(is_("Tajwīd de cette āya")) or find(is_("Ajouter aux favoris")) or find(is_("Retirer des favoris")):
+                sh("input keyevent 4")
+                time.sleep(1.0)
+        # The one button, held: "Écouter" listens, and the button then pauses.
+        if choose("Écouter") and wait(is_("Pause"), 30):
             time.sleep(6)
             session = sh("dumpsys media_session")
             state = re.search(r"package=" + re.escape(PKG) + r".*?state=PlaybackState \{state=(\w+)", session, re.S)
@@ -435,15 +481,9 @@ if step("quran", is_("Coran"), starts("Al-Baqara")):
                 failures.append("player: its settings or its transport are missing")
             sh("input keyevent 4")
             time.sleep(1.0)
-        # Reciting the sūra from the bar, and back to its text.
-        # The bar's microphone: how to recite (its menu), then reciting anywhere, and back to the text.
-        if step("recite-how", is_("Façon de réciter"), is_("De mémoire")):
-            if not find(is_("En lisant")):
-                failures.append("recite-how: the ways to recite are missing")
-            sh("input keyevent 4")
-            time.sleep(1.0)
-        # (From a sūra's page, the page stays shown while the place is looked for.)
-        recite_anywhere("recite from the bar", is_("Réciter"), shows=is_("Réciter · Al-Baqara"))
+        # The button's choice again: reciting, from this sūra's page (which stays shown while the
+        # place is looked for), and back to the text.
+        recite_anywhere("recite from the bar", lambda: choose("Réciter en lisant"), shows=is_("Réciter · Al-Baqara"))
         if not wait(lambda t: t.startswith("Al-Baqara · "), 20):
             failures.append("recite from the bar: the sūra didn't come back")
         sh(f"dumpsys gfxinfo {PKG} reset")

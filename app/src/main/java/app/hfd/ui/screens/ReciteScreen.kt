@@ -171,8 +171,6 @@ fun ReciteScreen(onClose: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(start = 4.dp),
             )
-            // Timing the long vowels needs the model that places letters in time.
-            if (best && ctcModel is ModelState.Ready) TajweedToggle(settings.reciteTajweed)
         }
         Text(statusLine(ui, s), style = Type.label, color = P.textDim, modifier = Modifier.padding(horizontal = 20.dp))
         // (How far through a passage; a sūra recited from anywhere has no such end.)
@@ -230,8 +228,6 @@ fun ReciteScreen(onClose: () -> Unit) {
                     ui.candidates.forEach { hit -> PillButton(stringResource(R.string.quran_at, content!!.sura(hit.ref.sura).tname, hit.ref.aya), { s.choose(hit) }) }
                 }
             }
-        } else if (!ui.locating) ui.heard?.let {
-            Text(it, style = Type.label, color = P.textFaint, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp))
         }
         if (ui.muffled && ui.listening) {
             Text(
@@ -240,9 +236,9 @@ fun ReciteScreen(onClose: () -> Unit) {
             )
         }
         if (ui.listening) Waveform(wave, Modifier.padding(horizontal = 24.dp, vertical = 6.dp))
-        listeningWith?.let { m ->
-            // Which microphone listens; with earbuds connected, a tap switches (listening goes on).
-            val switchable = m.headset || m.headsetAvailable
+        // Which microphone listens, when there is a choice: with earbuds connected, a tap switches (listening goes on).
+        listeningWith?.takeIf { it.headset || it.headsetAvailable }?.let { m ->
+            val switchable = true
             Text(
                 when {
                     m.headset -> stringResource(R.string.recite_mic_headset, m.name ?: stringResource(R.string.recite_mic_earbuds))
@@ -266,7 +262,9 @@ fun ReciteScreen(onClose: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            IconBtn(Ic.Hint, { s.hint() }, tint = if (ui.locating) P.textFaint else P.text, bordered = true, size = 48.dp, contentDescription = stringResource(R.string.recite_hint))
+            // The next word, asked for: from memory only (reading, it is on the screen).
+            if (!showText && !ui.locating) IconBtn(Ic.Hint, { s.hint() }, bordered = true, size = 48.dp, contentDescription = stringResource(R.string.recite_hint))
+            else Spacer(Modifier.size(48.dp))
             MicButton(listening = ui.listening, level = level, enabled = ready && !ui.done) {
                 if (ui.listening) s.stop() else listen()
             }
@@ -567,28 +565,6 @@ private fun MicButton(listening: Boolean, level: Float, enabled: Boolean, onClic
             tint = if (listening) P.background else if (enabled) P.onPrimary else P.textFaint,
             modifier = Modifier.size(32.dp),
         )
-    }
-}
-
-/** The switch of the check of the long vowels: lit when on; switched on, it says what is checked. */
-@Composable
-private fun TajweedToggle(on: Boolean) {
-    val sheets = LocalSheets.current
-    val context = LocalContext.current
-    Row(
-        Modifier
-            .padding(end = 8.dp)
-            .clip(CircleShape)
-            .background(if (on) P.accent.copy(alpha = if (P.isDark) 0.2f else 0.16f) else Color.Transparent)
-            .border(1.dp, if (on) P.accent.copy(alpha = 0.7f) else P.outline, CircleShape)
-            .clickable {
-                Graph.settings.update { it.copy(reciteTajweed = !on) }
-                if (!on) sheets(SheetSpec(title = context.getString(R.string.recite_tajweed), subtitle = context.getString(R.string.recite_tajweed_body)))
-            }
-            .padding(horizontal = 12.dp, vertical = 7.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(stringResource(R.string.recite_tajweed), style = Type.button.copy(fontSize = 13.sp), color = if (on) P.text else P.textDim, maxLines = 1)
     }
 }
 

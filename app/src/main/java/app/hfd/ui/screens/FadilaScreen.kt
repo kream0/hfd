@@ -112,7 +112,6 @@ fun FadilaScreen(id: String, app: AppViewModel, onBack: () -> Unit) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconBtn(Ic.Back, onBack, contentDescription = stringResource(R.string.detail_back))
                 Spacer(Modifier.weight(1f))
-                IconBtn(Ic.Palette, { sheets(tajweedSheet(context)) }, tint = P.textDim, contentDescription = stringResource(R.string.tajweed_open))
             }
             if (c == null || f == null) {
                 Box(Modifier.fillMaxSize()) { Loader(Modifier.align(Alignment.Center)) }

@@ -9,6 +9,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +56,7 @@ import app.hfd.core.playback.QuranListening
 import app.hfd.core.quran.AyahRef
 import app.hfd.ui.components.Ic
 import app.hfd.ui.components.LocalSheets
+import app.hfd.ui.components.DockMenu
 import app.hfd.ui.components.PlayerDock
 import app.hfd.ui.components.ProvideTajweed
 import app.hfd.ui.components.SheetAction
@@ -104,6 +106,20 @@ fun AppRoot(app: AppViewModel) {
     val loaded by Graph.content.content.collectAsStateWithLifecycle()
     ReportDrawnWhen { loaded != null }
 
+    // The choice the bar's button opens when held: floating over the screen, above the button.
+    var dockMenu by remember { mutableStateOf(false) }
+    val open = app.fadila
+    // The bar's microphone: the passage open, or anywhere in the Qur'an (the app finds what is
+    // said: near the place read in the sūra open, when the text says it in several places).
+    val recite = {
+        val sura = QuranListening.suraOf(open)
+        val passage = if (open != null && sura == null) Graph.content.content.value?.fadila(open) else null
+        if (passage != null) app.recite(passage)
+        else if (sura != null) app.reciteAnywhere(near = Graph.reading.of(sura) ?: AyahRef(sura, 1), show = true)
+        else app.reciteAnywhere(near = Graph.reading.place.value)
+    }
+    val quiet = open == null && (app.tab == Tab.STATS || app.tab == Tab.SETTINGS)
+
     CompositionLocalProvider(LocalSheets provides openSheet) {
         ProvideTajweed {
         Box(Modifier.fillMaxSize().background(P.background)) {
@@ -111,29 +127,36 @@ fun AppRoot(app: AppViewModel) {
                 Box(Modifier.weight(1f)) {
                     when (app.tab) {
                         Tab.HOME -> HomeScreen(app)
-                        Tab.FADAIL -> FadailScreen(onOpen = app::openFadila, onEdit = { app.editingFadail = true })
-                        Tab.QURAN -> QuranScreen(onOpen = app::openSura, onRecite = { app.reciteAnywhere(near = Graph.reading.place.value) })
+                        Tab.FADAIL -> FadailScreen(onOpen = app::openFadila)
+                        Tab.QURAN -> QuranScreen(onOpen = app::openSura)
                         Tab.STATS -> StatsScreen(onOpen = app::openFadila)
                         Tab.SETTINGS -> SettingsScreen(onEditFadail = { app.editingFadail = true })
                     }
                     FadilaOverlay(app)
+                    // (Nothing to say beside it: the button alone, over the screen's corner.)
+                    PlayerDock(open, floating = true, quiet = quiet, onOpen = app::openPlaying, onRecite = recite, onMenu = { dockMenu = true }, modifier = Modifier.align(Alignment.BottomEnd))
                 }
-                // The one bar: what plays, or the open text to listen to; and the microphone, which
-                // recites the passage open, or anywhere in the Qur'an (the app finds what is said:
-                // near the place read in the sūra open, when the text says it in several places).
-                val open = app.fadila
-                PlayerDock(
-                    open = open,
-                    onOpen = app::openPlaying,
-                    onRecite = {
-                        val sura = QuranListening.suraOf(open)
-                        val passage = if (open != null && sura == null) Graph.content.content.value?.fadila(open) else null
-                        if (passage != null) app.recite(passage)
-                        else if (sura != null) app.reciteAnywhere(near = Graph.reading.of(sura) ?: AyahRef(sura, 1), show = true)
-                        else app.reciteAnywhere(near = Graph.reading.place.value)
-                    },
-                )
+                // The one bar: what plays or the open text, and its one button.
+                PlayerDock(open, floating = false, quiet = quiet, onOpen = app::openPlaying, onRecite = recite, onMenu = { dockMenu = true })
                 BottomNav(tab = app.tab, onTab = app::selectTab)
+            }
+            // The button held: its choice, above it; a touch elsewhere (or Back) closes it.
+            if (dockMenu) {
+                androidx.activity.compose.BackHandler { dockMenu = false }
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.32f))
+                        .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) { dockMenu = false },
+                )
+            }
+            AnimatedVisibility(
+                dockMenu,
+                modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 12.dp, bottom = 136.dp),
+                enter = fadeIn() + slideInVertically { it / 6 },
+                exit = fadeOut() + slideOutVertically { it / 6 },
+            ) {
+                DockMenu(open, onRecite = recite, onClose = { dockMenu = false })
             }
             FlowOverlay(app)
             AnimatedVisibility(app.editingFadail, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
@@ -186,7 +209,7 @@ private fun FadilaOverlay(app: AppViewModel) {
                     onTargetShown = { app.suraTarget = null },
                     onOpen = { n -> app.openSura(n) },
                     onGo = { s, a -> app.openSura(s, a) },
-                    onRecite = { from -> if (from != null) app.reciteAnywhere(start = AyahRef(sura, from)) else app.reciteAnywhere(near = Graph.reading.of(sura) ?: AyahRef(sura, 1), show = true) },
+                    onRecite = { from -> app.reciteAnywhere(start = AyahRef(sura, from)) },
                     onBack = { app.fadila = null },
                 )
             }

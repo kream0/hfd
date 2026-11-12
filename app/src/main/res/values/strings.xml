@@ -53,7 +53,7 @@
     <string name="sura_header">Sūra %1$d · %2$s · %3$s</string>
 
     <string name="home_learning">Continue learning</string>
-    <string name="home_next">Next to learn · %1$s</string>
+    <string name="home_next_plain">To learn next</string>
     <string name="learn_order">Next to learn</string>
     <string name="learn_order_body">The order Home offers the passages you haven’t begun.</string>
     <string name="order_shortest">shortest first</string>
@@ -62,7 +62,6 @@
     <string name="order_shortest_short">Shortest</string>
     <string name="order_start_short">From start</string>
     <string name="order_end_short">From end</string>
-    <string name="home_all">All faḍāʾil</string>
 
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
@@ -216,7 +215,6 @@
     <string name="stats_best">Best</string>
     <string name="stats_memorised">Āyāt memorised</string>
     <string name="stats_listening">Listening</string>
-    <string name="stats_goal">Daily goal</string>
     <string name="stats_calendar">Last 20 weeks</string>
     <string name="stats_fadail">Per faḍīla</string>
     <string name="stats_reviews">Recitations from memory</string>
@@ -253,19 +251,21 @@
     <string name="fadail_count">%1$d passages</string>
     <string name="stats_none">Nothing learnt yet: open a passage and tap Learn.</string>
     <string name="recite">Recite</string>
-    <string name="recite_anywhere_hint">Recite any passage: the app finds it and follows you.</string>
-    <string name="recite_how">How to recite</string>
-    <string name="recite_way_memory">From memory</string>
-    <string name="recite_way_memory_body">The text is hidden; each word shows as you say it.</string>
-    <string name="recite_way_reading">Reading</string>
-    <string name="recite_way_reading_body">The text is shown; the marker follows your voice.</string>
+    <string name="recite_way_memory_body">The text stays hidden</string>
+    <string name="recite_way_reading_body">The marker follows your voice</string>
     <string name="recite_anywhere_title">Recite any passage</string>
     <string name="recite_anywhere_body">From a sūra\'s beginning or the middle of a verse: the app finds it in the whole Qur\'an, shows the page and follows you. Your voice stays on the phone.</string>
     <string name="recite_listening_anywhere">Listening · recite any passage</string>
     <string name="recite_locating">Listening · looking for this passage…</string>
     <string name="recite_tap">Tap the microphone and recite</string>
     <string name="recite_places">Several places say this. Go on reciting, or choose:</string>
-    <string name="quran_voice">Recite to find a passage</string>
+    <string name="dock_hold">Hold: listen or recite</string>
+    <string name="dock_listen_none">Open a passage or a sūra</string>
+    <string name="recite_way_memory_do">Recite from memory</string>
+    <string name="recite_way_reading_do">Recite while reading</string>
+    <string name="settings_recite_tajweed">Check the long vowels while reciting</string>
+    <string name="settings_recite_tajweed_body">Long vowels of 4 counts or more that you don\'t hold long enough are underlined. With the new model.</string>
+    <string name="offline">Offline</string>
     <string name="recite_title">Recite · %1$s</string>
     <string name="recite_model_needed">Reciting aloud uses Tarteel\'s Qur\'an speech model (%1$d MB), downloaded once. It runs on the phone: your voice is never recorded or sent.</string>
     <string name="recite_download">Download (%1$d MB)</string>
@@ -306,7 +306,6 @@
     <string name="recite_mic_phone_switch">Microphone: phone · use the earbuds</string>
     <!-- The Qur'an section -->
     <string name="tab_quran">Qur’an</string>
-    <string name="quran_count">%1$d sūras</string>
     <string name="quran_found">%1$d found</string>
     <string name="quran_search">Sūra, verse (2:255), word of the text…</string>
     <string name="quran_search_clear">Clear the search</string>

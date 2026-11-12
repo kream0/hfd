@@ -166,16 +166,16 @@ that the app updates itself from new releases. Android 8.0 or newer.
     number, `juz 5` / `hizb 12`, words of the text typed in Arabic however spelt (compared
     without vowel signs or alif forms; the words found are lit in the results), or words of the
     translation.
-  - **One microphone: recite anywhere.** The bar's microphone (and the search field's) listens
-    at once: recite any passage, from a sūra's beginning or the middle of a verse, and the app
+  - **One button, recite anywhere.** The bar has one round button: it does what was done last
+    (recite, or listen) and pauses what plays; held, it opens the choice above it (recite from
+    memory, recite reading, listen). Reciting listens at once: recite any passage, from a sūra's beginning or the middle of a verse, and the app
     finds where it is in the whole Qur'an (`:core` `Locator`: each reading of what is being said
     is looked for until one place stands out; the isti'ādha, the basmala and a sūra's opening
     letters are known for what they are), shows that sūra's page and follows the recitation
     from the word it was found at. Go elsewhere and it finds you again; a sūra finished goes on
     into the next; closing it leaves the page open where you were. So finding a passage and
-    reciting it are one thing. The arrow beside the microphone chooses how: from memory (the
-    text hidden, each word showing as it is said) or reading (the text shown, the marker
-    following the voice).
+    reciting it are one thing: from memory (the text hidden, each word showing as it is said)
+    or reading (the text shown, the marker following the voice).
   - **Reading** a sūra: the text, the juzʾ and ḥizb that begin in it marked; a tap on an āya
     plays nothing and offers to keep it as a **favourite** (listed in the tab, saved in
     backups), to listen or to recite from there.

@@ -1,8 +1,10 @@
 package app.hfd.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,19 +97,14 @@ fun rangeLabel(f: Fadila, r: SubRange): String {
 fun sessionFor(f: Fadila, title: String, r: SubRange): PlaySession =
     PlaySession(f.id, title, f.ayat.subList(r.from, r.to + 1), r.from, r.to)
 
-/** Offline state of a faḍīla's āyāt on the red → orange → yellow → green scale. */
-@Composable
-fun OfflineChip(f: Fadila, modifier: Modifier = Modifier) {
-    val settings by Graph.settings.state.collectAsStateWithLifecycle()
-    OfflineChip(settings.reciterInfo, neededAudio(f, settings), modifier)
-}
-
 /**
- * The same for [refs] as [reciter] recites them; a tap saves what is missing. [optional]: nothing
- * is saved unless asked (a sūra of the Qur'an section streams), so "not saved" is an offer, in grey.
+ * Whether [refs], as [reciter] recites them, are on the phone, as a line among the player's
+ * settings: what is missing is saved at a tap. Nothing to say, nothing shown: a passage is saved
+ * by itself when opened ([optional] false), and says so only while it isn't whole. A sūra of the
+ * Qur'an section streams unless asked ([optional]): its line offers to save it, then says it is.
  */
 @Composable
-fun OfflineChip(reciter: Reciter, refs: List<AyahRef>, modifier: Modifier = Modifier, optional: Boolean = false) {
+private fun OfflineLine(reciter: Reciter, refs: List<AyahRef>, optional: Boolean) {
     val files by Graph.audio.files.collectAsStateWithLifecycle()
     val tasks by Graph.downloads.tasks.collectAsStateWithLifecycle()
     val progress = Graph.downloads.progress(reciter, refs, files, tasks)
@@ -115,34 +112,19 @@ fun OfflineChip(reciter: Reciter, refs: List<AyahRef>, modifier: Modifier = Modi
     val failed = keys.any { tasks[it]?.status == DlStatus.FAILED }
     val waiting = keys.any { tasks[it]?.status == DlStatus.WAITING_NETWORK }
     val active = keys.any { tasks[it] != null }
+    val saved = progress >= 1f
+    if (saved && !optional) return
     // (Under a hundredth: the basmala alone may be there, saved with a passage.)
     val offer = optional && progress < 0.01f && !active
-    val color = if (offer) P.textDim else P.saveColor(progress)
-    val label = when {
+    val value = when {
+        saved -> stringResource(R.string.offline_saved)
         offer -> stringResource(R.string.offline_save)
-        progress >= 1f -> stringResource(R.string.offline_saved)
         failed -> stringResource(R.string.offline_failed)
         waiting -> stringResource(R.string.offline_waiting)
         active -> stringResource(R.string.offline_saving, (progress * 100).toInt())
         else -> stringResource(R.string.offline_partial, (progress * 100).toInt())
     }
-    Row(
-        modifier
-            .clip(CircleShape)
-            .border(1.dp, if (offer) P.outline else color, CircleShape)
-            .clickable(enabled = progress < 1f) { Graph.downloads.ensure(reciter, refs) }
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (progress >= 1f) {
-            Box(Modifier.size(7.dp).clip(CircleShape).background(color))
-            Spacer(Modifier.width(6.dp))
-        } else if (!offer) {
-            ProgressRing(progress, Modifier.size(12.dp), color = color, spinning = waiting)
-            Spacer(Modifier.width(6.dp))
-        }
-        Text(label, style = Type.labelBold, color = color, maxLines = 1)
-    }
+    Choice(stringResource(R.string.offline), value, lit = failed, enabled = !saved) { Graph.downloads.ensure(reciter, refs) }
 }
 
 /** The āya files a faḍīla needs with the current settings (its āyāt, plus the basmala). */
@@ -210,100 +192,27 @@ private fun PlayButton(playing: Boolean, size: androidx.compose.ui.unit.Dp, onCl
     }
 }
 
-/**
- * The microphone of the bar: a tap recites ([onRecite]: the passage open, or anywhere in the
- * Qur'an, the app finding what is said and following it there); the arrow beside it opens how
- * ([reciteSheet]: from memory, the text hidden, or reading, the text shown).
- */
-@Composable
-private fun ReciteButton(onRecite: () -> Unit, modifier: Modifier = Modifier) {
-    val sheets = LocalSheets.current
-    val context = LocalContext.current
-    Row(
-        modifier
-            .height(36.dp)
-            .clip(CircleShape)
-            .border(1.dp, P.outline, CircleShape),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            Modifier.fillMaxHeight().clickable(onClickLabel = stringResource(R.string.recite_anywhere_hint), onClick = onRecite).padding(start = 10.dp, end = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Ic.Mic, contentDescription = null, tint = P.accent, modifier = Modifier.size(17.dp))
-            Spacer(Modifier.width(5.dp))
-            Text(stringResource(R.string.recite), style = Type.button.copy(fontSize = 14.sp), color = P.text, maxLines = 1)
-        }
-        Box(Modifier.width(1.dp).height(18.dp).background(P.outline))
-        val how = stringResource(R.string.recite_how)
-        Box(
-            Modifier.fillMaxHeight().clickable { sheets(reciteSheet(context, onRecite)) }.semantics { contentDescription = how }.padding(start = 5.dp, end = 8.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Ic.ChevronDown, contentDescription = null, tint = P.textDim, modifier = Modifier.size(18.dp))
-        }
-    }
-}
+/** What the bar's one button does when nothing sounds: listens, or recites aloud. */
+private enum class DockAct { LISTEN, RECITE }
 
-/** How to recite: from memory (the text hidden, each word showing as it is said) or reading (the text shown, followed by the voice). Choosing one starts. */
-fun reciteSheet(context: android.content.Context, onRecite: () -> Unit) = SheetSpec(
-    title = context.getString(R.string.recite),
-    subtitle = context.getString(R.string.recite_anywhere_hint),
-    content = {
-        val settings by Graph.settings.state.collectAsStateWithLifecycle()
-        val close = LocalSheetClose.current
-        @Composable
-        fun way(shown: Boolean, title: Int, body: Int, icon: androidx.compose.ui.graphics.vector.ImageVector) {
-            val chosen = settings.reciteShowText == shown
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 5.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(if (chosen) P.accent.copy(alpha = if (P.isDark) 0.14f else 0.12f) else P.surfaceHigh)
-                    .border(1.dp, if (chosen) P.accent.copy(alpha = 0.7f) else P.outline, RoundedCornerShape(16.dp))
-                    .clickable {
-                        Graph.settings.update { it.copy(reciteShowText = shown) }
-                        close()
-                        onRecite()
-                    }
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(icon, contentDescription = null, tint = if (chosen) P.accent else P.textDim, modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(title), style = Type.title, color = P.text)
-                    Spacer(Modifier.height(2.dp))
-                    Text(stringResource(body), style = Type.label, color = P.textDim)
-                }
-                Spacer(Modifier.width(8.dp))
-                Icon(Ic.Mic, contentDescription = null, tint = if (chosen) P.accent else P.textFaint, modifier = Modifier.size(18.dp))
-            }
-        }
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 12.dp)) {
-            way(false, R.string.recite_way_memory, R.string.recite_way_memory_body, Ic.Hidden)
-            way(true, R.string.recite_way_reading, R.string.recite_way_reading_body, Ic.Visible)
-        }
-    },
+/** What the bar is now, read by the bar itself and by its menu ([DockMenu]). */
+private class Dock(
+    /** The text listened to or to listen to: the player's, or the open one. Null: nothing to listen to here. */
+    val of: Listening?,
+    val title: String?,
+    /** The player holds [of] (playing or paused). */
+    val loaded: Boolean,
+    val playing: Boolean,
+    /** [of] is the open text's own (a tap on the bar opens its full player; else it opens that text). */
+    val here: Boolean,
+    val act: DockAct,
 )
 
-/**
- * The one bar the app listens and recites from, above the tabs: there is no other player on a
- * screen. On a tab it is what the player holds (a tap opens it). With a passage or a sūra open
- * ([open]) it is that text's: listen to it, and the full player behind it ([playerSheet]: the
- * transport, the reciter, the repeats). Something else heard while that text is open stays in
- * the bar until the text is left, so what sounds can always be paused. And everywhere, the
- * microphone ([onRecite], [ReciteButton]): with nothing to listen to, the bar is that alone.
- */
 @Composable
-fun PlayerDock(open: String?, onOpen: () -> Unit, onRecite: () -> Unit, modifier: Modifier = Modifier) {
-    val sheets = LocalSheets.current
+private fun dock(open: String?): Dock {
     val np by Graph.nowPlaying.collectAsStateWithLifecycle()
     val ui by Graph.player.state.collectAsStateWithLifecycle()
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
-    val ranges by Graph.ranges.ranges.collectAsStateWithLifecycle()
-    val place by Graph.reading.place.collectAsStateWithLifecycle()
     val held = np
     val own = open != null && held != null && held.plays(open)
     // Another text than the open one, heard while it is open. (An āya of the open text left by a
@@ -318,66 +227,186 @@ fun PlayerDock(open: String?, onOpen: () -> Unit, onRecite: () -> Unit, modifier
     val id = if (loaded) held!!.fadilaId else open
     val of = id?.let { listening(it) }
     val title = if (loaded) held!!.title else of?.title
-    if (id == null || title == null) {
-        // Nothing to listen to here: the microphone, and what it does.
-        Row(
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 4.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(P.surfaceHigh)
-                .padding(start = 18.dp, end = 10.dp, top = 9.dp, bottom = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(stringResource(R.string.recite_anywhere_hint), style = Type.label, color = P.textDim, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            Spacer(Modifier.width(10.dp))
-            ReciteButton(onRecite)
-        }
+    val can = of != null && title != null
+    return Dock(of.takeIf { can }, title.takeIf { can }, loaded && can, loaded && can && ui.playWhenReady, open != null && !other, if (settings.barListen && can) DockAct.LISTEN else DockAct.RECITE)
+}
+
+private fun listen(d: Dock) {
+    Graph.settings.update { it.copy(barListen = true) }
+    if (d.loaded) { if (!d.playing) Graph.player.togglePlay() } else d.of?.let(::start)
+}
+
+/**
+ * The one bar the app listens and recites from, above the tabs, and its one button: there is no
+ * other player on a screen. The button does what was done last (listen, or recite aloud: its
+ * icon says which), pauses what sounds, and held down opens the choice between them ([onMenu],
+ * [DockMenu]). Beside it, the text it is about: what plays or would (a tap opens the full player,
+ * [playerSheet], or on a tab the text itself), or the open text to recite. With nothing to say
+ * (a tab, nothing sounding, the button reciting anywhere) the bar is the button alone, floating
+ * over the screen ([floating]: drawn there, and only then; else in its place above the tabs).
+ * [quiet]: a tab that isn't about the texts (Stats, Settings) only shows it while something sounds.
+ */
+@Composable
+fun PlayerDock(
+    open: String?,
+    floating: Boolean,
+    quiet: Boolean,
+    onOpen: () -> Unit,
+    onRecite: () -> Unit,
+    onMenu: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val sheets = LocalSheets.current
+    val ui by Graph.player.state.collectAsStateWithLifecycle()
+    val np by Graph.nowPlaying.collectAsStateWithLifecycle()
+    val settings by Graph.settings.state.collectAsStateWithLifecycle()
+    val ranges by Graph.ranges.ranges.collectAsStateWithLifecycle()
+    val place by Graph.reading.place.collectAsStateWithLifecycle()
+    val d = dock(open)
+    val of = d.of
+    val title = d.title
+    // The bar has something to say: what sounds, what was listened to (the button listens), the open text.
+    val bar = of != null && title != null && (d.playing || open != null || (d.loaded && d.act == DockAct.LISTEN))
+    if (bar == floating) return
+    if (quiet && !d.playing) return
+    val button: @Composable () -> Unit = {
+        DockButton(
+            icon = if (d.playing) Ic.Pause else if (d.act == DockAct.LISTEN) Ic.Play else Ic.Mic,
+            label = stringResource(if (d.playing) R.string.player_pause else if (d.act == DockAct.LISTEN) R.string.player_listen else R.string.recite),
+            // (Said beside the button while it is alone; in the bar, the room is the text's.)
+            hint = !settings.barMenuSeen && floating,
+            onClick = { if (d.playing) Graph.player.togglePlay() else if (d.act == DockAct.LISTEN) listen(d) else onRecite() },
+            onHold = {
+                Graph.settings.update { it.copy(barMenuSeen = true) }
+                onMenu()
+            },
+        )
+    }
+    if (!bar || of == null || title == null) {
+        Box(modifier.padding(end = 14.dp, bottom = 12.dp)) { button() }
         return
     }
-    val playing = loaded && ui.playWhenReady
-    // The open text's own bar: it also recites, and a tap opens the full player (elsewhere, what plays).
-    val here = open != null && !other
-    val full = { sheets(playerSheet(id, title, strict = open == id)) }
-
+    val full = { sheets(playerSheet(of.id, title, strict = open == of.id)) }
     val status = when {
-        loaded -> listOf(itemLabel(held!!.item), held.reciter.short)
+        d.loaded && (d.playing || d.act == DockAct.LISTEN) -> listOf(itemLabel(np?.item), np?.reciter?.short.orEmpty())
+        d.act == DockAct.RECITE -> listOf(stringResource(if (settings.reciteShowText) R.string.recite_way_reading_do else R.string.recite_way_memory_do))
         else -> {
-            val reciter = if (of?.sura != null) remember(settings.quranChoice, of.ayat) { Graph.quranReciter(of.ayat, settings) } else settings.reciterInfo
-            val resume = place?.takeIf { it.sura == of?.sura && it.aya > 1 }
-            val range = of?.fadila?.let { f -> remember(ranges, f) { Graph.ranges.get(f.id, f.size) }.takeIf { it.from != 0 || it.to != f.ayat.lastIndex }?.let { rangeLabel(f, it) } }
+            val reciter = if (of.sura != null) remember(settings.quranChoice, of.ayat) { Graph.quranReciter(of.ayat, settings) } else settings.reciterInfo
+            val resume = place?.takeIf { it.sura == of.sura && it.aya > 1 }
+            val range = of.fadila?.let { f -> remember(ranges, f) { Graph.ranges.get(f.id, f.size) }.takeIf { it.from != 0 || it.to != f.ayat.lastIndex }?.let { rangeLabel(f, it) } }
             listOf(resume?.let { stringResource(R.string.player_from_aya, it.aya) } ?: range ?: stringResource(R.string.player_listen), reciter.short)
         }
     }.filter { it.isNotBlank() }.joinToString("  ·  ")
-
+    val opens = stringResource(if (d.here) R.string.player_open else R.string.player_show)
     Column(
         modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(26.dp))
             .background(P.surfaceHigh),
     ) {
-        Row(Modifier.padding(start = 8.dp, end = 6.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            PlayButton(playing, 44.dp) {
-                if (loaded) Graph.player.togglePlay() else of?.let(::start)
-            }
+        Row(Modifier.padding(start = 8.dp, end = 6.dp, top = 6.dp, bottom = if (d.loaded) 0.dp else 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(
                 Modifier
                     .weight(1f)
-                    .padding(horizontal = 4.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable(onClickLabel = stringResource(if (here) R.string.player_open else R.string.player_show)) { if (here) full() else onOpen() }
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                    .padding(end = 6.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable(onClickLabel = opens) { if (d.here) full() else onOpen() }
+                    .semantics { contentDescription = opens }
+                    .testTag("player-open")
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
             ) {
                 Text(title, style = Type.name.copy(fontSize = 16.sp), color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(status, style = Type.label, color = P.textDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            if (loaded) IconBtn(Ic.Next, { Graph.player.nextAyah() }, tint = P.textDim, size = 40.dp, iconSize = 24.dp, contentDescription = stringResource(R.string.player_next))
-            // Reciting aloud, the microphone following: the passage open, or anywhere in the Qur'an.
-            ReciteButton(onRecite, Modifier.padding(horizontal = 2.dp))
-            IconBtn(Ic.Expand, full, tint = P.textDim, size = 40.dp, iconSize = 24.dp, contentDescription = stringResource(R.string.player_open), modifier = Modifier.testTag("player-open"))
+            button()
         }
-        if (loaded) DockProgress(ui.durationMs) else Spacer(Modifier.height(12.dp))
+        if (d.loaded) DockProgress(ui.durationMs)
+    }
+}
+
+/**
+ * The bar's button: a tap does [onClick] ([label] names it), held down it opens the choice
+ * ([onHold]). [hint]: until it has been held once, a line beside it says it can be.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DockButton(icon: ImageVector, label: String, hint: Boolean, onClick: () -> Unit, onHold: () -> Unit) {
+    val hold = stringResource(R.string.dock_hold)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (hint) {
+            Text(
+                hold, style = Type.label.copy(fontSize = 12.sp), color = P.textDim, maxLines = 1,
+                modifier = Modifier.clip(CircleShape).background(P.surfaceHigh).padding(horizontal = 10.dp, vertical = 5.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+        }
+        Box(
+            Modifier
+                .size(52.dp)
+                .clip(CircleShape)
+                .background(P.primary)
+                .combinedClickable(onClickLabel = label, onLongClickLabel = hold, onClick = onClick, onLongClick = onHold)
+                .semantics { contentDescription = label }
+                .testTag("dock-button"),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = P.onPrimary, modifier = Modifier.size(26.dp))
+        }
+    }
+}
+
+/**
+ * The choice the bar's button opens when held: listen (to the text open, or what the player
+ * holds), recite from memory (the text hidden, each word showing as it is said) or recite
+ * reading (the text shown, followed by the voice). Choosing one does it, and the button does the
+ * same from then on. Floating over the screen, above the button ([open] the text open, as the bar's).
+ */
+@Composable
+fun DockMenu(open: String?, onRecite: () -> Unit, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    val settings by Graph.settings.state.collectAsStateWithLifecycle()
+    val d = dock(open)
+    @Composable
+    fun item(icon: ImageVector, label: Int, detail: String?, chosen: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(if (chosen) P.accent.copy(alpha = if (P.isDark) 0.16f else 0.14f) else Color.Transparent)
+                .clickable(enabled = enabled) {
+                    onClose()
+                    onClick()
+                }
+                .padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(icon, contentDescription = null, tint = if (!enabled) P.textFaint else if (chosen) P.accent else P.textDim, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(label), style = Type.title, color = if (enabled) P.text else P.textFaint, maxLines = 1)
+                if (detail != null) Text(detail, style = Type.label, color = if (enabled) P.textDim else P.textFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+    Column(
+        modifier
+            .width(280.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(P.surfaceHigh)
+            .border(1.dp, P.outline, RoundedCornerShape(22.dp))
+            .padding(6.dp)
+            .testTag("dock-menu"),
+    ) {
+        val reciting = d.act == DockAct.RECITE
+        item(Ic.Hidden, R.string.recite_way_memory_do, stringResource(R.string.recite_way_memory_body), chosen = reciting && !settings.reciteShowText) {
+            Graph.settings.update { it.copy(barListen = false, reciteShowText = false) }
+            onRecite()
+        }
+        item(Ic.Visible, R.string.recite_way_reading_do, stringResource(R.string.recite_way_reading_body), chosen = reciting && settings.reciteShowText) {
+            Graph.settings.update { it.copy(barListen = false, reciteShowText = true) }
+            onRecite()
+        }
+        item(Ic.Play, R.string.player_listen, d.title ?: stringResource(R.string.dock_listen_none), chosen = !reciting, enabled = d.of != null) { listen(d) }
     }
 }
 
@@ -426,24 +455,8 @@ private fun FullPlayer(id: String, title: String, strict: Boolean) {
     val back = { playerSheet(id, title, strict) }
 
     Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                when {
-                    loaded -> itemLabel(held?.item)
-                    f != null && range != null -> rangeLabel(f, range)
-                    else -> resumeAt?.let { stringResource(R.string.player_from_aya, it.aya) } ?: stringResource(R.string.chip_all)
-                },
-                style = Type.clock,
-                color = P.text,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (f != null) OfflineChip(f)
-            else if (of != null && sura != null) {
-                OfflineChip(reciter, remember(of.ayat) { if (sura != 1 && sura != 9) of.ayat + app.hfd.core.playback.EveryAyah.BASMALA else of.ayat }, optional = true)
-            }
-        }
+        // Where the recitation is, once there is one (what would play is the bar's line, and the settings below).
+        if (loaded) Text(itemLabel(held?.item), style = Type.clock, color = P.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (loaded) PositionBar(ui.durationMs) else Spacer(Modifier.height(10.dp))
         Row(
             Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -495,6 +508,10 @@ private fun FullPlayer(id: String, title: String, strict: Boolean) {
         Choice(stringResource(R.string.sleep), sleepLabel(sleep).ifEmpty { stringResource(R.string.sleep_off) }, lit = sleep != null) {
             sheets((if (sura != null) sleepSheet(context, context.getString(R.string.sleep_end_sura)) else sleepSheet(context)).thenBack(back))
         }
+        if (f != null) OfflineLine(settings.reciterInfo, neededAudio(f, settings), optional = false)
+        else if (of != null && sura != null) {
+            OfflineLine(reciter, remember(of.ayat) { if (sura != 1 && sura != 9) of.ayat + app.hfd.core.playback.EveryAyah.BASMALA else of.ayat }, optional = true)
+        }
     }
 }
 
@@ -514,16 +531,16 @@ private fun Setting(label: String, control: @Composable () -> Unit) {
 
 /** A listening setting chosen in its own sheet: its name, what is chosen ([lit]: other than the usual). */
 @Composable
-private fun Choice(label: String, value: String, lit: Boolean = false, onClick: () -> Unit) {
+private fun Choice(label: String, value: String, lit: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 12.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(enabled = enabled, onClick = onClick).padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = Type.label, color = P.textDim)
         Spacer(Modifier.width(12.dp))
         Text(value, style = Type.title, color = if (lit) P.accent else P.text, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.weight(1f))
         Spacer(Modifier.width(6.dp))
-        Text("›", style = Type.title, color = P.textFaint)
+        Text("›", style = Type.title, color = if (enabled) P.textFaint else Color.Transparent)
     }
 }
 

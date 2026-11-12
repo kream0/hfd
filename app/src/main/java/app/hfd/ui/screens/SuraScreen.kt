@@ -89,8 +89,7 @@ private fun asPassage(s: SuraMeta): Fadila =
  * recitation while the āya recited is in view and never pulls the reader back from elsewhere
  * ([app.hfd.ui.components.Follow]). Listening and reciting are the bar's, under every screen
  * ([app.hfd.ui.components.PlayerDock]). A tap on an āya doesn't play it: it offers to keep it,
- * to listen or to recite from there ([onRecite] with its number; without, anywhere: the search's
- * microphone). When the sūra ends the next one follows, and this screen
+ * to listen or to recite from there ([onRecite]). When the sūra ends the next one follows, and this screen
  * with it ([onOpen]).
  */
 @Composable
@@ -100,7 +99,7 @@ fun SuraScreen(
     onTargetShown: () -> Unit,
     onOpen: (Int) -> Unit,
     onGo: (sura: Int, aya: Int?) -> Unit,
-    onRecite: (from: Int?) -> Unit,
+    onRecite: (from: Int) -> Unit,
     onBack: () -> Unit,
 ) {
     KeepScreenOn()
@@ -124,7 +123,7 @@ private fun SuraReader(
     onTargetShown: () -> Unit,
     onOpen: (Int) -> Unit,
     onGo: (sura: Int, aya: Int?) -> Unit,
-    onRecite: (from: Int?) -> Unit,
+    onRecite: (from: Int) -> Unit,
     onBack: () -> Unit,
 ) {
     val sura = meta.index
@@ -188,7 +187,7 @@ private fun SuraReader(
             Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconBtn(Ic.Back, onBack, contentDescription = stringResource(R.string.detail_back))
                 PlaceBar(c, meta, top, Modifier.weight(1f).padding(horizontal = 4.dp)) { going = true }
-                IconBtn(Ic.Palette, { sheets(tajweedSheet(context)) }, tint = P.textDim, contentDescription = stringResource(R.string.tajweed_open))
+                Spacer(Modifier.width(8.dp))
             }
             Box(Modifier.fillMaxSize()) {
                 LazyColumn(Modifier.fillMaxSize().testTag("reading"), state = listState) {
@@ -262,7 +261,6 @@ private fun SuraReader(
                         onGo(s, a ?: if (s == sura) 1 else null)
                     },
                     onClose = { going = false },
-                    onRecite = { going = false; onRecite(null) },
                 )
             }
         }

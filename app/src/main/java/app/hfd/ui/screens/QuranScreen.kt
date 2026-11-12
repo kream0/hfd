@@ -106,7 +106,7 @@ private enum class QuranView { SURAS, JUZ, HIZB, FAVORITES }
 
 /** The Qur'an section's tab: [QuranBrowser]. */
 @Composable
-fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit, onRecite: () -> Unit) = QuranBrowser(onOpen, onRecite = onRecite)
+fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit) = QuranBrowser(onOpen)
 
 /**
  * The way into the Qur'an's text: a search of the whole of it (a reference, a name, words of the
@@ -116,7 +116,7 @@ fun QuranScreen(onOpen: (sura: Int, aya: Int?) -> Unit, onRecite: () -> Unit) = 
  * from, wherever one is.
  */
 @Composable
-fun QuranBrowser(onOpen: (sura: Int, aya: Int?) -> Unit, onClose: (() -> Unit)? = null, onRecite: () -> Unit) {
+fun QuranBrowser(onOpen: (sura: Int, aya: Int?) -> Unit, onClose: (() -> Unit)? = null) {
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val np by Graph.nowPlaying.collectAsStateWithLifecycle()
     val ui by Graph.player.state.collectAsStateWithLifecycle()
@@ -185,13 +185,6 @@ fun QuranBrowser(onOpen: (sura: Int, aya: Int?) -> Unit, onClose: (() -> Unit)? 
                     onDone = { keyboard?.hide() },
                     focus = field,
                     tag = if (onClose == null) "search" else "go-search",
-                    // The microphone: recite a few words of anything, the app finds where they are
-                    // and follows from there (closing it leaves the text open at that place).
-                    onVoice = {
-                        keyboard?.hide()
-                        focus.clearFocus()
-                        onRecite()
-                    },
                 )
             }
             val found = results
@@ -211,7 +204,6 @@ fun QuranBrowser(onOpen: (sura: Int, aya: Int?) -> Unit, onClose: (() -> Unit)? 
                 }
                 when (QuranView.entries[view]) {
                     QuranView.SURAS -> {
-                        item(key = "count") { ListLabel(stringResource(R.string.quran_count, c.suras.size)) }
                         items(c.suras, key = { "s${it.index}" }) { s ->
                             SuraRow(s, playing = playingSura == s.index, active = playingSura == s.index && ui.playWhenReady, readAt = reading?.takeIf { it.sura == s.index && it.aya > 1 }?.aya, onClick = { open(s.index, null) })
                         }
@@ -239,7 +231,8 @@ fun QuranBrowser(onOpen: (sura: Int, aya: Int?) -> Unit, onClose: (() -> Unit)? 
                     }
                 }
             }
-            item(key = "end") { Box(Modifier.padding(bottom = 24.dp)) }
+            // (Room under the last row for the bar's button, which floats over this screen's corner.)
+            item(key = "end") { Box(Modifier.padding(bottom = 88.dp)) }
         }
     }
 }
@@ -411,7 +404,7 @@ private fun PartRow(c: Content, title: String, number: Int, start: AyahRef, onCl
 }
 
 @Composable
-private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () -> Unit, focus: FocusRequester, tag: String, onVoice: () -> Unit) {
+private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () -> Unit, focus: FocusRequester, tag: String) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -439,17 +432,16 @@ private fun SearchField(query: String, onChange: (String) -> Unit, onDone: () ->
                 modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag(tag).semantics { contentDescription = hint },
             )
         }
-        val label = stringResource(if (query.isNotEmpty()) R.string.quran_search_clear else R.string.quran_voice)
-        Box(
-            Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .clickable { if (query.isNotEmpty()) onChange("") else onVoice() }
-                .semantics { contentDescription = label },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(if (query.isNotEmpty()) Ic.Close else Ic.Mic, contentDescription = null, tint = if (query.isNotEmpty()) P.textDim else P.accent, modifier = Modifier.size(20.dp))
-        }
+        // (Finding a passage by reciting it is the bar's button, on every screen.)
+        if (query.isNotEmpty()) {
+            val label = stringResource(R.string.quran_search_clear)
+            Box(
+                Modifier.size(36.dp).clip(CircleShape).clickable { onChange("") }.semantics { contentDescription = label },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Ic.Close, contentDescription = null, tint = P.textDim, modifier = Modifier.size(20.dp))
+            }
+        } else Spacer(Modifier.size(width = 8.dp, height = 36.dp))
     }
 }
 

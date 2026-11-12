@@ -151,6 +151,10 @@ fun SettingsScreen(onEditFadail: () -> Unit) {
                     onSelect = { i -> Graph.settings.update { it.copy(reciteEngine = ReciteEngine.entries[i]) } },
                 )
             }
+            // Timing the long vowels (it needs the model that places letters in time).
+            SettingLine(stringResource(R.string.settings_recite_tajweed), stringResource(R.string.settings_recite_tajweed_body)) {
+                Toggle(settings.reciteTajweed, { on -> Graph.settings.update { it.copy(reciteTajweed = on) } })
+            }
         }
 
         SettingsSection(stringResource(R.string.settings_controls)) {

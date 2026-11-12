@@ -253,7 +253,14 @@ private val Rule.body: Int
 fun ayahTajweedSheet(context: android.content.Context, title: String, text: String): SheetSpec = SheetSpec(
     title = context.getString(R.string.tajweed_of_aya),
     subtitle = title,
-    content = { AyahTajweed(text) },
+    content = {
+        AyahTajweed(text)
+        // The legend, and which colours show: from here (and the settings), not a button on every text.
+        val sheets = LocalSheets.current
+        Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp)) {
+            PillButton(stringResource(R.string.tajweed_open), { sheets(tajweedSheet(context)) }, icon = Ic.Palette)
+        }
+    },
 )
 
 @Composable

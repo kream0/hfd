@@ -98,18 +98,6 @@ fun StatsScreen(onOpen: (String) -> Unit) {
             )
         }
 
-        Spacer(Modifier.height(20.dp))
-        SectionLabel(stringResource(R.string.stats_goal), Modifier.padding(horizontal = 20.dp))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            val fraction = (todayMs.toFloat() / goalMs).coerceIn(0f, 1f)
-            ProgressRing(fraction, Modifier.size(56.dp), color = if (fraction >= 1f) P.saveGreen else P.accent)
-            Spacer(Modifier.width(16.dp))
-            Text(
-                stringResource(R.string.home_goal_value, (todayMs / 60_000).toInt(), settings.dailyGoalMin),
-                style = Type.displaySmall,
-                color = P.text,
-            )
-        }
 
         Spacer(Modifier.height(12.dp))
         SectionLabel(stringResource(R.string.stats_calendar), Modifier.padding(horizontal = 20.dp))

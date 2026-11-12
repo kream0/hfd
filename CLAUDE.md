@@ -428,6 +428,34 @@
   test: `listen`, `fadail-listening`). The smoke tour counts the listening buttons on a sūra's
   screen (one), opens the full player, and recites from the bar.
 
+## One button, nothing said twice (2.8.0, the owner: "why a microphone button and a play button at once? In Tarteel one button opens a floating menu on a long press. Don't stop until the whole app is rid of what is superfluous (the offline badge that stands out, for one)")
+- `PlayerDock` (`components/Player.kt`) has one round button (`DockButton`, tag `dock-button`): it
+  pauses what sounds, else does what was done last (`AppSettings.barListen`: listen, else recite;
+  its icon and description say which: "Écouter" / "Réciter" / "Pause"); held (`combinedClickable`)
+  it opens `DockMenu` (tag `dock-menu`), drawn by `AppRoot` over a scrim above the button, in the
+  tree (a Popup's window isn't in the screenshots): Recite from memory / Recite reading / Listen
+  (greyed with nothing to listen to); choosing one does it and sets what the button does. No next
+  button, arrow, nor Recite pill; `reciteSheet` is gone. A tap on the bar's text opens the full
+  player (tag `player-open`, description "Ouvrir le lecteur").
+- The bar is drawn only when it has something to say (a text open, something sounding, or the
+  player holding something while the button listens); else the button floats alone over the
+  screen's corner (`floating`: `PlayerDock` is placed twice, in the content's box and above the
+  tabs, and each draws only its case), with "Appui long : écouter ou réciter" beside it until it
+  was held once (`barMenuSeen`). `quiet` (Stats, Settings): nothing unless something sounds. The
+  tab lists end with 88 dp of room for it.
+- The full player: `OfflineLine` (a `Choice` row, absent when a passage is whole on the phone)
+  for the old `OfflineChip`; no "Tout" line (the place only once something is loaded).
+- Removed as said elsewhere: the search field's microphone, the palette on a text's top bar
+  (`ayahTajweedSheet` ends with a button to the legend; Settings has it too), Stats' goal of the
+  day, Faḍāʾil's list-editor icon and Home's order chooser (Settings), Home's "all the faḍāʾil"
+  link and its "resume listening" card (2.7.0), the count over the sūras. Recite's screen: no
+  heard line once a place is followed, the microphone line only when earbuds give a choice, the
+  hint only from memory, the tajwīd switch in Settings → Reciting aloud (`settings_recite_tajweed`).
+- The smoke tour holds the button (`input swipe` in place, 900 ms), takes "Écouter" then
+  "Réciter en lisant" in its choice (`choose`, `find_text`: the item's text, the button has the
+  same word as its description), counts one button in the bar, and fails if the search field's
+  microphone or the palette come back.
+
 ## One microphone: recite anywhere (2.7.0, the owner: "why did you separate reciting and finding a passage? In Tarteel one microphone finds the passage and follows from there")
 - Before: Recite needed a text chosen first (a passage; a sūra "from āya N / from the start", a
   sheet asking), and finding a passage by reciting was a sheet of its own in the search field

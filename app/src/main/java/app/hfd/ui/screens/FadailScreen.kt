@@ -31,7 +31,7 @@ import app.hfd.ui.uiLanguage
 
 /** Every passage, in the reference list's order, with its progress; and all of them to listen to in a row. */
 @Composable
-fun FadailScreen(onOpen: (String) -> Unit, onEdit: () -> Unit) {
+fun FadailScreen(onOpen: (String) -> Unit) {
     val content by Graph.content.content.collectAsStateWithLifecycle()
     val progress by Graph.progress.state.collectAsStateWithLifecycle()
     val np by Graph.nowPlaying.collectAsStateWithLifecycle()
@@ -47,10 +47,7 @@ fun FadailScreen(onOpen: (String) -> Unit, onEdit: () -> Unit) {
         }
         LazyColumn(Modifier.fillMaxSize()) {
             item {
-                ScreenHeader(stringResource(R.string.tab_fadail)) {
-                    // Which passages show (some may be left out of the list).
-                    IconBtn(Ic.Tune, onEdit, size = 48.dp, contentDescription = stringResource(R.string.fadail_edit_title))
-                }
+                ScreenHeader(stringResource(R.string.tab_fadail))
             }
             item {
                 Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 6.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -64,14 +61,15 @@ fun FadailScreen(onOpen: (String) -> Unit, onEdit: () -> Unit) {
                         stringResource(if (playingAll) R.string.play_all_pause else R.string.play_all),
                         onClick = { if (np?.session?.fadilaId == PlaySession.ALL) Graph.player.togglePlay() else Graph.playAll(allTitle, lang) },
                         icon = Ic.PlaylistPlay,
-                        style = if (playingAll) PillStyle.Outline else PillStyle.Filled,
+                        style = PillStyle.Outline,
                     )
                 }
             }
             items(c.fadail, key = { it.id }) { f ->
                 FadilaRow(f, progress = Stats.fadila(progress, f, Graph.progress.fsrs, now).fraction, onClick = { onOpen(f.id) })
             }
-            item { Box(Modifier.padding(bottom = 24.dp)) }
+            // (Room under the last row for the bar's button, which floats over this screen's corner.)
+            item { Box(Modifier.padding(bottom = 88.dp)) }
         }
     }
 }

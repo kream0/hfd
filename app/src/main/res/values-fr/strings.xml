@@ -53,7 +53,7 @@
     <string name="sura_header">Sourate %1$d · %2$s · %3$s</string>
 
     <string name="home_learning">Continuer l’apprentissage</string>
-    <string name="home_next">À apprendre ensuite · %1$s</string>
+    <string name="home_next_plain">À apprendre ensuite</string>
     <string name="learn_order">À apprendre ensuite</string>
     <string name="learn_order_body">L’ordre dans lequel l’accueil propose les passages pas encore commencés.</string>
     <string name="order_shortest">les plus courts d’abord</string>
@@ -62,7 +62,6 @@
     <string name="order_shortest_short">Plus courts</string>
     <string name="order_start_short">Du début</string>
     <string name="order_end_short">De la fin</string>
-    <string name="home_all">Tous les faḍāʾil</string>
 
     <string name="settings_appearance">Apparence</string>
     <string name="settings_theme">Thème</string>
@@ -217,7 +216,6 @@
     <string name="stats_best">Record</string>
     <string name="stats_memorised">Āyāt mémorisées</string>
     <string name="stats_listening">Écoute</string>
-    <string name="stats_goal">Objectif du jour</string>
     <string name="stats_calendar">20 dernières semaines</string>
     <string name="stats_fadail">Par faḍīla</string>
     <string name="stats_reviews">Récitations de mémoire</string>
@@ -254,19 +252,21 @@
     <string name="fadail_edit_last">Gardez au moins un passage.</string>
     <string name="stats_none">Rien d\'appris pour l\'instant : ouvrez un passage et touchez Apprendre.</string>
     <string name="recite">Réciter</string>
-    <string name="recite_anywhere_hint">Récitez n\'importe quel passage : l\'app le retrouve et vous suit.</string>
-    <string name="recite_how">Façon de réciter</string>
-    <string name="recite_way_memory">De mémoire</string>
-    <string name="recite_way_memory_body">Le texte est caché ; chaque mot apparaît quand vous le dites.</string>
-    <string name="recite_way_reading">En lisant</string>
-    <string name="recite_way_reading_body">Le texte est affiché ; le repère suit votre voix.</string>
+    <string name="recite_way_memory_body">Le texte reste caché</string>
+    <string name="recite_way_reading_body">Le repère suit votre voix</string>
     <string name="recite_anywhere_title">Récitez n\'importe quel passage</string>
     <string name="recite_anywhere_body">Du début d\'une sourate ou du milieu d\'un verset : l\'app le retrouve dans tout le Coran, affiche la page et vous suit. Votre voix reste sur le téléphone.</string>
     <string name="recite_listening_anywhere">À l\'écoute · récitez n\'importe quel passage</string>
     <string name="recite_locating">À l\'écoute · je cherche ce passage…</string>
     <string name="recite_tap">Touchez le micro et récitez</string>
     <string name="recite_places">Plusieurs endroits disent cela. Continuez à réciter, ou choisissez :</string>
-    <string name="quran_voice">Réciter pour retrouver un passage</string>
+    <string name="dock_hold">Appui long : écouter ou réciter</string>
+    <string name="dock_listen_none">Ouvrez un passage ou une sourate</string>
+    <string name="recite_way_memory_do">Réciter de mémoire</string>
+    <string name="recite_way_reading_do">Réciter en lisant</string>
+    <string name="settings_recite_tajweed">Vérifier les madd en récitant</string>
+    <string name="settings_recite_tajweed_body">Les voyelles longues de 4 temps ou plus que vous ne tenez pas assez sont soulignées. Avec le nouveau modèle.</string>
+    <string name="offline">Hors ligne</string>
     <string name="recite_title">Réciter · %1$s</string>
     <string name="recite_model_needed">La récitation à voix haute utilise le modèle de reconnaissance coranique de Tarteel (%1$d Mo), téléchargé une fois. Il fonctionne sur le téléphone : votre voix n\'est ni enregistrée ni envoyée.</string>
     <string name="recite_download">Télécharger (%1$d Mo)</string>
@@ -307,7 +307,6 @@
     <string name="recite_mic_phone_switch">Micro : téléphone · utiliser les écouteurs</string>
     <!-- The Qur'an section -->
     <string name="tab_quran">Coran</string>
-    <string name="quran_count">%1$d sourates</string>
     <string name="quran_found">%1$d trouvées</string>
     <string name="quran_search">Sourate, verset (2:255), mot du texte…</string>
     <string name="quran_search_clear">Effacer la recherche</string>

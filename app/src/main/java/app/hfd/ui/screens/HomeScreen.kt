@@ -180,40 +180,14 @@ fun HomeScreen(app: AppViewModel) {
         }
         val next = remember(progress, all, order) { LearningPath.next(all, progress, words, order) }
         if (next.isNotEmpty()) {
-            // Tap the label to choose the order.
-            val sheets = LocalSheets.current
-            val context = LocalContext.current
-            Row(
-                Modifier.fillMaxWidth().clickable { sheets(learnOrderSheet(context, order)) }
-                    .padding(start = 20.dp, end = 12.dp, top = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SectionLabel(stringResource(R.string.home_next, stringResource(order.label)), Modifier.weight(1f))
-                Icon(Ic.ChevronDown, contentDescription = stringResource(R.string.learn_order), tint = P.textDim, modifier = Modifier.size(20.dp))
-            }
+            // (In the order chosen in the settings.)
+            SectionLabel(stringResource(R.string.home_next_plain), Modifier.padding(start = 20.dp, end = 12.dp, top = 12.dp))
             next.forEach { f -> FadilaRow(f, progressOf(f), onClick = { app.openFadila(f.id) }) }
         }
-        Box(Modifier.padding(20.dp)) { PillButton(stringResource(R.string.home_all), { app.selectTab(Tab.FADAIL) }) }
+        // (Room under the last row for the bar's button, which floats over this screen's corner.)
+        Spacer(Modifier.height(88.dp))
     }
 }
-
-val LearnOrder.label: Int
-    get() = when (this) {
-        LearnOrder.SHORTEST -> R.string.order_shortest
-        LearnOrder.START -> R.string.order_start
-        LearnOrder.END -> R.string.order_end
-    }
-
-/** Picks the order Home offers new passages in (also in Settings → Progress). */
-fun learnOrderSheet(context: android.content.Context, current: LearnOrder) = SheetSpec(
-    title = context.getString(R.string.learn_order),
-    subtitle = context.getString(R.string.learn_order_body),
-    actions = LearnOrder.entries.map { o ->
-        SheetAction(context.getString(o.label).replaceFirstChar { it.uppercase() }, icon = if (o == current) Ic.Check else null) {
-            Graph.settings.update { it.copy(learnOrder = o) }
-        }
-    },
-)
 
 /** "mardi 11 novembre", in the app's language. */
 private fun dateLine(epochDay: Long): String =

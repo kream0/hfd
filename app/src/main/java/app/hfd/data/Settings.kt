@@ -76,6 +76,10 @@ data class AppSettings(
     val tajweedOff: Set<String> = setOf("TAFKHIM"),
     /** Recite also times the long vowels and says which were not held as their rule asks. */
     val reciteTajweed: Boolean = false,
+    /** What the bar's button does when nothing sounds: listens (else it recites aloud). The last of the two done. */
+    val barListen: Boolean = false,
+    /** The bar's button was held once (its choice was seen): the line saying it can be is gone. */
+    val barMenuSeen: Boolean = false,
 ) {
     val reminders: ReminderConfig
         get() = ReminderConfig(reviews = remindReviews, reviewsAt = LocalTime.of(reviewsAt / 60, reviewsAt % 60))
@@ -164,6 +168,8 @@ class Settings(context: Context) {
             tajweed = prefs.getBoolean("tajweed", d.tajweed),
             tajweedOff = prefs.getStringSet("tajweedOff", null)?.toSet() ?: d.tajweedOff,
             reciteTajweed = prefs.getBoolean("reciteTajweed", d.reciteTajweed),
+            barListen = prefs.getBoolean("barListen", d.barListen),
+            barMenuSeen = prefs.getBoolean("barMenuSeen", d.barMenuSeen),
         )
     }
 
@@ -196,6 +202,8 @@ class Settings(context: Context) {
             .putBoolean("tajweed", s.tajweed)
             .putStringSet("tajweedOff", s.tajweedOff)
             .putBoolean("reciteTajweed", s.reciteTajweed)
+            .putBoolean("barListen", s.barListen)
+            .putBoolean("barMenuSeen", s.barMenuSeen)
             // Settings of removed features (1.6.0: passage reminders, the location they needed).
             .remove("showWeak").remove("remindKursi").remove("remindMulk").remove("mulkAt")
             .remove("remindKahf").remove("kahfAt").remove("latitude").remove("longitude").remove("prayerMethod")

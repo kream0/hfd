@@ -156,8 +156,9 @@ class ScreenshotTest {
         rule.onNodeWithTag("reading").performScrollToIndex(1)
         both("kursi-text")
         // Listening: the word being recited lit (as if 2:255 were playing at its seventh word),
-        // and the bar holding the passage.
+        // and the bar holding the passage (its button listening, as after "Écouter" was chosen).
         ui {
+            Graph.settings.update { it.copy(barListen = true) }
             val kursi = content.fadila("kursi")!!
             val ayat = kursi.ayat
             app.hfd.ui.components.PlayingWord.preview.value = app.hfd.core.quran.AyahRef(2, 255) to 6
@@ -177,6 +178,7 @@ class ScreenshotTest {
         ui {
             app.hfd.ui.components.PlayingWord.preview.value = null
             Graph.playingPreview.value = null
+            Graph.settings.update { it.copy(barListen = false) }
         }
         rule.onNodeWithTag("reading").performScrollToIndex(0)
         ui { vm.openFadila("tawba-end") }
@@ -201,14 +203,13 @@ class ScreenshotTest {
         rule.onNodeWithContentDescription(rule.activity.getString(R.string.reader_go)).performSemanticsAction(SemanticsActions.OnClick)
         both("go")
         ui { rule.activity.onBackPressedDispatcher.onBackPressed() }
-        // The colours of tajwīd: their legend (where they are chosen), and one āya's rules.
-        rule.onNodeWithContentDescription(rule.activity.getString(R.string.tajweed_open)).performSemanticsAction(SemanticsActions.OnClick)
-        both("tajweed")
-        ui { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        // The colours of tajwīd: one āya's rules (from the āya's sheet), and from there their legend, where they are chosen.
         rule.onNodeWithText("18:2", substring = true).performSemanticsAction(SemanticsActions.OnClick)
         rule.mainClock.advanceTimeBy(600)
         rule.onNodeWithText(rule.activity.getString(R.string.tajweed_of_aya)).performSemanticsAction(SemanticsActions.OnClick)
         both("tajweed-aya")
+        rule.onNodeWithText(rule.activity.getString(R.string.tajweed_open)).performSemanticsAction(SemanticsActions.OnClick)
+        both("tajweed")
         ui { rule.activity.onBackPressedDispatcher.onBackPressed() }
         // The full player, behind the one bar the app listens from; then a passage's, with its repeats.
         rule.onNodeWithTag("player-open").performSemanticsAction(SemanticsActions.OnClick)
@@ -302,9 +303,13 @@ class ScreenshotTest {
             Graph.closeRecite()
             vm.flow = null
         }
-        // Reciting anywhere, from the bar's microphone: how (its menu), then the screen that listens.
-        rule.onNodeWithContentDescription(rule.activity.getString(R.string.recite_how)).performSemanticsAction(SemanticsActions.OnClick)
-        both("recite-how")
+        // The bar's one button, held: the choice between listening and reciting, floating above it.
+        // (Not on Settings or Stats, where nothing is to listen to or recite: the button isn't there.)
+        rule.onNodeWithTag("dock-button").assertDoesNotExist()
+        ui { vm.selectTab(Tab.QURAN) }
+        rule.onNodeWithTag("dock-button").performSemanticsAction(SemanticsActions.OnLongClick)
+        both("dock-menu")
+        org.junit.Assert.assertTrue(Graph.settings.current.barMenuSeen)
         ui { rule.activity.onBackPressedDispatcher.onBackPressed() }
         ui { vm.reciteAnywhere() }
         both("recite-anywhere")

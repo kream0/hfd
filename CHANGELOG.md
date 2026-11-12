@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.8.0
+One button instead of two, and everything that was said twice is gone.
+- **One button.** The bar had a play button and a microphone side by side, plus "next" and an arrow. Now it has one round button: it does what you did last (recite, or listen; its icon says which) and pauses what is playing. **Hold it** and a small menu opens above it: Recite from memory, Recite while reading, Listen. Choose one and it starts; the button does the same from then on.
+- **On the tabs the bar is gone when it has nothing to say**: the button floats alone in the corner (Home, Faḍāʾil, Coran). It isn't on Stats and Settings unless something is playing.
+- **The full player** opens with a tap on the bar's text. The green "Offline" badge and the "All" line are gone: saving for offline is a quiet line among the settings, shown only when there is something to do.
+- **Said once, not twice.** Removed: the microphone in the search field (the button recites anywhere), the palette at the top of every text (the colours are reached from a verse's tajwīd, and in Settings), the day's goal on Stats (it is on Home), the list editor's icon on Faḍāʾil and the order chooser in Home's heading (both in Settings), Home's link to the Faḍāʾil tab, the count above the list of sūras.
+- **Recite's screen is lighter**: no line of recognised text under the page, the "Microphone: phone" line only when earbuds give a choice, the hint lamp only when reciting from memory; the tajwīd switch moved to Settings → Reciting aloud.
+
 ## 2.7.0
 One microphone: recite any passage, the app finds it in the whole Qur'an, shows the page and follows you from there.
 - **Reciting and finding a passage are one thing now.** Tap the microphone (in the bar at the bottom of every screen, or in the search field) and recite: from a sūra's beginning or the middle of a verse, anything. The app finds where you are, opens that sūra's page at the word you began at, and follows you word by word. No text to choose first, no "from which āya?", no separate search by voice.
