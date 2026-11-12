@@ -101,7 +101,16 @@ class Locator(
                 listed.isEmpty() && a != null -> listed = a.hits
             }
         }
-        val a = best
+        var a = best
+        if (a?.pick == null) {
+            // Several places say it, and what was said before isn't the text's: the place that
+            // follows a sūra's opening letters, if one alone does (ٱللَّهُ لَآ إِلَٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ after
+            // الٓمٓ is Āl ʿImrān's, not Āyat al-Kursī).
+            val tied = try2(now, final)?.takeIf { it.pick == null && it.close.size > 1 }
+            val sound = tied?.before.orEmpty().ifEmpty { said.lastOrNull().orEmpty().takeIf { u -> u.isNotEmpty() && !text.known(u[0]) }.orEmpty() }
+            val after = if (tied != null && sound.isNotEmpty()) tied.close.filter { opening(it, emptyList()) != null } else emptyList()
+            if (tied != null && after.size == 1) a = Attempt(tied.before, tied.phrase, tied.basmala, tied.hits, after[0], tied.close)
+        }
         val pick = a?.pick
         if (a == null || pick == null) {
             steady = null
@@ -159,11 +168,12 @@ class Locator(
             return Attempt(emptyList(), all.drop(from), true, hits, pick, listOf(pick))
         }
         if (basmala) from += BASMALA.size
-        // What isn't a word of the text, at the beginning; and at the end of a phrase still being said (a word half said).
+        // What isn't a word of the text, at the beginning; and at the end (a word half said, or
+        // heard as none: its few letters must not choose between two places).
         var first = from
         while (first < all.size && first - from < MAX_STRAY_WORDS && !text.known(all[first])) first++
         var end = all.size
-        if (!final && end > first + 1 && !text.known(all[end - 1])) end--
+        if (end > first + 2 && !text.known(all[end - 1])) end--
         while (true) {
             val phrase = all.subList(first, end)
             if (letters(phrase) < minLetters) return Attempt(all.subList(from, first), phrase, false)
@@ -177,6 +187,12 @@ class Locator(
             if (pick != null && phrase.size > 1 && first - from < MAX_STRAY_WORDS && !alike(Arabic.skeleton(phrase[0]), text.wordAt(pick.ref, pick.word))) {
                 first++
                 continue
+            }
+            // The basmala, then al-Fātiḥa's beginning (its second āya not read well enough to be
+            // found from its first word, or its first word's sound alone): the sūra's first āya.
+            if (basmala && pick != null && pick.ref.sura == 1 && pick.ref.aya == 2) {
+                val whole = QuranSearch.Recited(FATIHA, 0, pick.last, pick.score, pick.whole + BASMALA.size)
+                return Attempt(emptyList(), all.drop(from - BASMALA.size), true, hits, whole, listOf(whole))
             }
             return Attempt(all.subList(from, first), phrase, false, hits, pick, close)
         }
@@ -231,6 +247,8 @@ class Locator(
         val ayat = (1 until pick.ref.aya).map { AyahRef(pick.ref.sura, it) }
         val before = ayat.sumOf { text.wordCount(it) } + pick.word
         if (before == 0) return null
+        // (Al-Fātiḥa from its second āya, something said before it: its basmala, not heard as one.)
+        if (pick.ref == FATIHA_SECOND && pick.word == 0 && strays.isNotEmpty()) return first
         val letters = ayat.all { Tracker.isLetters(it) && text.wordCount(it) == 1 } &&
             (pick.word == 0 || (pick.word == 1 && Tracker.isLetters(pick.ref)))
         if (letters && Tracker.isLetters(first)) return first

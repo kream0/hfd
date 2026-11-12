@@ -10,6 +10,8 @@ One microphone: recite any passage, the app finds it in the whole Qur'an, shows 
 - **The arrow beside the microphone** chooses how you recite: *from memory* (the text hidden, each word showing as you say it) or *reading* (the text shown, the marker following your voice).
 - It knows the isti'ādha and the basmala before a passage for what they are, and a sūra's opening letters (الٓمٓ, حمٓ, يسٓ…).
 - A passage of the Faḍāʾil recited from its own screen is as before, and still counts for your learning.
+- **How sure it is.** Tried on 400 recitations taken anywhere in the Qur'an (four reciters; verses heard from their first word, from their middle, sūra beginnings with and without the basmala): 392 found, none placed wrongly; it takes about five seconds of recitation. The eight others are passages two sūras tell in the very same words (the places are listed), or a slow recitation of an opening several sūras share (a few more seconds).
+- Home no longer has a "Resume" card for what you were listening to: the bar just below it is that.
 - Needs the new recognition model (173 MB, offered on Recite's screen): the older one reads too roughly to find a place.
 
 ## 2.6.0

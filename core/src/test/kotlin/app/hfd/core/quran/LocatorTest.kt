@@ -90,6 +90,28 @@ class LocatorTest {
     }
 
     @Test
+    fun theOpeningLettersSaidBeforeAPhraseTellItsSura() {
+        // Āl ʿImrān's second āya begins as Āyat al-Kursī does: after الٓمٓ (as the recogniser writes it) it is Āl ʿImrān's.
+        assertEquals(AyahRef(3, 1) to 0, at(locate("بِسْس ٱللََّّ ٱلرََّّحِمٓ", "ٱللَّهُ لَآ إِلَـٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ")))
+        assertNull(locate("ٱللَّهُ لَآ إِلَـٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ"))
+        // Yūnus and Luqmān both open with letters, then تِلْكَ ءَايَٰتُ ٱلْكِتَٰبِ ٱلْحَكِيمِ: what follows tells.
+        val l = Locator(search)
+        assertNull(l.heard("بِسلل ٱلرلرَّحَِِِر تِلْكَ ءَايَـٰتُ ٱلْكِتَـٰبِ ٱلْحَكِيمِ", final = true))
+        assertEquals(AyahRef(10, 1) to 0, at(l.heard("أَكَانَ لِلنَّاسِ عَجَبًا أَنْ أَوْحَيْنَآ إِلَىٰ رَجُلٍ مِّنْهُمْ", final = true)))
+    }
+
+    @Test
+    fun alFatihaAfterItsBasmalaIsFollowedFromIt() {
+        // Its second āya half read (the recogniser begins a broken basmala again): still the sūra's first āya.
+        assertEquals(
+            AyahRef(1, 1) to 0,
+            at(locate("بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ", "بِٱلرَّمْـٰل رِّ لحّحَ لِلِ رَبِّ ٱلْعَـٰلَمِينَ", "ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ")),
+        )
+        // Begun at its second āya, nothing before: from there.
+        assertEquals(AyahRef(1, 2) to 0, at(locate("ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ", "ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ مَـٰلِكِ يَوْمِ ٱلدِّينِ")))
+    }
+
+    @Test
     fun whatIsNotTheTextsBeforeAPhraseIsSetAside() {
         // Half a word before the phrase (heard from inside an āya): the phrase alone is said in
         // many places, and waits; it was found in Yūsuf by letters of «ممة» taken from the words before.

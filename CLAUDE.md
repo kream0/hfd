@@ -443,13 +443,29 @@
   place twice and 14 letters). What it knows: the isti'ādha and the basmala before a passage (the
   basmala is 1:1 only when 1:2 follows); what isn't the text's at a phrase's beginning (unknown
   words, and a first word that isn't the place's first word, a «و» or «ف» apart) is set aside and
-  the place must stand without it; **the model writes a sūra's opening letters as a broken
-  basmala** («بِسٱللَّمٓ», «بِِيَسٓمٓ»): a place found just after a sūra's letters, with something said
-  before it, is that sūra's first word, the sound in front of the phrase for the tracker; a phrase
-  said in several places waits for what follows (`candidates`, which the screen lists to choose
-  from) unless one is in the sūra `near`; once a place stands out, the utterances before are tried
-  in front of it for as long as they fit (`fits`): the place is where the recitation began (a
-  recitation begun on words two sūras share, 7:109–111 / 26:34–36).
+  the place must stand without it (as a word that isn't the text's at its end); **the model
+  writes a sūra's first words as a broken basmala**, its opening letters and more («بِسٱللَّمٓ» for
+  الٓمٓ, «بِسٱهِلٱلرَّحَحٰ…» for سَبَّحَ لِلَّهِ, «بِسََِْبَارَّكَ ٱلرَّذِىَ»; al-Fātiḥa's second āya after its basmala
+  too): `opening` takes a place found among a sūra's first words, with as many words set aside in
+  front of it (two more at most; past the first āya only if they have that «بس»), back to the
+  sūra's first word, the sound in front of the phrase for the tracker; a phrase said in several
+  places waits for what follows (`candidates`, which the screen lists to choose from) unless one
+  is in the sūra `near`, or one alone follows a sūra's opening letters and their sound was heard
+  (Āl ʿImrān 2 / Āyat al-Kursī; Yūnus 1 and Luqmān 2 both do, and wait); once a place stands out,
+  the utterances before are tried in front of it for as long as they fit (`fits`; a near-tie of
+  the longer stretch is settled by the place already found, if 14 letters found it): the place is
+  where the recitation began (7:109–111 / 26:34–36, al-Ḥashr 1 / aṣ-Ṣaff 1).
+- Measured (12 Nov, `LocateBench`; CI's readings and this sandbox's give the same): of 400
+  recitations **392 right, none wrong**, 8 not found in 24 s (start 160/160, inside 157/160,
+  opening 39/40, opening after the basmala 36/40): a passage two sūras tell in the same words
+  (7:106–108 = 26:31–33: listed to choose from), an āya's last word alone, Ḥuṣarī's slow
+  openings of al-Ḥadīd / al-Ḥashr / aṣ-Ṣaff (the same first āya) and Alafasy's of ash-Shūrā.
+  Found after 5 s of recitation at the median (p90 9 s; an opening after its basmala 12 s). The
+  first version: 382, 10 wrong. `phone()`: 56/58, none wrong (rumble and pocket not found), 9.6 s
+  at the median from the passage's first word (the basmala first). Deciding sooner while still
+  speaking (10 or 12 letters for 14) gains half a second and gives wrong places (3 and 1): not
+  kept; nor a two-letter margin over the next place (no fewer wrong, one more not found).
+  The search aligns 48 candidates (24 missed al-Anfāl 13 for a phrase whose rare word was misheard).
 - `QuranSearch.recited` (also the typed search's): a place's first and last words are the first
   and last *mostly said* (a sūra's first words were found in the last āya of the sūra before, by
   a few letters); `Recited.whole` (the text's words said letter for letter) and `tight` (letters
