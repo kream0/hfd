@@ -287,8 +287,9 @@ private fun statusLine(ui: ReciteUi, s: ReciteSession): String {
         ui.locating && ui.listening -> stringResource(R.string.recite_listening_anywhere)
         ui.locating -> stringResource(R.string.recite_tap)
         next == null -> stringResource(R.string.recite_done)
-        ui.pending > 0 -> stringResource(R.string.recite_recognising)
         ui.listening -> stringResource(R.string.recite_listening)
+        // (A sūra's place is in the title.)
+        QuranListening.suraOf(ui.id) != null -> stringResource(R.string.recite_tap)
         // (From the state shown: a session just replaced by another may not have the same āyāt.)
         else -> stringResource(R.string.recite_position, next.first + 1, ui.targets.size, ui.targets.getOrNull(next.first)?.ref?.toString().orEmpty())
     }

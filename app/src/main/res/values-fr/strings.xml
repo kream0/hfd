@@ -275,8 +275,7 @@
     <string name="recite_unavailable">La reconnaissance vocale n\'est pas disponible sur ce téléphone.</string>
     <string name="recite_mic_denied">Autorisation du micro refusée</string>
     <string name="recite_loading">Chargement du modèle vocal…</string>
-    <string name="recite_listening">À l\'écoute · récitez de mémoire</string>
-    <string name="recite_recognising">À l\'écoute · reconnaissance…</string>
+    <string name="recite_listening">À l\'écoute</string>
     <string name="recite_position">Āya %1$d sur %2$d · %3$s · touchez le micro</string>
     <string name="recite_start">Commencer à réciter</string>
     <string name="recite_stop">Arrêter</string>

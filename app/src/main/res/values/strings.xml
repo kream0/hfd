@@ -274,8 +274,7 @@
     <string name="recite_unavailable">Speech recognition isn\'t available on this phone.</string>
     <string name="recite_mic_denied">Microphone permission denied</string>
     <string name="recite_loading">Loading the speech model…</string>
-    <string name="recite_listening">Listening · recite from memory</string>
-    <string name="recite_recognising">Listening · recognising…</string>
+    <string name="recite_listening">Listening</string>
     <string name="recite_position">Āya %1$d of %2$d · %3$s · tap the microphone</string>
     <string name="recite_start">Start reciting</string>
     <string name="recite_stop">Stop</string>
