@@ -492,6 +492,12 @@
   the basmala; four reciters, streamed through `Segmenter` as the app hears them, 24 s at most.
   `phone()` (HFD_BENCH without HFD_LOCATE): the Recite bench's recordings from their start.
   This sandbox reads 7 a minute (four cores): a full run is an hour; CI's parts 15 min.
+- The Recite bench on this code (64ec723: `Tracker.startAt` added, nothing else of the follower's):
+  ctc 2043/2052 (4, 0, 5; swaps 4/5), Whisper 1953/2052 (30, 17, 52; 4/5): the reference's.
+  The smoke tour recites from a passage, from the search field and from a sūra's bar (its page
+  shown), and opens the microphone's menu. Not tried on a phone: finding a place by the owner's
+  own voice (the benches are reciters' recordings), and going elsewhere mid-recitation
+  (`elsewhere`: only its parts are tested, `Locator` and `Tracker.startAt`).
 
 ## Where one is (2.6.0, the owner: a bar always there to search from; no jump back to the āya played; no resume card, the app as it was left)
 - `SuraScreen`'s `PlaceBar` (fixed over the text): the sūra and the āya at the top (`topAya`), its
