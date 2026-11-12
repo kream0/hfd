@@ -254,12 +254,13 @@ fun ayahTajweedSheet(context: android.content.Context, title: String, text: Stri
     title = context.getString(R.string.tajweed_of_aya),
     subtitle = title,
     content = {
-        AyahTajweed(text)
-        // The legend, and which colours show: from here (and the settings), not a button on every text.
+        // The legend, and which colours show: from here (and the settings), not a button on every
+        // text. Before the rules: a long āya has dozens, and it was out of sight under them.
         val sheets = LocalSheets.current
-        Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp)) {
+        Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp)) {
             PillButton(stringResource(R.string.tajweed_open), { sheets(tajweedSheet(context)) }, icon = Ic.Palette)
         }
+        AyahTajweed(text)
     },
 )
 
