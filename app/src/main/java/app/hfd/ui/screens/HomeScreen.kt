@@ -69,7 +69,6 @@ fun HomeScreen(app: AppViewModel) {
     val settings by Graph.settings.state.collectAsStateWithLifecycle()
     val progress by Graph.progress.state.collectAsStateWithLifecycle()
     val session by Graph.sessions.session.collectAsStateWithLifecycle()
-    val np by Graph.nowPlaying.collectAsStateWithLifecycle()
     Column(
         Modifier
             .fillMaxSize()
@@ -131,7 +130,7 @@ fun HomeScreen(app: AppViewModel) {
             }
         }
 
-        // Continue where you left off.
+        // A lesson or a test left unfinished: to take up again.
         val s = session
         val cont: Pair<String, () -> Unit>? = when {
             s == null -> null
@@ -141,11 +140,8 @@ fun HomeScreen(app: AppViewModel) {
             s.mode == AppMode.TEST && s.test != null -> c.fadila(s.test.fadilaId)?.takeIf { s.test.index < it.size }?.let { f ->
                 stringResource(R.string.home_continue_test, f.title.text) to { app.test(f) }
             }
+            // (What was being listened to is the bar's, just under this screen: not offered twice.)
             else -> null
-        } ?: np?.let { playing ->
-            c.fadila(playing.fadilaId)?.let { f -> stringResource(R.string.home_continue_listen, f.title.text) to { app.openFadila(f.id) } }
-                // A sūra of the Qur'an section.
-                ?: playing.session.sura?.let { n -> stringResource(R.string.home_continue_listen, playing.title) to { app.openSura(n) } }
         }
         if (cont != null) {
             Spacer(Modifier.height(10.dp))

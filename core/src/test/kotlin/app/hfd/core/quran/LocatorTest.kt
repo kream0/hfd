@@ -75,6 +75,21 @@ class LocatorTest {
     }
 
     @Test
+    fun aSurasFirstWordsWrittenAsABrokenBasmalaAreItsOpening() {
+        // al-Mulk: تَبَٰرَكَ ٱلَّذِى as the recogniser wrote it.
+        assertEquals(AyahRef(67, 1) to 0, at(locate("بِسََِْبَارَّكَ ٱلرَّذِىَ بِيَدِِهِ ٱلْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَىْءٍ قَدِيرٌ")))
+        // al-Jāthiya: the letters, then تَنزِيلُ unreadable; its second āya is also al-Aḥqāf's, the third tells.
+        assertEquals(AyahRef(45, 1) to 0, at(locate("بِسحلَمَّمٓ", "بِتلَنٱرِيٱلُ ٱلْكِتَـٰبِ مِنَ ٱللَّهِ ٱلْعَزِيزِ ٱلْحَكِيمِ", "إِنَّ فِى ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضِ لَـَٔايَـٰتٍ لِّلْمُؤْمِنِينَ")))
+        // al-Ḥashr: its first āya is aṣ-Ṣaff's too; the second tells, and the place is the first's first word.
+        assertEquals(
+            AyahRef(59, 1) to 0,
+            at(locate("بِسْسِلِلٱلرلِلٱلرلرَّحَحٱحَحَلَلرلِحِحِحِلّحّحَََلرلِل مَا فِى ٱلسَّمَـٰوَٰتِ وَمَا فِى ٱلْأَرْضِ", "وَهُوَ ٱلْعَزِيزُ ٱلْحَكِيمُ", "هُوَ ٱلَّذِىٓ أَخْرَجَ")),
+        )
+        // From a sūra's third word, nothing said before: from there.
+        assertEquals(AyahRef(67, 1) to 2, at(locate("بِيَدِهِ ٱلْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَىْءٍ قَدِيرٌ")))
+    }
+
+    @Test
     fun whatIsNotTheTextsBeforeAPhraseIsSetAside() {
         // Half a word before the phrase (heard from inside an āya): the phrase alone is said in
         // many places, and waits; it was found in Yūsuf by letters of «ممة» taken from the words before.

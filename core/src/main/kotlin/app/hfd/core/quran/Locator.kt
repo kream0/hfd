@@ -72,6 +72,8 @@ class Locator(
         val basmala: Boolean,
         val hits: List<QuranSearch.Recited> = emptyList(),
         val pick: QuranSearch.Recited? = null,
+        /** The places that say the phrase as well as the best one does (one of them is [pick], when one stands out). */
+        val close: List<QuranSearch.Recited> = emptyList(),
         /** The place is taken back to the sūra's opening letters, said before the phrase. */
         val back: Boolean = false,
     )
@@ -85,9 +87,14 @@ class Locator(
         var used = 0
         var listed: List<QuranSearch.Recited> = emptyList()
         for (back in 0..said.size) {
-            val a = try2(said.takeLast(back).flatten() + now, final)
-            val pick = a?.pick
+            val tried = try2(said.takeLast(back).flatten() + now, final)
             val had = best?.pick
+            // (A longer stretch two places say almost as well: the one the place already found is in,
+            // if what found it is enough to settle a place: ten letters are not, وَمَن يُشَاقِّ ٱللَّهَ is in
+            // al-Ḥashr 4 and, a letter apart, in al-Anfāl 13, whose beginnings are the same.)
+            val sure = had != null && letters(best!!.phrase) >= MIN_LETTERS_SPEAKING
+            val pick = tried?.pick ?: had?.takeIf { sure }?.let { h -> tried?.close?.firstOrNull { fits(it, h) } }
+            val a = if (tried != null && pick != null && tried.pick == null) Attempt(tried.before, tried.phrase, tried.basmala, tried.hits, pick, tried.close) else tried
             when {
                 pick != null && (had == null || fits(pick, had)) -> { best = a; used = back }
                 had != null -> break
@@ -102,11 +109,13 @@ class Locator(
             return null
         }
         // Said just before the place found, and not the text's (in the same breath, or the
-        // utterance before): a sūra's opening letters, if they are what lies before the place.
-        // It is then theirs, with their sound in front of the phrase.
+        // utterance before): a sūra's opening, if that is what lies before the place. The
+        // recogniser writes a sūra's first words as a broken basmala, its opening letters and
+        // more («بِسٱهِلٱلرَّحَحٰ…» for سَبَّحَ لِلَّهِ: its training put the basmala on every sūra's first
+        // āya). The place is then the sūra's first word, with that sound in front of the phrase.
         val earlier = said.getOrNull(said.size - 1 - used).orEmpty()
         val sound = a.before.ifEmpty { earlier }
-        val start = if (sound.isNotEmpty()) lettersBefore(pick) else null
+        val start = if (sound.isNotEmpty()) opening(pick, a.before) else null
         val ref = start ?: pick.ref
         val word = if (start != null) 0 else pick.word
         val twice = steady == ref to word
@@ -146,7 +155,8 @@ class Locator(
             val top = hits.firstOrNull() ?: return null
             val second = hits.firstOrNull { top.score - it.score < MARGIN && it.ref == FATIHA_SECOND && it.word == 0 } ?: return null
             if (second.score < MIN_SCORE) return null
-            return Attempt(emptyList(), all.drop(from), true, hits, QuranSearch.Recited(FATIHA, 0, second.last, second.score, second.whole + BASMALA.size))
+            val pick = QuranSearch.Recited(FATIHA, 0, second.last, second.score, second.whole + BASMALA.size)
+            return Attempt(emptyList(), all.drop(from), true, hits, pick, listOf(pick))
         }
         if (basmala) from += BASMALA.size
         // What isn't a word of the text, at the beginning; and at the end of a phrase still being said (a word half said).
@@ -158,7 +168,8 @@ class Locator(
             val phrase = all.subList(first, end)
             if (letters(phrase) < minLetters) return Attempt(all.subList(from, first), phrase, false)
             val hits = text.recited(phrase.joinToString(" "))
-            val pick = pick(hits, phrase.size)
+            val close = close(hits, phrase.size)
+            val pick = pick(close)
             // The place must begin with the phrase's first word. A word that is another's there (a
             // few of its letters found among the words before: half a word, a breath read as one)
             // is set aside, and the place has to stand out without it. («ممة وهم لا يشعرون» was found
@@ -167,7 +178,7 @@ class Locator(
                 first++
                 continue
             }
-            return Attempt(all.subList(from, first), phrase, false, hits, pick)
+            return Attempt(all.subList(from, first), phrase, false, hits, pick, close)
         }
     }
 
@@ -187,15 +198,20 @@ class Locator(
         return a.drop(1) == b.drop(1) || a.drop(1) == b || a == b.drop(1)
     }
 
-    /** The place among [hits] that stands out, if one does. */
-    private fun pick(hits: List<QuranSearch.Recited>, words: Int): QuranSearch.Recited? {
-        val best = hits.firstOrNull() ?: return null
-        if (best.score < MIN_SCORE || best.tight < MIN_TIGHT || best.whole < minOf(MIN_WHOLE_WORDS, words)) return null
-        val close = hits.filter { best.score - it.score < MARGIN }
-        if (close.size == 1) return best
+    /** The places among [hits] that say the phrase (of [words] words) as well as the best one does; none if that one doesn't say it well enough. */
+    private fun close(hits: List<QuranSearch.Recited>, words: Int): List<QuranSearch.Recited> {
+        val best = hits.firstOrNull() ?: return emptyList()
+        val whole = minOf(MIN_WHOLE_WORDS, words)
+        if (best.score < MIN_SCORE || best.tight < MIN_TIGHT || best.whole < whole) return emptyList()
+        return hits.filter { best.score - it.score < MARGIN && it.whole >= whole }
+    }
+
+    /** The place among those ([close]) that stands out, if one does. */
+    private fun pick(close: List<QuranSearch.Recited>): QuranSearch.Recited? {
+        if (close.size <= 1) return close.firstOrNull()
         // Several places say it as well: the one in the sūra the reciter is in, the first after where they are.
         val n = near ?: return null
-        val there = close.filter { it.ref.sura == n.sura && it.whole >= minOf(MIN_WHOLE_WORDS, words) }
+        val there = close.filter { it.ref.sura == n.sura }
         return there.firstOrNull { it.ref >= n } ?: there.firstOrNull()
     }
 
@@ -203,15 +219,23 @@ class Locator(
     private fun fits(longer: QuranSearch.Recited, shorter: QuranSearch.Recited): Boolean =
         longer.ref.sura == shorter.ref.sura && longer.ref <= shorter.ref && longer.last >= shorter.ref && shorter.ref.aya - longer.ref.aya <= MAX_AYAT_BACK
 
-    /** The sūra's first āya, if only its opening letters lie between the sūra's start and [pick]. */
-    private fun lettersBefore(pick: QuranSearch.Recited): AyahRef? {
+    /**
+     * The sūra's first āya, if [pick] is in the sūra's opening and what was said before it is
+     * that opening: only its letters lie before the place; or no more words than were set aside
+     * in front of the phrase ([strays]), two more at most, in the sūra's first āya, or past it
+     * when the strays have the broken basmala's «بس» (the opening's words as the recogniser
+     * writes them; half a word heard from inside the second āya is not that).
+     */
+    private fun opening(pick: QuranSearch.Recited, strays: List<String>): AyahRef? {
         val first = AyahRef(pick.ref.sura, 1)
-        if (!Tracker.isLetters(first)) return null
-        // (Letters that open a longer āya: الٓر تِلْكَ…)
-        if (pick.ref == first) return if (pick.word == 1) first else null
-        if (pick.word != 0) return null
-        val between = (1 until pick.ref.aya).map { AyahRef(pick.ref.sura, it) }
-        return if (between.all { Tracker.isLetters(it) && text.wordCount(it) == 1 }) first else null
+        val ayat = (1 until pick.ref.aya).map { AyahRef(pick.ref.sura, it) }
+        val before = ayat.sumOf { text.wordCount(it) } + pick.word
+        if (before == 0) return null
+        val letters = ayat.all { Tracker.isLetters(it) && text.wordCount(it) == 1 } &&
+            (pick.word == 0 || (pick.word == 1 && Tracker.isLetters(pick.ref)))
+        if (letters && Tracker.isLetters(first)) return first
+        if (strays.isEmpty() || before > minOf(strays.size + 2, MAX_OPENING_WORDS)) return null
+        return first.takeIf { pick.ref == first || strays.any { Arabic.skeleton(it).startsWith("بس") } }
     }
 
     private fun words(reading: String): List<String> = reading.split(Regex("\\s+")).filter { Arabic.skeleton(it).isNotEmpty() }
@@ -236,6 +260,8 @@ class Locator(
         private const val KEPT_UTTERANCES = 3
         private const val KEPT_WORDS = 40
         private const val MAX_AYAT_BACK = 4
+        /** Words of a sūra's opening that may have been said as what isn't the text's, at most. */
+        private const val MAX_OPENING_WORDS = 6
         private val FATIHA = AyahRef(1, 1)
         private val FATIHA_SECOND = AyahRef(1, 2)
         private val ISTIADHA = Arabic.words("أعوذ بالله من الشيطان الرجيم").map { Arabic.skeleton(it) }

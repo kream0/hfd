@@ -198,7 +198,6 @@
     </plurals>
     <string name="home_continue">Reprendre</string>
     <string name="home_continue_learn">Apprentissage %1$s · %2$s</string>
-    <string name="home_continue_listen">Écoute de %1$s</string>
     <string name="home_continue_test">Test de %1$s</string>
     <string name="home_test_suggested">L\'heure de vous tester</string>
 

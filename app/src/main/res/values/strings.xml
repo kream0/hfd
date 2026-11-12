@@ -197,7 +197,6 @@
     </plurals>
     <string name="home_continue">Continue</string>
     <string name="home_continue_learn">Learning %1$s · %2$s</string>
-    <string name="home_continue_listen">Listening to %1$s</string>
     <string name="home_continue_test">Testing %1$s</string>
     <string name="home_test_suggested">Time to test yourself</string>
 

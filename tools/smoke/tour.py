@@ -262,16 +262,17 @@ def keyboard_shown():
     return shown.group(1) == "true" if shown else None
 
 
-def recite_anywhere(name, want):
+def recite_anywhere(name, want, shows=is_("Récitez n'importe quel passage")):
     """The microphone that recites anywhere ([want] finds it): the screen that listens for any passage
-    opens and listens (the emulator's microphone is silent: nothing is found); Back closes it."""
+    opens ([shows]: what it says to do, or the page that was open) and listens (the emulator's
+    microphone is silent: nothing is found); Back closes it."""
     mic = find(want)
     if not mic:
         failures.append(f"{name}: no microphone")
         return
     sh("logcat -c")
     tap(mic)
-    opened = wait(is_("Récitez n'importe quel passage"), 30)
+    opened = wait(shows, 30)
     listening = opened and wait(starts("À l"), 240)
     shot(name)
     for line in sh("logcat -d -s Diag:D").splitlines():
@@ -283,7 +284,7 @@ def recite_anywhere(name, want):
         failures.append(f"{name}: reciting anywhere didn't listen")
     sh("input keyevent 4")
     time.sleep(1.5)
-    if find(is_("Récitez n'importe quel passage")):
+    if find(shows):
         failures.append(f"{name}: it didn't close")
 
 
@@ -441,7 +442,8 @@ if step("quran", is_("Coran"), starts("Al-Baqara")):
                 failures.append("recite-how: the ways to recite are missing")
             sh("input keyevent 4")
             time.sleep(1.0)
-        recite_anywhere("recite from the bar", is_("Réciter"))
+        # (From a sūra's page, the page stays shown while the place is looked for.)
+        recite_anywhere("recite from the bar", is_("Réciter"), shows=is_("Réciter · Al-Baqara"))
         if not wait(lambda t: t.startswith("Al-Baqara · "), 20):
             failures.append("recite from the bar: the sūra didn't come back")
         sh(f"dumpsys gfxinfo {PKG} reset")

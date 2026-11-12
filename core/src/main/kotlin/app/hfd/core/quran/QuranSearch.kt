@@ -296,7 +296,7 @@ class QuranSearch(private val suras: List<SuraMeta>, private val quran: QuranTex
         const val RECITED_FRACTION = 0.7
         /** Words a phrase must keep when it is looked for without its first or last one. */
         const val MIN_WORDS_CUT = 3
-        private const val CANDIDATES = 24
+        private const val CANDIDATES = 48
         private const val SLACK = 3
 
         private val REFERENCE = Regex("""(\d{1,3})\s*[:.,;/\-\s]\s*(\d{1,3})""")
