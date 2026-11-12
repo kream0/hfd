@@ -93,6 +93,50 @@ class LocateBench {
         File(dir, System.getenv("HFD_LOCATE_OUT") ?: "locate.txt").writeText(out.toString())
     }
 
+    /**
+     * The same on the Recite bench's recordings (HFD_BENCH: tools/recite/prepare.py), which are a
+     * few passages only, but as the owner's phone hears them: faint, over noise, muffled, in a
+     * pocket, through earbuds' call audio, with restarts. Each is heard from its start (the
+     * basmala first, before a sūra). Writes <HFD_BENCH>/locate.txt.
+     */
+    @Test
+    fun phone() {
+        val dir = System.getenv("HFD_BENCH")?.takeIf { it.isNotBlank() }
+        val model = System.getenv("HFD_CTC")?.takeIf { it.isNotBlank() }
+        Assume.assumeTrue("HFD_BENCH and HFD_CTC not set", dir != null && model != null && System.getenv("HFD_LOCATE") == null)
+        val parts = Parts(HfdJson.decodeFromString(PartsFile.serializer(), Assets.file("quran/parts.json").readText()))
+        val search = QuranSearch(SuraNames.apply(Assets.suras), Assets.quran, parts)
+        search.prepare()
+        val out = StringBuilder()
+        val totals = LinkedHashMap<String, IntArray>() // right, wrong, not found
+        val times = ArrayList<Double>()
+        OrtCtcModel(model!!, 4).use { ort ->
+            val recognizer by lazy { CtcRecognizer(ort) }
+            for (line in File(dir, "cases.tsv").readLines().filter { it.isNotBlank() && !it.startsWith("#") }) {
+                val f = line.split('\t')
+                val id = f[0]
+                val first = AyahRef.parse(f[3].substringBefore('@'))!!
+                val begins = f[3].substringAfter('@').substringBefore('-').toDouble()
+                val kind = listOf("noisy", "fast", "pauses", "loud", "muffled", "rumble", "pocket", "sco", "flow").first { "-$it" in id }
+                val (found, seconds, heard) = locate(readings(File(dir, "readings-locate/$id.tsv"), app.hfd.core.recite.Wav.read(File(dir, f[2]))) { recognizer }, search)
+                val right = found != null && found.ref == first && found.word <= 1
+                val t = totals.getOrPut(kind) { IntArray(3) }
+                t[if (right) 0 else if (found != null) 1 else 2]++
+                if (right) times += seconds - begins
+                if (!right) out.append("$id: ${if (found == null) "not found" else "WRONG ${found.ref} word ${found.word} (%.2f) after %.1f s".format(found.score, seconds)}; heard «$heard»\n")
+            }
+        }
+        val all = IntArray(3)
+        for ((kind, t) in totals) {
+            out.append("$kind: right ${t[0]}/${t.sum()}, wrong ${t[1]}, not found ${t[2]}\n")
+            for (i in 0..2) all[i] += t[i]
+        }
+        times.sort()
+        fun q(p: Double) = if (times.isEmpty()) Double.NaN else times[((times.size - 1) * p).toInt()]
+        out.append("ALL: right ${all[0]}/${all.sum()} (%.1f %%), wrong ${all[1]}, not found ${all[2]}; found p50 %.1f s, p90 %.1f s after the passage's first word begins\n".format(100.0 * all[0] / maxOf(1, all.sum()), q(0.5), q(0.9)))
+        File(dir, "locate.txt").writeText(out.toString())
+    }
+
     private class Reading(val seconds: Double, val final: Boolean, val text: String)
 
     /**

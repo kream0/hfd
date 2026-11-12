@@ -397,13 +397,11 @@
   the āya among those listed 81 %; 10 s clips 88 % and 94 %. What is left: the disconnected
   letters (read as a basmala), pocket audio, phrases of three short words (under five letters
   once vowels and alifs are gone). A phrase the text says in several places lists them all:
-  `VoiceSearch` goes on listening until one stands out (`CLEAR_MARGIN`).
+  (`VoiceSearch`, the sheet that listed them, is gone since 2.7.0: below.)
 - `QuranScreen`: views (sūras / juzʾ / ḥizb / favourites), results by kind; choosing a result
   hides the keyboard and clears the focus (the bug: it stayed up over the sūra), then
   `AppViewModel.openSura(sura, aya)` (`suraTarget`, which the sūra screen scrolls to and forgets).
-  The microphone opens `VoiceSearch` in a sheet (the Recite recogniser through `SpeechReader`,
-  which now holds the models' loading for both; reads freely; stops at the first whole phrase
-  found or after 30 s).
+  The microphone recites anywhere (2.7.0, below).
 - `SuraScreen` is for reading (the owner: a tap on a verse must not play it): the tap opens
   a sheet (favourite, listen from here, recite from here). Listening and reciting are the bar's
   (below). `Favorites` (progress/favorites.json, in backups).
@@ -424,12 +422,60 @@
   text (`NowPlaying.plays(id)`: an āya left by a lesson isn't the text; Play then starts it).
   Something else *heard* while a text is open stays in the bar until the text is left (`heard`),
   so what sounds can always be paused; « Réciter » is only on a text's own bar.
-- A sūra's screen hands the bar how it starts a recitation (`onReciteAction`: from the āya at the
-  top, a sheet asking "from āya N / from the start"). A passage's Recite pill left its intro for
-  the bar. `ReciteScreen` has no switch (its ✕ did the same).
+- A passage's Recite pill left its intro for the bar. `ReciteScreen` has no switch (its ✕ did the
+  same). Since 2.7.0 the bar's microphone is on every screen (below).
 - `Graph.playingPreview` shows the player as holding something without playing (the screenshot
   test: `listen`, `fadail-listening`). The smoke tour counts the listening buttons on a sūra's
   screen (one), opens the full player, and recites from the bar.
+
+## One microphone: recite anywhere (2.7.0, the owner: "why did you separate reciting and finding a passage? In Tarteel one microphone finds the passage and follows from there")
+- Before: Recite needed a text chosen first (a passage; a sūra "from āya N / from the start", a
+  sheet asking), and finding a passage by reciting was a sheet of its own in the search field
+  (`VoiceSearch`) that only listed places. Now one thing: `ReciteButton` in `PlayerDock` (on every
+  screen; with nothing to listen to the bar is that button and a line saying what it does) and the
+  search field's microphone both open Recite, which listens at once (`ReciteSession.listensAtOnce`,
+  off in the screenshot test). A passage open: that passage, as before (its āyāt go to the
+  progress log). Anything else: `Graph.reciteAnywhere(near, start, show)` →
+  `ReciteSession(anywhere = Anywhere(…))`, which begins with no text.
+- `:core` `quran/Locator` (`LocatorTest`): each reading of what is being said (partial, then
+  whole) is looked for with `QuranSearch.recited` until one place stands out (score ≥ 0.8, 0.04
+  over the next, two of the text's words said whole, `tight` ≥ 0.6; while still speaking: the same
+  place twice and 14 letters). What it knows: the isti'ādha and the basmala before a passage (the
+  basmala is 1:1 only when 1:2 follows); what isn't the text's at a phrase's beginning (unknown
+  words, and a first word that isn't the place's first word, a «و» or «ف» apart) is set aside and
+  the place must stand without it; **the model writes a sūra's opening letters as a broken
+  basmala** («بِسٱللَّمٓ», «بِِيَسٓمٓ»): a place found just after a sūra's letters, with something said
+  before it, is that sūra's first word, the sound in front of the phrase for the tracker; a phrase
+  said in several places waits for what follows (`candidates`, which the screen lists to choose
+  from) unless one is in the sūra `near`; once a place stands out, the utterances before are tried
+  in front of it for as long as they fit (`fits`): the place is where the recitation began (a
+  recitation begun on words two sūras share, 7:109–111 / 26:34–36).
+- `QuranSearch.recited` (also the typed search's): a place's first and last words are the first
+  and last *mostly said* (a sūra's first words were found in the last āya of the sūra before, by
+  a few letters); `Recited.whole` (the text's words said letter for letter) and `tight` (letters
+  found over the stretch's own letters: letters scattered over a longer stretch are not it).
+- `ReciteSession`: the text followed is a `Text` (follower, what is shown, what was right) that
+  `place(ref, word)` sets or replaces: the sūra whole, the tracker put at the word found
+  (`Tracker.startAt`: what is before is neither said nor missed). The utterance that found the
+  place is given to the follower as the locator's phrase (`foundBy`, `Locator.phrase` for its
+  later readings; it is not timed for tajwīd). A whole utterance that follows nothing is looked
+  for elsewhere (`elsewhere`, `astray`: 14 letters at least, the place followed as `near`): found,
+  the recitation goes on there (same sūra: `startAt` + `Tracker.feed`; another: a new `Text`).
+  A sūra finished goes on into the next. `Anywhere.start`: "recite from here" on an āya, no
+  looking. `Anywhere.show`: from a sūra's page the page stays shown from the place read while
+  the place is looked for (`ReciteUi.view`; one may be reading from it). `ReciteUi.locating`,
+  `candidates`, `id`. Closing (`AppViewModel.closeRecite`) opens the sūra at the āya reached.
+  Diagnostics: `recite.locate`, `recite.placed`, `recite.elsewhere`.
+- How: the arrow beside the microphone (`reciteSheet`): from memory (`reciteShowText` false: the
+  text hidden) or reading; choosing one starts.
+- `LocateBench` (`tools/locate/sample.py` + `fetch.sh`; `locate.yml` on pushes touching them, the
+  locator or the search: four parts, the summary adds them up; here `HFD_LOCATE`, `HFD_CTC`,
+  readings kept in `<dir>/readings` so the locator alone is tried again in seconds,
+  `HFD_LOCATE_CACHED=1` for only those): 160 places taken at random in the whole Qur'an, heard
+  from the āya's first word and from two fifths into it, and 40 sūra beginnings, with and without
+  the basmala; four reciters, streamed through `Segmenter` as the app hears them, 24 s at most.
+  `phone()` (HFD_BENCH without HFD_LOCATE): the Recite bench's recordings from their start.
+  This sandbox reads 7 a minute (four cores): a full run is an hour; CI's parts 15 min.
 
 ## Where one is (2.6.0, the owner: a bar always there to search from; no jump back to the āya played; no resume card, the app as it was left)
 - `SuraScreen`'s `PlaceBar` (fixed over the text): the sūra and the āya at the top (`topAya`), its

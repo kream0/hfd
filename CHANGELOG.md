@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.7.0
+One microphone: recite any passage, the app finds it in the whole Qur'an, shows the page and follows you from there.
+- **Reciting and finding a passage are one thing now.** Tap the microphone (in the bar at the bottom of every screen, or in the search field) and recite: from a sūra's beginning or the middle of a verse, anything. The app finds where you are, opens that sūra's page at the word you began at, and follows you word by word. No text to choose first, no "from which āya?", no separate search by voice.
+- **It listens at once.** Recite no longer waits for a second tap on its microphone.
+- **It keeps up with you.** Go to another passage and it finds you there. Finish a sūra and it goes on into the next. Close it and the page stays open where you were: reciting a few words is also how you look a verse up.
+- **From a page you are reading**, the page stays on screen while you begin; the marker joins you wherever you start, in that sūra or another.
+- **When the text says your words in several places** (a phrase many āyāt end with), it waits for what you say next, or lists the places for you to choose; in a sūra you have open, it takes that sūra's.
+- **The arrow beside the microphone** chooses how you recite: *from memory* (the text hidden, each word showing as you say it) or *reading* (the text shown, the marker following your voice).
+- It knows the isti'ādha and the basmala before a passage for what they are, and a sūra's opening letters (الٓمٓ, حمٓ, يسٓ…).
+- A passage of the Faḍāʾil recited from its own screen is as before, and still counts for your learning.
+- Needs the new recognition model (173 MB, offered on Recite's screen): the older one reads too roughly to find a place.
+
 ## 2.6.0
 In a sūra, a bar at the top always says where you are and opens the search; the text no longer jumps back to the verse being played.
 - **Where you are, always in view.** Over a sūra's text a bar stays in place while you scroll: the sūra and the āya at the top of the screen, with its juzʾ and ḥizb. Tap it: the search and the lists (sūras, juzʾ, ḥizb, favourites) open right there, the keyboard up, with no going back to the Coran tab. Type 2:150, a word, or recite a few words, and the text goes there.
