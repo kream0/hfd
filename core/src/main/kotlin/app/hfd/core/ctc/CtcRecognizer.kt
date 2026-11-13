@@ -12,6 +12,10 @@ class CtcRecognizer(private val model: CtcModel, private val vocabulary: CtcVoca
     private var lastPcm: FloatArray? = null
     private var lastOut: CtcOutput? = null
 
+    /** How sure the model was of the last utterance read ([CtcOutput.sure]); null when it wrote nothing. */
+    var sure: Float? = null
+        private set
+
     /** The model itself: a spectrogram in, each frame's symbols out. One call at a time. */
     fun interface CtcModel {
         fun run(features: Mel.Features): CtcOutput
@@ -26,7 +30,7 @@ class CtcRecognizer(private val model: CtcModel, private val vocabulary: CtcVoca
      */
     fun transcribe(pcm: FloatArray, expected: String = ""): String {
         // (The same sound asked about twice, to check its words then to time them, is listened to once.)
-        val out = if (pcm === lastPcm) lastOut else listen(pcm).also { lastPcm = pcm; lastOut = it }
+        val out = if (pcm === lastPcm) lastOut else listen(pcm).also { lastPcm = pcm; lastOut = it; sure = it?.sure() }
         val text = out?.let { Ctc.greedy(it, vocabulary) }.orEmpty().replace('\n', ' ')
         if (expected.startsWith(TIMES)) {
             // "@\n<text>": the frame each of the text's characters is written at (a frame is 40 ms).

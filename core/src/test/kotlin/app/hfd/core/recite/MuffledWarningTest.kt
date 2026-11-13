@@ -35,4 +35,29 @@ class MuffledWarningTest {
         // A clear voice the text doesn't follow (another passage, a wrong start) isn't a microphone problem.
         repeat(5) { assertFalse(w.heard(muffled = false, 4f, 0)) }
     }
+
+    @Test
+    fun theRoomsNoiseWhileTheReciterThinksSaysNothing() {
+        // The owner in a car (13 Nov): a few words, then seconds of thought with the car's noise
+        // cut into utterances the recogniser writes scraps of.
+        val w = MuffledWarning()
+        assertFalse(w.heard(muffled = true, 4f, 3, symbols = 40, sure = 0.93f))
+        repeat(6) { assertFalse(w.heard(muffled = true, 8f, 0, symbols = 6, sure = 0.4f)) }
+        // The same without knowing how sure the recogniser is (Whisper).
+        val older = MuffledWarning()
+        repeat(6) { assertFalse(older.heard(muffled = true, 8f, 0, symbols = 6)) }
+    }
+
+    @Test
+    fun aVoiceReadSurelyIsHeardWhateverItSays() {
+        // Not the text (another passage, a wrong start, hesitations): read surely, the microphone hears.
+        val w = MuffledWarning()
+        repeat(8) { assertFalse(w.heard(muffled = true, 5f, 0, symbols = 30, sure = 0.9f)) }
+        // A voice the recogniser can't make out, and the text doesn't follow: pointed out.
+        assertFalse(w.heard(muffled = true, 6f, 0, symbols = 20, sure = 0.45f))
+        assertTrue(w.heard(muffled = true, 7f, 0, symbols = 24, sure = 0.5f))
+        // One utterance read surely, and it goes.
+        assertFalse(w.heard(muffled = true, 4f, 0, symbols = 30, sure = 0.92f))
+        assertFalse(w.shown)
+    }
 }

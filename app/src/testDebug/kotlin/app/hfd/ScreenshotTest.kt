@@ -291,6 +291,14 @@ class ScreenshotTest {
             // (112:3's third word, وَلَمْ.)
             org.junit.Assert.assertEquals(2 to 2, r.next)
         }
+        // Listening: the button alive with the voice, and the notice in its line (nothing covers the text).
+        ui { Graph.recite.value!!.previewListening(level = 0.75f, waiting = true) }
+        both("recite-listening")
+        rule.onNodeWithTag("recite-notice").assertExists()
+        rule.onNodeWithText(rule.activity.getString(R.string.recite_wait)).assertExists()
+        ui { Graph.recite.value!!.previewListening(level = 0.2f, muffled = true) }
+        both("recite-muffled")
+        rule.onNodeWithText(rule.activity.getString(R.string.recite_muffled)).assertExists()
         // Strict: the word left out is marked, and the recitation went on.
         ui {
             Graph.closeRecite()

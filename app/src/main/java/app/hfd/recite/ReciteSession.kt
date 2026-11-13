@@ -222,7 +222,8 @@ class ReciteSession(
     private val _ui = MutableStateFlow(snapshot(ReciteUi(targets, emptyList(), null)))
     val ui: StateFlow<ReciteUi> = _ui.asStateFlow()
     val level: StateFlow<Float> = recorder.level
-    val wave: StateFlow<Wave> = recorder.wave
+    /** Whether what the microphone hears now counts as voice (the button swells with it). */
+    val speaking: StateFlow<Boolean> = recorder.speaking
     /** The microphone listened with (the earbuds' or the phone's), while listening. */
     val mic: StateFlow<Mic?> = recorder.mic
 
@@ -248,6 +249,7 @@ class ReciteSession(
                     // (No place yet: nothing is expected, it reads freely.)
                     val expected = if (placed) follower.expected(u.id) else ""
                     var muffled = false
+                    var sure: Float? = null
                     val text = withContext(recognizer) {
                         // The phone's speech microphone is faint: at a normal level first (the bench
                         // does the same, Clarity.prepare).
@@ -266,7 +268,7 @@ class ReciteSession(
                                 "zcr" to st.zcr, "bands" to st.bands.joinToString("/"),
                             )
                         }
-                        speech.reader()?.invoke(pcm, expected)
+                        speech.reader()?.invoke(pcm, expected).also { sure = speech.sure }
                     }
                     if (u.final) _ui.value = _ui.value.copy(pending = (_ui.value.pending - 1).coerceAtLeast(0))
                     // Anywhere in the Qur'an: where this is, first. Found, the utterance is followed
@@ -282,7 +284,10 @@ class ReciteSession(
                         recorder.splitAt(u.id - idBase, sample)
                     }
                     if (u.final) {
-                        val warn = muffledWarning.heard(muffled, u.pcm.size / Segmenter.RATE.toFloat(), moved)
+                        // (A voice heard badly: not the room's noise while the reciter thinks, nor a voice read surely.)
+                        val symbols = text?.count { !it.isWhitespace() } ?: 0
+                        val warn = muffledWarning.heard(muffled, u.seconds, moved, symbols, sure)
+                        Diag.log("recite.voice", "id" to u.id, "seconds" to u.seconds, "symbols" to symbols, "sure" to sure, "muffled" to muffled, "moved" to moved, "warn" to warn)
                         if (warn != _ui.value.muffled) _ui.value = _ui.value.copy(muffled = warn)
                         // Words heard, and neither the text from the marker nor words before it
                         // (the marker would be on those): twice in a row, the reciter is told.
@@ -415,6 +420,12 @@ class ReciteSession(
     fun choose(hit: QuranSearch.Recited) {
         place(hit.ref, hit.word)
         locator = null
+    }
+
+    /** Listening to a voice at [level], shown without a microphone (the screenshot test). */
+    fun previewListening(level: Float, waiting: Boolean = false, muffled: Boolean = false) {
+        recorder.preview(level, speaking = level > 0f)
+        _ui.value = _ui.value.copy(listening = true, waiting = waiting, muffled = muffled)
     }
 
     /** What was heard and the places that say it, shown as while looking for one (the screenshot test). */

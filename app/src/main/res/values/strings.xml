@@ -270,7 +270,7 @@
     <string name="recite_downloading">Downloading %1$d%%</string>
     <string name="recite_download_failed">Download failed: %1$s</string>
     <string name="recite_unavailable">Speech recognition isn\'t available on this phone.</string>
-    <string name="recite_mic_denied">Microphone permission denied</string>
+    <string name="recite_mic_denied">The microphone doesn\'t answer. Check its permission in the phone\'s settings.</string>
     <string name="recite_loading">Loading the speech model…</string>
     <string name="recite_listening">Listening</string>
     <string name="recite_position">Āya %1$d of %2$d · %3$s · tap the microphone</string>
@@ -314,10 +314,9 @@
     <string name="play_all">Play all</string>
     <string name="play_all_pause">Pause</string>
     <string name="play_all_title">All the faḍāʾil</string>
-    <string name="recite_muffled">The microphone hears you muffled (phone in a pocket, covered?): hold it in front of you, or use your earbuds\' microphone.</string>
+    <string name="recite_muffled">I can hardly hear you: is the microphone covered? Hold the phone in front of you.</string>
     <string name="recite_mic_headset">Microphone: %1$s · use the phone\'s</string>
     <string name="recite_mic_earbuds">earbuds</string>
-    <string name="recite_mic_phone">Microphone: phone</string>
     <string name="recite_mic_phone_switch">Microphone: phone · use the earbuds</string>
     <!-- The Qur'an section -->
     <string name="tab_quran">Qur’an</string>

@@ -23,13 +23,6 @@ import kotlinx.coroutines.isActive
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
-/** The last few seconds of the microphone, as bars: each one's level (0…1) and whether it was voice. */
-class Wave(val levels: FloatArray, val voiced: BooleanArray) {
-    companion object {
-        val EMPTY = Wave(FloatArray(0), BooleanArray(0))
-    }
-}
-
 /**
  * The microphone Recite listens with: a headset's ([name], e.g. the owner's earbuds) or the
  * phone's; [headsetAvailable] when earbuds with a microphone are connected (to offer them).
@@ -49,9 +42,11 @@ class Recorder(private val audio: AudioManager? = null) {
     private val _speaking = MutableStateFlow(false)
     val speaking: StateFlow<Boolean> = _speaking.asStateFlow()
 
-    private val _wave = MutableStateFlow(Wave.EMPTY)
-    /** The live waveform shown while listening, newest bar last. */
-    val wave: StateFlow<Wave> = _wave.asStateFlow()
+    /** A level and a voice shown without a microphone (the screenshot test). */
+    fun preview(level: Float, speaking: Boolean) {
+        _level.value = level
+        _speaking.value = speaking
+    }
 
     private val _mic = MutableStateFlow<Mic?>(null)
     /** The microphone in use while listening. */
@@ -139,13 +134,6 @@ class Recorder(private val audio: AudioManager? = null) {
         var secVoiced = 0
         var finals = 0
         var routedLogged = false
-        // The waveform: a bar every WAVE_FRAMES frames, the last WAVE_BARS kept.
-        val barLevels = ArrayDeque<Float>()
-        val barVoiced = ArrayDeque<Boolean>()
-        var barFrames = 0
-        var barMax = 0f
-        var barVoice = false
-        _wave.value = Wave.EMPTY
         try {
             while (currentCoroutineContext().isActive && !stopRequested.get()) {
                 val n = record.read(frame, 0, frame.size)
@@ -161,15 +149,6 @@ class Recorder(private val audio: AudioManager? = null) {
                 // −60 dB → 0, −15 dB → 1: phone microphones for speech recognition are quiet.
                 _level.value = ((dB(seg.rms) + 60f) / 45f).coerceIn(0f, 1f)
                 _speaking.value = seg.inSpeech
-                barMax = maxOf(barMax, ((dB(seg.rms) + 62f) / 37f).coerceIn(0f, 1f))
-                barVoice = barVoice || seg.voiced
-                if (++barFrames == WAVE_FRAMES) {
-                    barLevels.addLast(barMax)
-                    barVoiced.addLast(barVoice)
-                    if (barLevels.size > WAVE_BARS) { barLevels.removeFirst(); barVoiced.removeFirst() }
-                    _wave.value = Wave(barLevels.toFloatArray(), barVoiced.toBooleanArray())
-                    barFrames = 0; barMax = 0f; barVoice = false
-                }
                 secFrames++
                 secSum += seg.rms
                 secMax = maxOf(secMax, seg.rms)
@@ -216,7 +195,6 @@ class Recorder(private val audio: AudioManager? = null) {
             _mic.value = null
             _level.value = 0f
             _speaking.value = false
-            _wave.value = Wave.EMPTY
             if (captured != null && capturedSize > 0) {
                 val pcm = FloatArray(capturedSize) { captured[it] / 32768f }
                 capture?.let { handOver -> Thread { handOver(pcm) }.start() }
@@ -237,9 +215,6 @@ class Recorder(private val audio: AudioManager? = null) {
         private const val JUDGE_SECONDS = 1.5f
         /** The longest session recording sent (the owner's opt-in): 4 min, 7.7 MB. */
         private const val CAPTURE_SECONDS = 240
-        /** A bar every 60 ms; 64 of them, about four seconds. */
-        private const val WAVE_FRAMES = 3
-        private const val WAVE_BARS = 64
 
         private fun dB(rms: Float): Float = (20 * kotlin.math.log10(rms.coerceAtLeast(1e-6f).toDouble())).toFloat()
     }

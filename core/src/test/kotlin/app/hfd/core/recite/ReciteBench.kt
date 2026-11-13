@@ -334,6 +334,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private var splits = 0
     private val queue = ArrayDeque<Utterance>()
     private var inFlight: Triple<Utterance, String, Double>? = null
+    /** How sure the recogniser was of the reading in flight (the CTC one says). */
+    private var inFlightSure: Float? = null
     /** A whole utterance's mistakes being read again (Follower.Check), and when that reading ends. */
     private var checking: Triple<Follower.Check, String, Double>? = null
     private var checks = 0
@@ -419,7 +421,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                         offer(split)
                     }
                 }
-                if (u.final && muffledWarning.heard(Clarity.isMuffled(u.pcm), u.seconds, moved)) warned++
+                if (u.final && muffledWarning.heard(Clarity.isMuffled(u.pcm), u.seconds, moved, text.count { !it.isWhitespace() }, inFlightSure)) warned++
                 if (u.final && moved == 0 && follower.voice == null && !tracker.done && Arabic.skeleton(follower.withoutOpening(text)).length >= 6) strays++
                 readings.append(String.format(Locale.US, "      %6.1f s  #%d %s %4.1f s: %s\n", at, u.id, if (u.final) "final  " else "partial", u.seconds, text))
                 inFlight = null
@@ -439,6 +441,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             if (u.final) finals++ else partials++
             val started = System.nanoTime()
             val text = decoder.transcribe(Clarity.prepare(u.pcm), expected = if (steer) follower.expected(u.id) else "")
+            inFlightSure = decoder.sure
             decodeNanos += System.nanoTime() - started
             inFlight = Triple(u, text, t + readingTime(u.seconds))
         }
@@ -630,6 +633,9 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
 private interface Decoder : AutoCloseable {
     fun transcribe(pcm: FloatArray, prompt: String = "", expected: String = ""): String
 
+    /** How sure it was of the last utterance read, if it says (CtcOutput.sure). */
+    val sure: Float? get() = null
+
     companion object {
         /** HFD_CTC (the CTC model's ONNX file): that recogniser, in process; else whisper.cpp's decoder (HFD_DECODER, HFD_MODEL). */
         fun open(): Decoder = System.getenv("HFD_CTC")?.takeIf { it.isNotBlank() }?.let(::CtcDecoder)
@@ -642,6 +648,7 @@ private class CtcDecoder(model: String) : Decoder {
     private val ort = app.hfd.core.ctc.OrtCtcModel(model, System.getenv("HFD_CTC_THREADS")?.toIntOrNull() ?: 4)
     private val recognizer = app.hfd.core.ctc.CtcRecognizer(ort)
     override fun transcribe(pcm: FloatArray, prompt: String, expected: String): String = recognizer.transcribe(pcm, expected)
+    override val sure: Float? get() = recognizer.sure
     override fun close() = ort.close()
 }
 

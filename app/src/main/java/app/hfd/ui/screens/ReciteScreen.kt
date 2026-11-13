@@ -7,7 +7,25 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import app.hfd.ui.components.starPath
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -85,7 +103,6 @@ import app.hfd.ui.components.levelName
 import app.hfd.ui.components.reciteLevelSheet
 import app.hfd.recite.ReciteSession
 import app.hfd.recite.ReciteUi
-import app.hfd.recite.Wave
 import app.hfd.ui.ayahEnd
 import app.hfd.core.tajweed.Rule
 import app.hfd.core.tajweed.TajweedCheck
@@ -133,15 +150,19 @@ fun ReciteScreen(onClose: () -> Unit) {
     val best = settings.reciteEngine == ReciteEngine.BEST
     val ready = whisperModel is ModelState.Ready || (best && ctcModel is ModelState.Ready)
     val level by s.level.collectAsStateWithLifecycle()
-    val wave by s.wave.collectAsStateWithLifecycle()
+    val speaking by s.speaking.collectAsStateWithLifecycle()
     val listeningWith by s.mic.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val sheets = LocalSheets.current
     val showText = settings.reciteShowText
+    // (Said in the screen's own line of notices, not over the text: no toast.)
+    var denied by remember(s) { mutableStateOf(false) }
     val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) s.start() else Graph.toast(R.string.recite_mic_denied)
+        denied = !granted
+        if (granted) s.start()
     }
     fun listen() {
+        denied = false
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) s.start()
         else mic.launch(Manifest.permission.RECORD_AUDIO)
     }
@@ -228,31 +249,8 @@ fun ReciteScreen(onClose: () -> Unit) {
             }
         }
 
-        if ((ui.lost || ui.waiting || ui.elsewhere != null) && ui.listening && !ui.done) {
-            // What was said isn't the text from the marker: the recitation waits there, and says so
-            // (at once for a word of the text said differently, after two phrases of something else).
-            Text(
-                stringResource(
-                    when {
-                        !ui.lost -> if (showText) R.string.recite_wait else R.string.recite_wait_hidden
-                        showText -> R.string.recite_lost
-                        else -> R.string.recite_lost_hidden
-                    },
-                ),
-                style = Type.label, color = P.wordMark, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp).testTag("recite-wait"),
-            )
-            // Another place of the Qur'an says it: offered, never gone to unasked.
-            val there = ui.elsewhere
-            if (there != null && content != null) Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.recite_elsewhere), style = Type.label, color = P.textDim)
-                Spacer(Modifier.width(8.dp))
-                PillButton(stringResource(R.string.quran_at, content!!.sura(there.sura).tname, there.aya), { s.goElsewhere() })
-            }
-        } else if (ui.locating && ui.targets.isNotEmpty()) {
-            // Looked for under the page: what is heard, and the places that say it when there are several.
+        // Looked for under the page: what is heard, and the places that say it when there are several.
+        if (ui.locating && ui.targets.isNotEmpty()) {
             ui.heard?.let {
                 Text(it, style = Type.arabicTitle.copy(fontSize = 18.sp, lineHeight = 30.sp, textAlign = TextAlign.Center), color = P.textDim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp))
             }
@@ -263,43 +261,45 @@ fun ReciteScreen(onClose: () -> Unit) {
                 }
             }
         }
-        if (ui.muffled && ui.listening) {
-            Text(
-                stringResource(R.string.recite_muffled), style = Type.label, color = P.saveOrange, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+        // One line of notices between the text and the microphone, always there (nothing moves
+        // when one comes, nothing is covered): the one that matters most, in one form.
+        val live = ui.listening && !ui.done
+        val there = ui.elsewhere
+        val notice = when {
+            ui.error == ReciteSession.ERROR_MODEL -> Notice(stringResource(R.string.recite_unavailable), Tone.ERROR)
+            ui.error == ReciteSession.ERROR_MIC || denied -> Notice(stringResource(R.string.recite_mic_denied), Tone.ERROR)
+            // Another place of the Qur'an says what is recited: offered, never gone to unasked.
+            live && there != null && content != null -> Notice(
+                stringResource(R.string.recite_elsewhere), Tone.INFO,
+                action = stringResource(R.string.quran_at, content!!.sura(there.sura).tname, there.aya), onClick = { s.goElsewhere() },
             )
+            // What was said isn't the text from the marker: the recitation waits there (said at
+            // once for a word of the text said differently, after two phrases of something else).
+            live && ui.lost -> Notice(stringResource(if (showText) R.string.recite_lost else R.string.recite_lost_hidden), Tone.INFO)
+            live && ui.waiting -> Notice(stringResource(if (showText) R.string.recite_wait else R.string.recite_wait_hidden), Tone.INFO)
+            live && ui.muffled -> Notice(stringResource(R.string.recite_muffled), Tone.WARN)
+            // Which microphone listens, when there is a choice: with earbuds connected, a tap switches (listening goes on).
+            else -> listeningWith?.takeIf { it.headset || it.headsetAvailable }?.let { m ->
+                Notice(
+                    if (m.headset) stringResource(R.string.recite_mic_headset, m.name ?: stringResource(R.string.recite_mic_earbuds)) else stringResource(R.string.recite_mic_phone_switch),
+                    Tone.QUIET,
+                    onClick = {
+                        Graph.settings.update { it.copy(reciteHeadset = !m.headset) }
+                        s.restartListening()
+                    },
+                )
+            }
         }
-        if (ui.listening) Waveform(wave, Modifier.padding(horizontal = 24.dp, vertical = 6.dp))
-        // Which microphone listens, when there is a choice: with earbuds connected, a tap switches (listening goes on).
-        listeningWith?.takeIf { it.headset || it.headsetAvailable }?.let { m ->
-            val switchable = true
-            Text(
-                when {
-                    m.headset -> stringResource(R.string.recite_mic_headset, m.name ?: stringResource(R.string.recite_mic_earbuds))
-                    m.headsetAvailable -> stringResource(R.string.recite_mic_phone_switch)
-                    else -> stringResource(R.string.recite_mic_phone)
-                },
-                style = Type.label, color = P.textDim, textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (switchable) Modifier.clickable {
-                            Graph.settings.update { it.copy(reciteHeadset = !m.headset) }
-                            s.restartListening()
-                        } else Modifier,
-                    )
-                    .padding(horizontal = 20.dp, vertical = 4.dp),
-            )
-        }
+        NoticeLine(notice)
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             // The next word, asked for: from memory only (reading, it is on the screen).
             if (!showText && !ui.locating) IconBtn(Ic.Hint, { s.hint() }, bordered = true, size = 48.dp, contentDescription = stringResource(R.string.recite_hint))
             else Spacer(Modifier.size(48.dp))
-            MicButton(listening = ui.listening, level = level, enabled = ready && !ui.done) {
+            MicButton(listening = ui.listening, speaking = speaking, level = level, enabled = ready && !ui.done) {
                 if (ui.listening) s.stop() else listen()
             }
             IconBtn(
@@ -310,12 +310,58 @@ fun ReciteScreen(onClose: () -> Unit) {
     }
 }
 
+private enum class Tone { INFO, WARN, ERROR, QUIET }
+
+/** What the screen has to say under the text: [text], how grave ([tone]), and what a tap does ([action] names it). */
+private data class Notice(val text: String, val tone: Tone, val action: String? = null, val onClick: (() -> Unit)? = null)
+
+/**
+ * The line of notices: a place of its own, as high with nothing to say, so that a notice neither
+ * moves the text nor covers it or the microphone. Each in the same form, a soft pill in the
+ * colour of how grave it is; the quiet ones (which microphone listens) are plain text.
+ */
+@Composable
+private fun NoticeLine(notice: Notice?) {
+    Box(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 16.dp, vertical = 4.dp).testTag("recite-notice"), contentAlignment = Alignment.Center) {
+        AnimatedContent(
+            notice, transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) }, contentKey = { it?.text to it?.action }, label = "notice",
+        ) { n ->
+            if (n == null) Spacer(Modifier.height(1.dp)) else {
+                val color = when (n.tone) {
+                    Tone.INFO -> P.wordMark
+                    Tone.WARN -> P.saveOrange
+                    Tone.ERROR -> P.error
+                    Tone.QUIET -> P.textDim
+                }
+                val quiet = n.tone == Tone.QUIET
+                val shape = RoundedCornerShape(16.dp)
+                Row(
+                    Modifier
+                        .clip(shape)
+                        .then(if (quiet) Modifier else Modifier.background(color.copy(alpha = if (P.isDark) 0.13f else 0.10f)).border(1.dp, color.copy(alpha = 0.35f), shape))
+                        .then(if (n.onClick != null) Modifier.clickable(role = Role.Button, onClick = n.onClick) else Modifier)
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (!quiet) {
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(color))
+                        Spacer(Modifier.width(9.dp))
+                    }
+                    Text(n.text, style = Type.label, color = if (quiet) color else P.text, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    if (n.action != null) {
+                        Spacer(Modifier.width(10.dp))
+                        Text(n.action, style = Type.labelBold, color = color, maxLines = 1)
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun statusLine(ui: ReciteUi, s: ReciteSession): String {
     val next = ui.next
     return when {
-        ui.error == ReciteSession.ERROR_MODEL -> stringResource(R.string.recite_unavailable)
-        ui.error == ReciteSession.ERROR_MIC -> stringResource(R.string.recite_mic_denied)
         ui.loading -> stringResource(R.string.recite_loading)
         ui.locating && ui.listening && ui.heard != null -> stringResource(R.string.recite_locating)
         ui.locating && ui.listening -> stringResource(R.string.recite_listening_anywhere)
@@ -574,50 +620,60 @@ private fun Summary(results: List<AyahResult>, onAgain: () -> Unit, onClose: () 
 }
 
 /**
- * What the microphone hears, like a voice message being recorded: the last seconds as bars,
- * newest on the right; bright where it counts as voice, dim where it's the room.
+ * The microphone's button. Listening, it is alive: behind it the app's eight-pointed star, twice,
+ * turning slowly one against the other, breathing in silence and swelling with the voice; on it,
+ * five bars that rise and fall with what is said (a tap stops). Nothing else on the screen shows
+ * the sound.
  */
 @Composable
-internal fun Waveform(wave: Wave, modifier: Modifier = Modifier) {
-    val voice = P.accent
-    val room = P.textFaint
-    Canvas(modifier.fillMaxWidth().height(40.dp)) {
-        val bar = 3.dp.toPx()
-        val step = bar + 3.dp.toPx()
-        val n = wave.levels.size
-        val count = minOf(n, (size.width / step).toInt())
-        for (k in 0 until count) {
-            val i = n - 1 - k
-            val h = maxOf(bar, wave.levels[i] * size.height)
-            drawRoundRect(
-                color = if (wave.voiced[i]) voice else room,
-                topLeft = Offset(size.width - (k + 1) * step, (size.height - h) / 2),
-                size = Size(bar, h),
-                cornerRadius = CornerRadius(bar / 2),
-            )
+private fun MicButton(listening: Boolean, speaking: Boolean, level: Float, enabled: Boolean, onClick: () -> Unit) {
+    // The voice's level, eased like a needle; only what counts as voice swells the star.
+    val loud by animateFloatAsState(if (listening) level else 0f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow), label = "loud")
+    val voice by animateFloatAsState(if (listening && speaking) 1f else 0f, tween(260), label = "voice")
+    val on by animateFloatAsState(if (listening) 1f else 0f, tween(320), label = "on")
+    val clock = rememberInfiniteTransition(label = "mic")
+    val turn by clock.animateFloat(0f, 360f, infiniteRepeatable(tween(26_000, easing = LinearEasing)), label = "turn")
+    val breath by clock.animateFloat(0f, 1f, infiniteRepeatable(tween(2_400, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breath")
+    val beat by clock.animateFloat(0f, (2 * Math.PI).toFloat(), infiniteRepeatable(tween(1_100, easing = LinearEasing)), label = "beat")
+    val halo = P.accent
+    val disc by animateColorAsState(if (listening) P.accent else if (enabled) P.primary else P.surfaceHigh, tween(240), label = "disc")
+    val ink = if (listening) P.background else if (enabled) P.onPrimary else P.textFaint
+    Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            if (on <= 0f) return@Canvas
+            val r = 38.dp.toPx()
+            val swell = 0.05f * breath + (0.10f + 0.34f * voice) * loud
+            rotate(turn) { drawPath(starPath(center, r * (1.24f + swell)), halo.copy(alpha = (0.13f + 0.10f * loud) * on)) }
+            rotate(22.5f - turn * 1.5f) { drawPath(starPath(center, r * (1.10f + 0.6f * swell)), halo.copy(alpha = (0.22f + 0.14f * loud) * on)) }
         }
-    }
-}
-
-/** Round microphone button; its ring follows the voice level while listening. */
-@Composable
-private fun MicButton(listening: Boolean, level: Float, enabled: Boolean, onClick: () -> Unit) {
-    val ring = if (listening) 4.dp + (level * 10).dp else 1.dp
-    Box(
-        Modifier
-            .size(76.dp)
-            .clip(CircleShape)
-            .border(ring, if (listening) P.accent.copy(alpha = 0.45f) else if (enabled) P.primary else P.outline, CircleShape)
-            .background(if (listening) P.accent else if (enabled) P.primary else P.surfaceHigh)
-            .clickable(enabled = enabled || listening, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            if (listening) Ic.Stop else Ic.Mic,
-            contentDescription = stringResource(if (listening) R.string.recite_stop else R.string.recite_start),
-            tint = if (listening) P.background else if (enabled) P.onPrimary else P.textFaint,
-            modifier = Modifier.size(32.dp),
-        )
+        Box(
+            Modifier
+                .size(76.dp)
+                .graphicsLayer { val k = 1f + 0.05f * loud * voice; scaleX = k; scaleY = k }
+                .clip(CircleShape)
+                .then(if (listening) Modifier else Modifier.border(1.dp, if (enabled) P.primary else P.outline, CircleShape))
+                .background(disc)
+                .clickable(enabled = enabled || listening, role = Role.Button, onClickLabel = stringResource(if (listening) R.string.recite_stop else R.string.recite_start), onClick = onClick)
+                .testTag("recite-mic"),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (listening) {
+                val label = stringResource(R.string.recite_stop)
+                Canvas(Modifier.size(width = 36.dp, height = 30.dp).semantics { contentDescription = label }) {
+                    val w = 4.dp.toPx()
+                    val gap = (size.width - 5 * w) / 4
+                    for (i in 0 until 5) {
+                        // Each bar on its own rhythm, the middle ones taller; in silence, five dots.
+                        val weight = 1f - 0.22f * kotlin.math.abs(i - 2)
+                        val wave = 0.55f + 0.45f * kotlin.math.sin(beat * (1 + i % 3) + i * 1.7f)
+                        val h = w + (size.height - w) * (loud * (0.35f + 0.65f * voice) * weight * wave).coerceIn(0f, 1f)
+                        drawRoundRect(ink, Offset(i * (w + gap), (size.height - h) / 2), Size(w, h), CornerRadius(w / 2))
+                    }
+                }
+            } else {
+                Icon(Ic.Mic, contentDescription = stringResource(R.string.recite_start), tint = ink, modifier = Modifier.size(32.dp))
+            }
+        }
     }
 }
 

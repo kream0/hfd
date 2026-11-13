@@ -514,6 +514,36 @@
   āyāt, other tajwīd rules (madd badal, the munfaṣil at 6, naql, taqlīl) and lengths: Strict and
   Tajwīd judge by Ḥafṣ. Detection from the model's writing is plausible. Not built: ask first
   whether the owner recites Warsh.
+- Recite's screen (the owner, 13 Nov: no more scrolling waveform, a button that reacts to the
+  recitation, the microphone's messages in one form that hides neither the marked text nor the
+  microphone's bar, no toasts): `MicButton` (tag `recite-mic`) draws the eight-pointed star twice
+  behind the disc, turning against each other, breathing in silence and swelling with
+  `Recorder.level` while `Recorder.speaking`; on the disc five bars (tap: stop). `Wave` and the
+  recorder's bars are gone. `NoticeLine` (tag `recite-notice`): one slot of fixed height between
+  the text and the microphone, one `Notice` at a time by gravity (model or microphone error >
+  another place offered > lost / waiting > muffled > which microphone, plain): the text never
+  moves nor is covered. `ReciteSession.previewListening` shows it without a microphone
+  (screenshots `recite-listening`, `recite-muffled`).
+- "Muffled microphone" while only thinking (the owner, reciting in a car what they hardly know,
+  pauses of 5 s and more): `MuffledWarning.heard(muffled, seconds, moved, symbols, sure)`. The
+  car's noise makes utterances of its own in which the CTC model writes under 2 characters a
+  second (`VOICE_SYMBOLS`): they say nothing. A voice it is sure of (`CtcOutput.sure`, the mean
+  probability of the likeliest symbol over the frames it writes in, ≥ `SURE` 0.6: any voice it
+  reads, the text's or not) clears what was counted: the microphone hears, whatever the reason the
+  text doesn't follow (the old rule, "muffled and the text hardly follows", fired on hesitations:
+  the owner's phone microphone always measures muffled). `tools/ctc/claritystudy.py` (the bench's
+  āyāt, and the same made worse): car noise alone 0.8 characters a second (p90 1.8) at 0.43
+  sure (p90 0.51); a voice clear / muffled / in a pocket / in that car 3.4+ a second (p10) at
+  0.91–0.96 (p10 0.5–0.8); a faint voice under the car's noise 3.5 at 0.50. Whisper doesn't say
+  how sure it is (`sure` null): the old rule, without the room's noise. `recite.voice` in the
+  diagnostics (symbols, sure, muffled, moved, warn) per whole utterance. No recording of the
+  owner in a car exists: the noise was made (1/f under 200 Hz); read `recite.voice` after a drive.
+- A name for the store (the owner: "HFD for Hifd, is it the best name? find alternatives; not
+  now, when it is production ready"). Looked up 13 Nov (a quick search, no trademark check):
+  taken: Tasmee (Eqra, 3.7 M installs), Tasmeea, Tasmi, Mutqin, Tatbith, Rusūkh, Sadr, Makeen,
+  Itqan Ayah. Not found in use: Lawḥ (the wooden tablet of the Maghreb's Qur'anic schools: the
+  favourite), Istiẓhār, Talqīn (also said of prompting the dying: a connotation), Msīd. Nothing
+  renamed: the package id (`app.hfd`) and the updater follow whatever is decided, later.
 - The bench (`ReciteBench`): `HFD_SKIP_WORDS`; per case and in the totals "held up" (whole
   utterances that would hold a free reciter: a mistake left after the check at the free
   tolerance), "followed nothing", both also for the recitations said as the text is (there,

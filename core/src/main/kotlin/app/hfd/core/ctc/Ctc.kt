@@ -21,6 +21,26 @@ class CtcOutput(val logProbs: FloatArray, val frames: Int, val symbols: Int) {
         for (s in 0 until symbols) if (logProbs[row + s] > top) { top = logProbs[row + s]; arg = s }
         arg
     }
+
+    /**
+     * How sure the model is of what it writes: the mean probability of the likeliest symbol over
+     * the frames it writes one in (not the blank). Null when it writes nothing. A voice it reads,
+     * clear or muffled, gives 0.9 and more; a room's noise it makes scraps of, under 0.5
+     * (tools/ctc/claritystudy.py, 13 Nov).
+     */
+    fun sure(): Float? {
+        var sum = 0.0
+        var n = 0
+        val blank = blank
+        for (t in 0 until frames) {
+            var arg = 0
+            var top = Float.NEGATIVE_INFINITY
+            val row = t * symbols
+            for (s in 0 until symbols) if (logProbs[row + s] > top) { top = logProbs[row + s]; arg = s }
+            if (arg != blank) { sum += kotlin.math.exp(top.toDouble()); n++ }
+        }
+        return if (n == 0) null else (sum / n).toFloat()
+    }
 }
 
 /** The characters a model writes (Uthmani script with its signs), in the model's order. */

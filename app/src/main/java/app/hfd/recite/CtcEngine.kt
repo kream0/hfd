@@ -14,6 +14,9 @@ class CtcEngine private constructor(private val model: OrtCtcModel, private val 
     private val recognizer = CtcRecognizer(model)
     private var closed = false
 
+    /** How sure the model was of the last utterance read (null when it wrote nothing). */
+    val sure: Float? get() = recognizer.sure
+
     /** As [Whisper.transcribe]: the text heard in [pcm], or [expected]'s words checked ("?\n…"); null if it failed. */
     fun transcribe(pcm: FloatArray, expected: String = ""): String? {
         check(!closed) { "closed" }

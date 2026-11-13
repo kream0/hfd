@@ -271,7 +271,7 @@
     <string name="recite_downloading">Téléchargement %1$d %%</string>
     <string name="recite_download_failed">Échec du téléchargement : %1$s</string>
     <string name="recite_unavailable">La reconnaissance vocale n\'est pas disponible sur ce téléphone.</string>
-    <string name="recite_mic_denied">Autorisation du micro refusée</string>
+    <string name="recite_mic_denied">Le micro ne répond pas. Vérifiez son autorisation dans les réglages du téléphone.</string>
     <string name="recite_loading">Chargement du modèle vocal…</string>
     <string name="recite_listening">À l\'écoute</string>
     <string name="recite_position">Āya %1$d sur %2$d · %3$s · touchez le micro</string>
@@ -315,10 +315,9 @@
     <string name="play_all">Tout écouter</string>
     <string name="play_all_pause">Pause</string>
     <string name="play_all_title">Toutes les faḍāʾil</string>
-    <string name="recite_muffled">Le micro t\'entend étouffé (téléphone dans une poche, couvert ?) : tiens-le devant toi, ou utilise le micro de tes écouteurs.</string>
+    <string name="recite_muffled">Je vous entends mal : le micro est-il couvert ? Tenez le téléphone devant vous.</string>
     <string name="recite_mic_headset">Micro : %1$s · utiliser celui du téléphone</string>
     <string name="recite_mic_earbuds">écouteurs</string>
-    <string name="recite_mic_phone">Micro : téléphone</string>
     <string name="recite_mic_phone_switch">Micro : téléphone · utiliser les écouteurs</string>
     <!-- The Qur'an section -->
     <string name="tab_quran">Coran</string>

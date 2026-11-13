@@ -27,6 +27,9 @@ class SpeechReader(private val models: () -> ReciteModels) {
     /** Whether the model reading places letters in time (the CTC one does): the long vowels can then be timed. */
     val timing: Boolean get() = ctc != null
 
+    /** How sure the CTC model was of the last utterance it read; null with Whisper, or when it wrote nothing. Read it on the reading thread. */
+    val sure: Float? get() = ctc?.sure
+
     /**
      * Whisper reads: it mishears a word in forty of a clean recitation (the bench: 47 of 2,052
      * left wrong or missed, the CTC model 4), too many to hold a reciter up at each ([ReciteLevel.FREE]).

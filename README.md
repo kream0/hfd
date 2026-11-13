@@ -152,7 +152,7 @@ that the app updates itself from new releases. Android 8.0 or newer.
   The reciter may go back (start an āya over, say a phrase again): the text goes back there with
   no mistake, and the results are written to the log at the end, as they stand. Before
   recognition the rumble below 120 Hz is filtered out; connected earbuds' microphone is used
-  (`HeadsetMic`), and a muffled voice (hardly anything above 1 kHz: `Clarity`) is pointed out. `.github/workflows/recite.yml`
+  (`HeadsetMic`), and a muffled voice the recogniser can't make out is pointed out (hardly anything above 1 kHz, `Clarity`, and read unsurely, `MuffledWarning`: not the room's noise during a pause, nor a voice it reads). The microphone's button moves with the voice; what the app has to say shows in one line between the text and the button. `.github/workflows/recite.yml`
   benches the whole pipeline on EveryAyah recitations brought down to the owner's phone
   microphone level — noise, a muffled microphone, rumble, restarts, repetitions — and on the
   owner's own sessions when they send them (`tools/recite/`): words right and how soon they show.
