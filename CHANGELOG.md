@@ -12,6 +12,7 @@ Reciting waits for you: after a mistake the text stays at the word you left, ins
 - **The microphone button is alive.** The strip of bars scrolling under the text is gone. While it listens, the button itself moves: the app's eight-pointed star turns slowly behind it, breathes in silence and swells with your voice, and five small bars on the button rise and fall with what you say.
 - **One place for what the app has to tell you.** "Take it up again at the marked word", "I can hardly hear you", a microphone that doesn't answer, another passage offered: each now shows in the same form, in a line of its own between the text and the microphone. Nothing covers the text or the button, and the text no longer shifts when a message comes. No more toast for a refused microphone.
 - **Fixed: "muffled microphone" while you were only thinking.** Pausing for several seconds with noise around (a car) could bring the warning up: the noise was taken for a voice that couldn't be read. Now the room's noise doesn't count, and neither does anything you say that is heard clearly, whether or not it is the text. The warning is kept for a voice the app really can't make out.
+- Waiting needs the new recognition model. With the older one (Tarteel's), Free only stops marking mistakes and goes on: that model mishears too often to stop you at each word.
 - In Free, an āya of a passage you were held up in still counts as recited with a mistake for your learning schedule, even though nothing was shown in red.
 
 ## 2.8.0

@@ -544,6 +544,14 @@
   Itqan Ayah. Not found in use: Lawḥ (the wooden tablet of the Maghreb's Qur'anic schools: the
   favourite), Istiẓhār, Talqīn (also said of prompting the dying: a connotation), Msīd. Nothing
   renamed: the package id (`app.hfd`) and the updater follow whatever is decided, later.
+- CI on 30bb75e (13 Nov, the code of 2.9.0, both configs in one run): ctc 2023/2052 (wrong 4,
+  missed 0, pending 25: the 20 more than 2.8.0's 2043 are the āya skipped in
+  baqara-opening-maher-flow-skip1245, waited at; swaps 3/5, the borderline one again on that
+  runner, 4/5 here); of 370 whole utterances 7 would hold a free reciter up, 3 of them in the 324
+  said as the text is (all Ḥuṣarī's), no muffled warning. Whisper 1902/2052 (wrong 26, missed 8,
+  pending 116 against 2.8.0's 30, 17, 52; swaps 4/5): where it mishears more than three words in
+  a row the recitation now waits and a recording doesn't take them up again; 19 of its utterances
+  said as the text is would hold a free reciter up, which is why free doesn't wait on its readings.
 - The bench (`ReciteBench`): `HFD_SKIP_WORDS`; per case and in the totals "held up" (whole
   utterances that would hold a free reciter: a mistake left after the check at the free
   tolerance), "followed nothing", both also for the recitations said as the text is (there,
