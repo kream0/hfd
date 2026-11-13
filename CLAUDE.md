@@ -502,6 +502,10 @@
   as they should, and a recording never takes it up again), swaps caught 4/5, skipped āya
   waited at 3/3, held up 12 of 370 utterances (5 of the 324 said as written), lag p50 −0.1 s,
   p90 0.6 s (2.9.0: −0.3 / 0.4).
+- CI on 634d2ee (the code of 2.10.0, the ctc parts): ok 1906/2052 (wrong 0, missed 0, pending
+  146), swaps 4/5, skipped āya waited at 4/4 parts, 8 stalls in 7 recitations, 35 words: this
+  sandbox's seven and fatiha-maher-noisy (five words: «ٱلرَّحِيمِ», not written in the noise, costs
+  4.5 nats here and over 5 on that runner; the bar is that close for it). Smoke passed.
 - What is left: three of the seven stalls are at the segmenter's cut of an utterance that
   reaches 20 s with no pause (rumble, call audio): the next utterance begins inside a word and
   the model drops its first word (the lever: begin it a second earlier, the tracker already
