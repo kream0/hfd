@@ -487,6 +487,9 @@
   of 271, middle ones 38 of 1,421 (2.10.0: 23 of 260 and 81 of 1,376); checks 209, 122 words
   righted (2.10.0: 48 and 37). `recite.check` with `partial=true` and the costs in the
   diagnostics.
+- CI on feed03d (the code of 2.10.1; the ctc parts, 60 cases): ok 1979/2118, wrong 0, missed 0,
+  swaps 4/5, skipped āya waited at in each part, 5 stalls in 4 recitations (28 words), lag p90
+  0.5 s in every part. Smoke passed.
 - The owner's recordings: only sessions closed are sent (`recite.session`, `diag.recording`);
   the 2.9.1 session's was not in the log (the app was updated over it).
 
