@@ -708,10 +708,12 @@ class ReciteSession(
 
     private fun snapshot(base: ReciteUi): ReciteUi {
         var flat = 0
+        // (Reciting freely nothing is marked, whatever a reading of words said again makes of them.)
+        val free = level() == ReciteLevel.FREE
         val status = targets.indices.map { a ->
             targets[a].words.indices.map { w ->
                 val raw = if (flat + w < shown) tracker.statusOf(a, w) else WordStatus.PENDING
-                val undecided = (raw == WordStatus.WRONG || raw == WordStatus.MISSED) && !decided[flat + w]
+                val undecided = (raw == WordStatus.WRONG || raw == WordStatus.MISSED) && (free || !decided[flat + w])
                 val st = if (undecided) WordStatus.PENDING else raw
                 if (st == WordStatus.OK && confirmed[flat + w]) wasRight[flat + w] = true
                 if (wasRight[flat + w]) WordStatus.OK else st
