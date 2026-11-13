@@ -9,6 +9,7 @@ import app.hfd.core.playback.Reciters
 import app.hfd.core.progress.LearnOrder
 import app.hfd.core.reminders.ReminderConfig
 import app.hfd.recite.ReciteEngine
+import app.hfd.recite.ReciteLevel
 import kotlinx.serialization.Serializable
 import java.time.LocalTime
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,8 +75,11 @@ data class AppSettings(
     val tajweed: Boolean = true,
     /** The colours switched off ([app.hfd.core.tajweed.Family] names): the heavy rāʾ, until asked for. */
     val tajweedOff: Set<String> = setOf("TAFKHIM"),
-    /** Recite also times the long vowels and says which were not held as their rule asks. */
-    val reciteTajweed: Boolean = false,
+    /**
+     * What Recite does with a mistake: waits for the word (free), marks it and goes on (strict),
+     * or also times the long vowels against their rule (tajwīd).
+     */
+    val reciteLevel: ReciteLevel = ReciteLevel.FREE,
     /** What the bar's button does when nothing sounds: listens (else it recites aloud). The last of the two done. */
     val barListen: Boolean = false,
     /** The bar's button was held once (its choice was seen): the line saying it can be is gone. */
@@ -167,7 +171,9 @@ class Settings(context: Context) {
             hiddenFadail = prefs.getStringSet("hiddenFadail", null)?.toSet() ?: d.hiddenFadail,
             tajweed = prefs.getBoolean("tajweed", d.tajweed),
             tajweedOff = prefs.getStringSet("tajweedOff", null)?.toSet() ?: d.tajweedOff,
-            reciteTajweed = prefs.getBoolean("reciteTajweed", d.reciteTajweed),
+            // (Before 2.9.0 mistakes were always marked, and timing the long vowels was a switch.)
+            reciteLevel = prefs.getString("reciteLevel", null)?.let { v -> ReciteLevel.entries.firstOrNull { it.name == v } }
+                ?: if (prefs.getBoolean("reciteTajweed", false)) ReciteLevel.TAJWEED else d.reciteLevel,
             barListen = prefs.getBoolean("barListen", d.barListen),
             barMenuSeen = prefs.getBoolean("barMenuSeen", d.barMenuSeen),
         )
@@ -201,7 +207,7 @@ class Settings(context: Context) {
             .putStringSet("hiddenFadail", s.hiddenFadail)
             .putBoolean("tajweed", s.tajweed)
             .putStringSet("tajweedOff", s.tajweedOff)
-            .putBoolean("reciteTajweed", s.reciteTajweed)
+            .putString("reciteLevel", s.reciteLevel.name)
             .putBoolean("barListen", s.barListen)
             .putBoolean("barMenuSeen", s.barMenuSeen)
             // Settings of removed features (1.6.0: passage reminders, the location they needed).

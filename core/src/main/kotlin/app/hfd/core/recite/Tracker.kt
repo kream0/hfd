@@ -36,7 +36,18 @@ class Tracker(
     val targets: List<ReciteTarget>,
     /** A chunk said again that fits as well from an āya's start as later goes back to the āya's start ([stretch]). */
     private val ayaStartTies: Boolean = true,
+    /**
+     * Words in a row a chunk may pass over or say wrong and still be followed past them. With
+     * [SKIP_WORDS] (as until 2.8.0) the tracker never stays behind the reciter: an āya skipped is
+     * marked missed and the recitation goes on. With [WAIT_WORDS] it waits: a chunk that isn't
+     * the text from the position, a few words apart, moves nothing, and the reciter takes it up
+     * again there (the owner, 13 Nov: a mistake, then a match some āyāt later, turned everything
+     * in between red).
+     */
+    private val skip: Int = SKIP_WORDS,
 ) {
+    /** Whether the recitation waits for the reciter where they left the text ([skip]). */
+    private val waits: Boolean get() = skip < SKIP_WORDS
     private val flat: List<String> = targets.flatMap { it.words }
     private val skel: List<String> = flat.map { Arabic.skeleton(it) }
     /** Words that are disconnected letters (الٓمٓ, حمٓ, يسٓ…). */
@@ -184,10 +195,24 @@ class Tracker(
         // The last words said again (a correction) take less than going far back.
         val least = if (s.lastWord >= position - BACK_WORDS) JUMP_MIN_LETTERS else BACK_MIN_LETTERS
         if (s.same < least || s.same < JUMP_MATCH_FRACTION * s.letters || s.same < JUMP_MATCH_FRACTION * s.span) return 0
-        for (w in s.first..s.lastWord) status[w] = statusOf(s.owner.indices.filter { s.owner[it] == w }, s.matched, s.touched, w)
-        for (w in s.lastWord + 1 until flat.size) status[w] = WordStatus.PENDING
-        val moved = s.lastWord + 1 - position
-        position = s.lastWord + 1
+        val now = (s.first..s.lastWord).map { w -> statusOf(s.owner.indices.filter { s.owner[it] == w }, s.matched, s.touched, w) }
+        // Waiting: said again, the chunk may go on past where the recitation was, but not over
+        // more words in a row than it may pass ([align]): it stops before them. (A verse that
+        // begins as the one before it: «وَٱلَّذِينَ يُؤْمِنُونَ بِمَآ أُنزِلَ» said for «ٱلَّذِينَ يُؤْمِنُونَ بِٱلْغَيْبِ»
+        // took the first two words as said again and went on into the next verse, the bench, 13 Nov.)
+        var last = s.lastWord
+        if (waits) {
+            var run = 0
+            for (w in s.first..s.lastWord) {
+                run = if (now[w - s.first] == WordStatus.OK) 0 else run + 1
+                if (w >= position && run > skip) { last = maxOf(w - run, position - 1); break }
+            }
+        }
+        for (w in s.first..last) status[w] = now[w - s.first]
+        for (w in last + 1 until flat.size) status[w] = WordStatus.PENDING
+        if (last != s.lastWord) cut = null
+        val moved = last + 1 - position
+        position = last + 1
         return moved
     }
 
@@ -331,7 +356,12 @@ class Tracker(
 
     private fun align(hWords: List<String>): Int {
         val h = hWords.joinToString("")
-        val end = minOf(flat.size, position + maxOf(MIN_WINDOW, hWords.size * 3) + SKIP_WORDS)
+        // Waiting: the words just before the position left wrong or missed count with those this
+        // chunk passes or says wrong (three wrong at a reading's end, then three passed over by the
+        // next one, went past a verse a few words at a time: the bench, 13 Nov).
+        val behind = if (waits) (position - 1 downTo 0).takeWhile { status[it] == WordStatus.WRONG || status[it] == WordStatus.MISSED }.count() else 0
+        val reach = (skip - behind).coerceAtLeast(0)
+        val end = minOf(flat.size, position + maxOf(MIN_WINDOW, hWords.size * 3) + reach)
         val e = StringBuilder()
         val owner = ArrayList<Int>()
         // The last words recited too, for a chunk that starts by saying them again.
@@ -351,7 +381,12 @@ class Tracker(
         val d = Grid(table((n + 1) * (m + 1)), m + 1)
         for (j in 0..m) d[0, j] = -j * GAP
         for (i in 1..n) {
-            d[i, 0] = d[i - 1, 0] - if (i - 1 < p) 0 else SKIP
+            d[i, 0] = when {
+                i - 1 < p -> d[i - 1, 0]
+                // (Waiting: the chunk begins within the few words it may pass over.)
+                waits && owner[i - 1] >= position + reach -> FAR
+                else -> d[i - 1, 0] - SKIP
+            }
             for (j in 1..m) {
                 val diag = d[i - 1, j - 1] + if (e[i - 1] == h[j - 1]) MATCH else -MISMATCH
                 d[i, j] = maxOf(diag, d[i - 1, j] - GAP, d[i, j - 1] - GAP)
@@ -397,8 +432,23 @@ class Tracker(
         val enough = (start - p).coerceIn(JUMP_MIN_LETTERS, JUMP_ENOUGH_LETTERS)
         if (passed >= 2 && (same < JUMP_MATCH_FRACTION * m || ahead < JUMP_MATCH_FRACTION * span || ahead < enough)) return 0
         // Words up to the last one the chunk reached (a word cut at the end counts whole).
-        val lastWord = owner[best - 1]
-        val now = (position..lastWord).map { w -> statusOf(owner.indices.filter { owner[it] == w }, matched, touched, w) }
+        var lastWord = owner[best - 1]
+        var now = (position..lastWord).map { w -> statusOf(owner.indices.filter { owner[it] == w }, matched, touched, w) }
+        // Waiting: more words in a row not right than may be passed over, and the reciter has left
+        // the text there. What the chunk says after them isn't followed.
+        if (waits) {
+            var run = behind
+            var from = 0
+            for (k in now.indices) {
+                if (now[k] == WordStatus.OK) { run = 0; from = k + 1 } else run++
+                if (run > skip) {
+                    lastWord = position + from - 1
+                    now = now.take(from)
+                    break
+                }
+            }
+            if (now.isEmpty()) return 0
+        }
         // Not one of them right: a breath or a scrap, not the reciter going on (أَهْ, a breath at
         // 3:5's start, matched اللَّهَ's last letter and lit إِنَّ اللَّهَ two seconds early; the
         // owner's session of 2 Oct).
@@ -432,6 +482,11 @@ class Tracker(
         const val MIN_WINDOW = 12
         /** Words that may be passed over before a chunk (a dropped or skipped āya). */
         const val SKIP_WORDS = 40
+        /**
+         * The same when the recitation waits for the reciter: a word or two the recogniser dropped
+         * or misheard (the check then reads them on the sound), never a phrase.
+         */
+        const val WAIT_WORDS = 3
         /** Words already recited that a chunk may say again first. */
         const val BACK_WORDS = 8
         /** Words before the position a chunk said again is looked for among (from their āya's start), and at the text's opening. */
@@ -464,6 +519,8 @@ class Tracker(
         private const val MISMATCH = 4
         private const val GAP = 4
         private const val SKIP = 1
+        /** The score of a chunk beginning further than it may ([skip]). */
+        private const val FAR = -1_000_000
 
         /** No mistake: Good; up to one in ten (at least one): Hard; more: Again. */
         fun ratingFor(words: Int, mistakes: Int): Rating = when {

@@ -87,6 +87,23 @@ class CtcTest {
     }
 
     @Test
+    fun aShortVowelWrittenDifferentlyShowsWhereItIs() {
+        // «هُوِ» held where «هُوَ» was said: that word's worst character is its last vowel, far over the bar.
+        val words = aya.split(' ')
+        assertEquals("\u0647\u064f\u0648\u064e", words[1])
+        val changed = (words.take(1) + "\u0647\u064f\u0648\u0650" + words.drop(2)).joinToString(" ")
+        val recognizer = CtcRecognizer({ output })
+        val sounds = CtcRecognizer.sounds(recognizer.transcribe(clip, CtcRecognizer.SOUNDS + changed))!!
+        assertEquals(4, sounds.size)
+        assertTrue(sounds[1].first > CtcRecognizer.UNCLEAR)
+        assertEquals(3, sounds[1].second)
+        assertTrue(listOf(0, 2, 3).all { sounds[it].first < 1f })
+        // As said: nothing over the bar.
+        assertTrue(CtcRecognizer.sounds(recognizer.transcribe(clip, CtcRecognizer.SOUNDS + aya))!!.all { it.first < 1f })
+        assertNull(CtcRecognizer.sounds(recognizer.transcribe(clip, CtcRecognizer.SOUNDS + (1..40).joinToString(" ") { aya })))
+    }
+
+    @Test
     fun theVocabularyIsTheModels() {
         assertEquals(vocabulary.characters, CtcVocabulary.QURAN.characters)
         assertEquals(62, CtcVocabulary.QURAN.blank)

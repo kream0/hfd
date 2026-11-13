@@ -34,6 +34,7 @@ import app.hfd.data.AppLanguage
 import app.hfd.data.AppLocale
 import app.hfd.data.ThemeMode
 import app.hfd.data.TranslationChoice
+import app.hfd.ui.components.ReciteLevelChoice
 import app.hfd.ui.components.Segmented
 import app.hfd.ui.components.tajweedSheet
 import app.hfd.ui.components.Ic
@@ -151,10 +152,8 @@ fun SettingsScreen(onEditFadail: () -> Unit) {
                     onSelect = { i -> Graph.settings.update { it.copy(reciteEngine = ReciteEngine.entries[i]) } },
                 )
             }
-            // Timing the long vowels (it needs the model that places letters in time).
-            SettingLine(stringResource(R.string.settings_recite_tajweed), stringResource(R.string.settings_recite_tajweed_body)) {
-                Toggle(settings.reciteTajweed, { on -> Graph.settings.update { it.copy(reciteTajweed = on) } })
-            }
+            // What a mistake does: nothing but wait, a red word, or also the long vowels' timing.
+            SettingBlock(stringResource(R.string.recite_level), null) { ReciteLevelChoice(settings.reciteLevel) }
         }
 
         SettingsSection(stringResource(R.string.settings_controls)) {

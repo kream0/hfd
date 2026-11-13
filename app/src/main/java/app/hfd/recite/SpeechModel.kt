@@ -65,6 +65,16 @@ enum class ReciteEngine {
     WHISPER,
 }
 
+/** What Recite does with a word not said as the text has it. */
+enum class ReciteLevel {
+    /** Nothing is marked: the recitation waits at the word until it is said. */
+    FREE,
+    /** The word is marked wrong (or missed) and the recitation goes on. */
+    STRICT,
+    /** As [STRICT], and the long vowels are timed against their rule. */
+    TAJWEED,
+}
+
 sealed interface ModelState {
     data object Missing : ModelState
     data class Downloading(val progress: Float) : ModelState

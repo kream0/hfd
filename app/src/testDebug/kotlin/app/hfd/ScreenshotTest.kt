@@ -272,8 +272,9 @@ class ScreenshotTest {
         both("learn")
         ui { vm.review() }
         both("review")
-        // Recite mode after three recognised chunks, the last one skipping "wa-lam".
-        ui {
+        // Recite mode after three recognised chunks, the last one skipping "wa-lam". Reciting
+        // freely nothing is marked: the recitation waits at the word left out.
+        fun reciteIkhlas() = ui {
             vm.recite(content.fadila("ikhlas")!!)
             Graph.recite.value!!.run {
                 onHeard("قل هو الله أحد")
@@ -281,24 +282,46 @@ class ScreenshotTest {
                 onHeard("لم يلد يولد")
             }
         }
+        fun marked() = Graph.recite.value!!.ui.value.status.flatten().count { it == app.hfd.core.recite.WordStatus.WRONG || it == app.hfd.core.recite.WordStatus.MISSED }
+        reciteIkhlas()
         both("recite")
+        Graph.recite.value!!.ui.value.let { r ->
+            org.junit.Assert.assertEquals(0, marked())
+            org.junit.Assert.assertTrue(r.waiting)
+            // (112:3's third word, وَلَمْ.)
+            org.junit.Assert.assertEquals(2 to 2, r.next)
+        }
+        // Strict: the word left out is marked, and the recitation went on.
+        ui {
+            Graph.closeRecite()
+            vm.flow = null
+            Graph.settings.update { it.copy(reciteLevel = app.hfd.recite.ReciteLevel.STRICT) }
+        }
+        reciteIkhlas()
+        both("recite-strict")
+        org.junit.Assert.assertEquals(1, marked())
+        org.junit.Assert.assertEquals(3 to 0, Graph.recite.value!!.ui.value.next)
+        // The level's choice, from the screen's own button.
+        rule.onNodeWithTag("recite-level").performSemanticsAction(SemanticsActions.OnClick)
+        both("recite-level")
+        ui { rule.activity.onBackPressedDispatcher.onBackPressed() }
         // The same with the check of the long vowels on: a madd not held, underlined in its rule's colour.
         ui {
             Graph.closeRecite()
             vm.flow = null
         }
         ui {
-            Graph.settings.update { it.copy(reciteTajweed = true) }
+            Graph.settings.update { it.copy(reciteLevel = app.hfd.recite.ReciteLevel.TAJWEED) }
             Graph.openRecite("sura:1", listOf(app.hfd.core.quran.AyahRef(1, 6), app.hfd.core.quran.AyahRef(1, 7)))
             vm.flow = app.hfd.ui.PracticeFlow.Recite("sura:1")
             Graph.recite.value!!.run {
                 onHeard(content.text(app.hfd.core.quran.AyahRef(1, 6)))
                 onHeard(content.text(app.hfd.core.quran.AyahRef(1, 7)))
-                previewTajweed(listOf(app.hfd.core.tajweed.TajweedCheck.Finding(0, 11, app.hfd.core.tajweed.Rule.MADD_LAZIM, app.hfd.core.tajweed.TajweedCheck.Fault.TOO_SHORT, 0.5f, 0.3f)), timed = 1)
+                previewTajweed(listOf(app.hfd.core.tajweed.TajweedCheck.Finding(0, 11, app.hfd.core.tajweed.Rule.MADD_LAZIM, app.hfd.core.tajweed.TajweedCheck.Fault.TOO_SHORT, 0.5f, 0.3f)), timed = 1, unclear = mapOf(1 to 3))
             }
         }
         both("recite-tajweed")
-        ui { Graph.settings.update { it.copy(reciteTajweed = false) } }
+        ui { Graph.settings.update { it.copy(reciteLevel = app.hfd.recite.ReciteLevel.FREE) } }
         ui {
             Graph.closeRecite()
             vm.flow = null

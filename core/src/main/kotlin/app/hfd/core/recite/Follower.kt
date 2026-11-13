@@ -19,8 +19,18 @@ class Follower(
     ayaStartTies: Boolean = true,
     /** A word only read right while it was the last one read isn't kept right against the whole utterance's reading ([keepStable]). */
     private val finalRules: Boolean = false,
+    /** Words in a row a reading may pass over or say wrong and still be followed past them ([Tracker]). */
+    skip: Int = Tracker.SKIP_WORDS,
 ) {
-    val tracker = Tracker(targets, ayaStartTies)
+    val tracker = Tracker(targets, ayaStartTies, skip)
+    /**
+     * Free recitation: a word not said right isn't marked, the recitation waits at it until it
+     * is said ([settle]); what the reciter said after it in the same breath is to say again.
+     * Otherwise the word is marked wrong or missed and the recitation goes on.
+     */
+    var waits = false
+    /** Words the recitation waited at ([waits]): the reciter stumbled there, whatever was said after. */
+    val stumbled = BooleanArray(tracker.size)
     /** The utterance being followed, and the tracker before it. */
     private var current = -1
     private var before: Tracker.Mark? = null
@@ -125,7 +135,9 @@ class Follower(
             closed = id
         } else {
             // Still speaking: the voice is on the last word heard, unless it ends on one held back.
-            val held = holdsEdges && holdEdge(from)
+            var held = holdsEdges && holdEdge(from)
+            // (Waiting: nothing shows past a word not right so far; the whole reading and its check decide.)
+            if (waits) firstBad(from)?.let { holdAt(it); held = true }
             if (voice == null && !held && tracker.position > from) voice = tracker.position - 1
         }
         return tracker.position - from
@@ -145,6 +157,52 @@ class Follower(
         for (w in edge until tracker.position) status[w] = WordStatus.PENDING
         tracker.reset(Tracker.Mark(edge, status))
         return true
+    }
+
+    /**
+     * The first word from [from] this utterance leaves wrong or missed. Not one right before it
+     * (it stays right), nor one wrong before it as it is now (from when mistakes were marked).
+     */
+    private fun firstBad(from: Int): Int? {
+        val b = before ?: return null
+        val status = tracker.status
+        return (from until tracker.position).firstOrNull { w ->
+            (status[w] == WordStatus.WRONG || status[w] == WordStatus.MISSED) && b.statusAt(w) != WordStatus.OK && (w >= b.position || b.statusAt(w) != status[w])
+        }
+    }
+
+    /**
+     * How far the recitation shows: the position, but when it [waits], no further than a word the
+     * utterance leaves wrong or missed until [settle] has ruled (its check may take a moment, and
+     * the words after it would light up, then go out).
+     */
+    val reach: Int get() = (if (waits) firstBad(0) else null) ?: tracker.position
+
+    /** The recitation is back at word [w], and nothing is said from there on. */
+    private fun holdAt(w: Int) {
+        val status = tracker.status.copyOf()
+        for (k in w until status.size) status[k] = WordStatus.PENDING
+        tracker.reset(Tracker.Mark(w, status))
+    }
+
+    /**
+     * Whole utterance [id] is read and checked ([toCheck], [checked]): when the recitation [waits],
+     * it goes back to the first word the utterance left wrong or missed, to be said again from
+     * there (returned; null when every word is right, or when it doesn't wait). A word right
+     * before the utterance stays right, however it was read this time.
+     */
+    fun settle(id: Int): Int? {
+        if (!waits || id != current) return null
+        val b = before ?: return null
+        val status = tracker.status
+        for (w in 0 until tracker.position) {
+            if ((status[w] == WordStatus.WRONG || status[w] == WordStatus.MISSED) && b.statusAt(w) == WordStatus.OK) status[w] = WordStatus.OK
+        }
+        val w = firstBad(0) ?: return null
+        stumbled[w] = true
+        holdAt(w)
+        voice = null
+        return w
     }
 
     /**
@@ -327,6 +385,12 @@ class Follower(
          * word 10 or more, or it can't be held to the text (bias.h, al-Ikhlās darkened, 10 Oct).
          */
         const val CHECK_TOLERANCE = 3f
+        /**
+         * The same when a mistake holds the reciter up ([waits]) rather than being marked: only a
+         * word clearly not the text's does. (The CTC recogniser's worst character at 10 nats, for
+         * 7: of the bench's words said, p99 costs 5.8; a word said for another, 8.4 to 14.)
+         */
+        const val CHECK_TOLERANCE_FREE = 4.3f
         /** A word's cost when the reading couldn't be held to the text there (bias.h HFD_CHECK_FAIL). */
         const val CHECK_FAILED = 99f
         /** Words before the utterance's start it may begin with (said again). */

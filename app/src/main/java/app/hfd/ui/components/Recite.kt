@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.hfd.Graph
 import app.hfd.R
+import app.hfd.recite.ReciteLevel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import app.hfd.core.progress.Hiding
 import app.hfd.core.quran.AyahRef
 import app.hfd.core.srs.Rating
@@ -179,3 +182,41 @@ fun ChoiceButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
         Text(text, style = Type.button, color = if (strong) P.onPrimary else P.text)
     }
 }
+
+/** What each [ReciteLevel] is called, and what it does with a mistake. */
+fun levelName(level: ReciteLevel): Int = when (level) {
+    ReciteLevel.FREE -> R.string.recite_level_free
+    ReciteLevel.STRICT -> R.string.recite_level_strict
+    ReciteLevel.TAJWEED -> R.string.recite_level_tajweed
+}
+
+private fun levelBody(level: ReciteLevel): Int = when (level) {
+    ReciteLevel.FREE -> R.string.recite_level_free_body
+    ReciteLevel.STRICT -> R.string.recite_level_strict_body
+    ReciteLevel.TAJWEED -> R.string.recite_level_tajweed_body
+}
+
+/** The three levels, and under them what the one chosen does. */
+@Composable
+fun ReciteLevelChoice(level: ReciteLevel, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth()) {
+        Segmented(
+            options = ReciteLevel.entries.map { stringResource(levelName(it)) },
+            selected = level.ordinal,
+            onSelect = { i -> Graph.settings.update { it.copy(reciteLevel = ReciteLevel.entries[i]) } },
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(levelBody(level)), style = Type.body, color = P.text)
+        Spacer(Modifier.height(6.dp))
+        Text(stringResource(R.string.recite_level_always), style = Type.label, color = P.textDim)
+    }
+}
+
+/** The same in a sheet, from Recite's screen (it applies from the next word said). */
+fun reciteLevelSheet(context: android.content.Context) = SheetSpec(
+    title = context.getString(R.string.recite_level),
+    content = {
+        val settings by Graph.settings.state.collectAsState()
+        ReciteLevelChoice(settings.reciteLevel, Modifier.padding(bottom = 12.dp))
+    },
+)

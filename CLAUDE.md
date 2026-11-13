@@ -456,6 +456,61 @@
   same word as its description), counts one button in the bar, and fails if the search field's
   microphone or the palette come back.
 
+## The recitation waits; three levels (2.9.0, the owner, 13 Nov: "if I make a mistake and a few verses later there is a match, everything in between is marked red; it should wait where I stopped until I recite the right thing, not look for the next occurrence nor in the rest of the Qur'an: it scrolls away and back and invalidates whole passages. Prepare mistake detection: a free mode by default that marks nothing and only waits, a stricter mode that colours mistakes red, and a tajwīd mode stricter still that checks pronunciation and timing")
+- **It never goes on without the reciter.** `Tracker(skip = WAIT_WORDS)` (3; the app's, every
+  level): a chunk may pass over or say wrong three words in a row at most, counted with the words
+  already left wrong or missed just before the position (`behind`); more, and it stops before them
+  (`align`: the start is `FAR` beyond that, a longer run cuts the chunk; `back`: a chunk said again
+  doesn't run on past them either). `SKIP_WORDS` (40, the default of `Tracker` and `Follower`) is
+  2.8.0's "never stays behind the reciter", kept for the bench's comparison (`HFD_SKIP_WORDS=40`).
+  Two ways round it found on the bench and closed (`FollowerWaitTest`): a verse that begins as the
+  next («وَٱلَّذِينَ يُؤْمِنُونَ بِمَآ» said for «ٱلَّذِينَ يُؤْمِنُونَ بِٱلْغَيْبِ», 2:3 / 2:4) went on as "said again"
+  (`back`), and a few words at a time (three wrong at a reading's end, then three passed by the
+  next: `Follower.followed` feeding again from there).
+- **Nor elsewhere.** `ReciteSession.elsewhere` only offers the place found (`ReciteUi.elsewhere`,
+  a pill under "take it up again"; `goElsewhere`). The first place of a recitation anywhere is
+  still found by itself (`Locator`), and a sūra finished goes on into the next.
+- **`ReciteLevel`** (`AppSettings.reciteLevel`, FREE by default; the pill at the top of Recite's
+  screen, tag `recite-level` → `reciteLevelSheet`; Settings → Reciting aloud; the old
+  `reciteTajweed` switch on reads as TAJWEED):
+  - FREE: `Follower.waits`. Nothing is ever red. A partial reading shows nothing past a word not
+    right (`holdAt`); after a whole utterance and its check, `settle(id)` takes the recitation
+    back to the first word it left wrong or missed (what was said after it is to say again),
+    `stumbled[w]` (counted as a mistake in the āya's result, so FSRS still learns from it), and
+    the screen says "take it up again at the marked word" (`ReciteUi.waiting`) until it moves.
+    `Follower.reach` keeps the display from running past such a word while the check runs. A
+    word right before the utterance stays right however it is read again. The check is more
+    lenient (`CHECK_TOLERANCE_FREE` 4.3 = the CTC's worst character at 10 nats for 7): being held
+    up for a word said right costs more than letting a near one pass. The way out of a word the
+    model won't hear: the hint (from memory), or Strict.
+  - STRICT: as 2.8.0 marked mistakes (red after the check, the recitation goes on), within the
+    three words.
+  - TAJWEED: Strict, plus on every whole utterance read right (`Follower.read`; CTC model only)
+    the long vowels' timing (2.5.0) and `sounds`: the text held to the sound, each word's worst
+    character (`CtcRecognizer.SOUNDS` "~\n<words>" → "cost:index" per word, `Ctc.Forced.worstAt`);
+    over `UNCLEAR` (8 nats) the word is underlined with a broken red line (`ReciteUi.unclear`,
+    `unclearSheet` shows the letter with its signs; not the disconnected letters). Display only.
+- Measured for `sounds` (`tools/ctc/vowelstudy.py`, the bench's 49 recitations said as the text
+  is, 1,533 words; **the text is changed, not the voice**: a reciter's real slip may be written
+  by the model as the text has it, as يُولَدْ said يَلِدْ was): words said p99 4.8 nats, 0.13 % over 8;
+  one short vowel written as another: over 8 for 91.5 % (7: 92.7, 10: 86.4); one letter as
+  another: 94.3 %. Loud (clipped) audio is the weak case (72 %).
+- Warsh / Ḥafṣ (the owner: "a setting, or by detection? tell me if it is needed"): not needed to
+  follow. The model reads Warsh as well as Ḥafṣ at the letters (EveryAyah `warsh/…`, al-Fātiḥa
+  and al-Baqara 2–10, two reciters: letters wrong 1.5 and 2.4 %, Ḥuṣarī's Ḥafṣ 2.2 %), and writes
+  what Warsh says (مَلِكِ, عَلَيْهِمُ ءَآنذَرْتَهُمُ, يُومِنُونَ): the follower's letters take those. A Warsh
+  *mode* is a different text (Tanzil publishes none: a source to verify), another numbering of
+  āyāt, other tajwīd rules (madd badal, the munfaṣil at 6, naql, taqlīl) and lengths: Strict and
+  Tajwīd judge by Ḥafṣ. Detection from the model's writing is plausible. Not built: ask first
+  whether the owner recites Warsh.
+- The bench (`ReciteBench`): `HFD_SKIP_WORDS`; per case and in the totals "held up" (whole
+  utterances that would hold a free reciter: a mistake left after the check at the free
+  tolerance), "followed nothing", both also for the recitations said as the text is (there,
+  being held up is the app's doing), and "skipped aya waited at" (the cases with an āya skipped:
+  the recitation is still at its first word, nothing marked after). A recording can't take a
+  word up again, so the waiting tracker's ok % on the skip cases counts as lost what the app
+  rightly doesn't follow.
+
 ## One microphone: recite anywhere (2.7.0, the owner: "why did you separate reciting and finding a passage? In Tarteel one microphone finds the passage and follows from there")
 - Before: Recite needed a text chosen first (a passage; a sūra "from āya N / from the start", a
   sheet asking), and finding a passage by reciting was a sheet of its own in the search field
@@ -504,7 +559,8 @@
   place is given to the follower as the locator's phrase (`foundBy`, `Locator.phrase` for its
   later readings; it is not timed for tajwīd). A whole utterance that follows nothing is looked
   for elsewhere (`elsewhere`, `astray`: 14 letters at least, the place followed as `near`): found,
-  the recitation goes on there (same sūra: `startAt` + `Tracker.feed`; another: a new `Text`).
+  the place is **offered** (`ReciteUi.elsewhere`, a pill; `goElsewhere`: same sūra `startAt` +
+  `Tracker.feed`; another: a new `Text`). Until 2.8.0 the recitation went there by itself (below).
   A sūra finished goes on into the next. `Anywhere.start`: "recite from here" on an āya, no
   looking. `Anywhere.show`: from a sūra's page the page stays shown from the place read while
   the place is looked for (`ReciteUi.view`; one may be reading from it). `ReciteUi.locating`,

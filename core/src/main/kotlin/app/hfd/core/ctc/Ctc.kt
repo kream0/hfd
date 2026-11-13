@@ -58,6 +58,8 @@ object Ctc {
         /** Per word: its first and last frame (−1 for a word with no character the model writes). */
         val from: IntArray,
         val to: IntArray,
+        /** Per word: where in it its worst character is (an index into the word as written; −1 without one). */
+        val worstAt: IntArray,
     )
 
     /**
@@ -69,9 +71,10 @@ object Ctc {
         val space = vocabulary.indexOf(' ')
         val ids = ArrayList<Int>()
         val wordOf = ArrayList<Int>()
+        val placeOf = ArrayList<Int>()
         words.forEachIndexed { w, word ->
-            for (c in word) vocabulary.indexOf(c)?.let { ids += it; wordOf += w }
-            if (w + 1 < words.size && space != null) { ids += space; wordOf += -1 }
+            for ((i, c) in word.withIndex()) vocabulary.indexOf(c)?.let { ids += it; wordOf += w; placeOf += i }
+            if (w + 1 < words.size && space != null) { ids += space; wordOf += -1; placeOf += -1 }
         }
         val count = ids.size
         val frames = out.frames
@@ -120,11 +123,12 @@ object Ctc {
             state -= back[t * states + state]
         }
         val worst = FloatArray(n)
+        val worstAt = IntArray(n) { -1 }
         for (c in 0 until count) {
             val w = wordOf[c]
-            if (w >= 0 && least[c] > worst[w]) worst[w] = least[c]
+            if (w >= 0 && (worstAt[w] < 0 || least[c] > worst[w])) { worst[w] = least[c]; worstAt[w] = placeOf[c] }
         }
-        return Forced(FloatArray(n) { if (held[it] == 0) 0f else (loss[it] / held[it]).toFloat() }, worst, from, to)
+        return Forced(FloatArray(n) { if (held[it] == 0) 0f else (loss[it] / held[it]).toFloat() }, worst, from, to, worstAt)
     }
 
     /**

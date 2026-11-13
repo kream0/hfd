@@ -264,8 +264,6 @@
     <string name="dock_listen_none">Ouvrez un passage ou une sourate</string>
     <string name="recite_way_memory_do">Réciter de mémoire</string>
     <string name="recite_way_reading_do">Réciter en lisant</string>
-    <string name="settings_recite_tajweed">Vérifier les madd en récitant</string>
-    <string name="settings_recite_tajweed_body">Les voyelles longues de 4 temps ou plus que vous ne tenez pas assez sont soulignées. Avec le nouveau modèle.</string>
     <string name="offline">Hors ligne</string>
     <string name="recite_title">Réciter · %1$s</string>
     <string name="recite_model_needed">La récitation à voix haute utilise le modèle de reconnaissance coranique de Tarteel (%1$d Mo), téléchargé une fois. Il fonctionne sur le téléphone : votre voix n\'est ni enregistrée ni envoyée.</string>
@@ -286,6 +284,24 @@
     <string name="recite_result">%1$s · %2$d / %3$d mots justes</string>
     <string name="recite_mistakes">À retravailler : %1$s</string>
     <string name="recite_again">Recommencer</string>
+    <string name="recite_level">Fautes</string>
+    <string name="recite_level_free">Libre</string>
+    <string name="recite_level_strict">Strict</string>
+    <string name="recite_level_tajweed">Tajwīd</string>
+    <string name="recite_level_free_body">Aucune faute n\'est marquée. Quand un mot n\'est pas celui du texte, la récitation attend à ce mot que vous le disiez.</string>
+    <string name="recite_level_strict_body">Un mot dit autrement ou oublié passe en rouge, et la récitation continue.</string>
+    <string name="recite_level_tajweed_body">Comme Strict, avec deux contrôles sur ce qui est récité juste : un madd de 4 temps ou plus pas assez tenu, et une lettre ou une voyelle brève mal entendue, sont soulignés. Avec le nouveau modèle.</string>
+    <string name="recite_level_always">Quel que soit le niveau, la récitation reste où vous en êtes : elle ne saute jamais plus loin d\'elle-même.</string>
+    <string name="recite_wait">Reprenez au mot marqué.</string>
+    <string name="recite_wait_hidden">Reprenez au mot marqué (l\'ampoule le montre).</string>
+    <string name="recite_elsewhere">Vous récitez ailleurs ?</string>
+    <string name="recite_sound">Prononciation</string>
+    <string name="recite_sound_body">Cette lettre, ou sa voyelle brève, n\'a pas été entendue comme elle est écrite. Redites le mot en l\'articulant.</string>
+    <string name="recite_sound_how">Votre voix est comparée au texte lettre par lettre. Sur une voix étouffée ou dans le bruit, cela peut se tromper : le mot lui-même a été reconnu.</string>
+    <plurals name="recite_sound_words">
+        <item quantity="one">%d mot à redire : une lettre ou une voyelle mal entendue</item>
+        <item quantity="other">%d mots à redire : une lettre ou une voyelle mal entendue</item>
+    </plurals>
     <string name="recite_lost">Je ne vous suis plus : reprenez au mot marqué.</string>
     <string name="recite_lost_hidden">Je ne vous suis plus : reprenez au mot marqué (l\'ampoule le montre).</string>
     <string name="recite_progress">%1$d / %2$d mots</string>

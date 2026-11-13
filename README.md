@@ -65,9 +65,10 @@ that the app updates itself from new releases. Android 8.0 or newer.
 - **Tajwīd:** the letters in the colours of their rules, as in the muṣḥafs of tajwīd (the long
   vowels by length, ghunna, qalqala, what is not pronounced, the heavy rāʾ), each colour switchable;
   an āya's rules listed with their words. The rules are read from the Uthmani text for the reading
-  of Ḥafṣ (`core` `tajweed/`), checked on the whole Qur'an. Recite can time the long vowels
-  against the reciter's own natural madd and underline one not held (`TajweedCheck`; measured on
-  four masters: no false alarm in 213).
+  of Ḥafṣ (`core` `tajweed/`), checked on the whole Qur'an. Recite's Tajwīd level times the long
+  vowels against the reciter's own natural madd and underlines one not held (`TajweedCheck`;
+  measured on four masters: no false alarm in 213), and underlines a word one of whose letters
+  or short vowels the sound doesn't bear out.
 - **One bar to listen from** (`PlayerDock`), above the tabs on every screen: what is being
   listened to, or, with a passage or a sūra open, that text — listen, next āya, recite it aloud —
   and behind it the full player (the place in the āya, previous / next, saving offline, and the
@@ -120,11 +121,18 @@ that the app updates itself from new releases. Android 8.0 or newer.
   start or from the āya on screen; a sūra's recitation isn't part of the learning log): recite
   from memory into the microphone and the
   app follows along live, lighting up each word once said (the text shows dim by default; the
-  eye button hides it), marking skipped (struck through) and wrong words, with *Hint* for the
-  next word (counted as a mistake). The word being said stays in view down a long āya, an āya's
-  end turns gold once recited whole (red with a mistake), a bar counts the words and the
-  mistakes so far, and when two phrases in a row follow nothing the screen says to take it up
-  again at the marked word. The microphone is cut into utterances at short pauses
+  eye button hides it), with *Hint* for the next word (counted as a mistake). What a mistake
+  does is the reciter's choice (the pill at the top of the screen, or Settings): **Free** (the
+  default) marks nothing and waits at the word not said until it is said; **Strict** marks
+  skipped (struck through) and wrong words in red and goes on; **Tajwīd** is Strict plus two
+  checks on what was read right: the long vowels' timing, and each word held to the sound letter
+  by letter (a letter or a short vowel not heard as written is underlined; `CtcRecognizer.SOUNDS`).
+  At every level the recitation stays with the reciter: it never passes over more than three
+  words, so words that are also the text's a few āyāt later move nothing, and another place of
+  the Qur'an the reciter is clearly saying is offered, not gone to. The word being said stays
+  in view down a long āya, an āya's end turns gold once recited whole (red with a mistake), a
+  bar counts the words and the mistakes so far, and the screen says to take it up again at the
+  marked word when the recitation waits. The microphone is cut into utterances at short pauses
   (`:core` `Segmenter`); while one goes on, what was said so far is recognised again every
   second, each reading replacing the last (`Follower`), so the text keeps up without waiting
   for a pause. Speech is recognised **on the phone**. Since 2.2.0 by a CTC model,

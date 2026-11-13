@@ -313,6 +313,17 @@ def recite_anywhere(name, start, shows=is_("Récitez n'importe quel passage")):
     print(f"SMOKE {name}: {report[name]}", flush=True)
     if not listening:
         failures.append(f"{name}: reciting anywhere didn't listen")
+    # What a mistake does (free unless chosen otherwise: the recitation waits), from the screen's own button.
+    level = find(is_("Libre"))
+    if not level:
+        failures.append(f"{name}: no level button (Libre)")
+    else:
+        tap(level)
+        if not (wait(is_("Strict"), 10) and find(is_("Tajwīd")) and find(starts("Aucune faute"))):
+            failures.append(f"{name}: the levels' sheet didn't open")
+        shot(name + "-level")
+        sh("input keyevent 4")
+        time.sleep(1.5)
     sh("input keyevent 4")
     time.sleep(1.5)
     if find(shows):

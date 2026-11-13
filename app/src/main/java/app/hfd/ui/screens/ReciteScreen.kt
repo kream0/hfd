@@ -50,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -79,6 +80,9 @@ import app.hfd.core.recite.WordStatus
 import app.hfd.recite.ModelState
 import app.hfd.recite.ModelStore
 import app.hfd.recite.ReciteEngine
+import app.hfd.recite.ReciteLevel
+import app.hfd.ui.components.levelName
+import app.hfd.ui.components.reciteLevelSheet
 import app.hfd.recite.ReciteSession
 import app.hfd.recite.ReciteUi
 import app.hfd.recite.Wave
@@ -132,6 +136,7 @@ fun ReciteScreen(onClose: () -> Unit) {
     val wave by s.wave.collectAsStateWithLifecycle()
     val listeningWith by s.mic.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val sheets = LocalSheets.current
     val showText = settings.reciteShowText
     val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) s.start() else Graph.toast(R.string.recite_mic_denied)
@@ -171,6 +176,17 @@ fun ReciteScreen(onClose: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(start = 4.dp),
             )
+            // What a mistake does (free: the recitation waits; strict: it is marked; tajwīd).
+            Text(
+                stringResource(levelName(settings.reciteLevel)), style = Type.labelBold, color = P.accent,
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, P.outline, CircleShape)
+                    .clickable(onClickLabel = stringResource(R.string.recite_level), role = Role.Button) { sheets(reciteLevelSheet(context)) }
+                    .padding(horizontal = 14.dp, vertical = 7.dp)
+                    .testTag("recite-level"),
+            )
         }
         Text(statusLine(ui, s), style = Type.label, color = P.textDim, modifier = Modifier.padding(horizontal = 20.dp))
         // (How far through a passage; a sūra recited from anywhere has no such end.)
@@ -194,29 +210,47 @@ fun ReciteScreen(onClose: () -> Unit) {
         }
         // Where each āya's words begin among all the words (the long vowels not held are named by word).
         val firstWord = remember(ui.targets) { ui.targets.runningFold(0) { n, t -> n + t.words.size } }
-        val sheets = LocalSheets.current
         // No place yet. Nothing to show meanwhile: what to do. A page was open: it stays, to read from.
         if (ui.locating && ui.targets.isEmpty()) Locating(ui, content, onChoose = { s.choose(it) }, Modifier.weight(1f))
         else LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list) {
             itemsIndexed(ui.targets) { a, t ->
                 val faults = if (ui.tajweed.isEmpty()) emptyMap() else t.words.indices.mapNotNull { w -> ui.tajweed[firstWord[a] + w]?.let { w to it } }.toMap()
+                val unclear = if (ui.unclear.isEmpty()) emptyMap() else t.words.indices.mapNotNull { w -> ui.unclear[firstWord[a] + w]?.let { w to it } }.toMap()
                 AyahWords(
                     t, ui.status.getOrNull(a).orEmpty(), current = ui.next?.takeIf { it.first == a }?.second, showText, settings.arabicSize,
                     faults = faults, onFault = { w, f -> sheets(faultSheet(context, t.words[w], f)) },
+                    unclear = unclear, onUnclear = { w, at -> sheets(unclearSheet(t.words[w], at)) },
                 )
             }
             if (ui.done && ui.results.isNotEmpty()) item {
                 Summary(ui.results, onAgain = { Graph.openRecite(ui.id, ui.targets.map { t -> t.ref }) }, onClose)
-                if (settings.reciteTajweed) TajweedSummary(ui, firstWord)
+                if (settings.reciteLevel == ReciteLevel.TAJWEED) TajweedSummary(ui, firstWord)
             }
         }
 
-        if (ui.lost && ui.listening && !ui.done) {
-            // Phrases heard that aren't the text from the marker (nor found anywhere else): where to take it up again.
+        if ((ui.lost || ui.waiting || ui.elsewhere != null) && ui.listening && !ui.done) {
+            // What was said isn't the text from the marker: the recitation waits there, and says so
+            // (at once for a word of the text said differently, after two phrases of something else).
             Text(
-                stringResource(if (showText) R.string.recite_lost else R.string.recite_lost_hidden), style = Type.label, color = P.wordMark, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+                stringResource(
+                    when {
+                        !ui.lost -> if (showText) R.string.recite_wait else R.string.recite_wait_hidden
+                        showText -> R.string.recite_lost
+                        else -> R.string.recite_lost_hidden
+                    },
+                ),
+                style = Type.label, color = P.wordMark, textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp).testTag("recite-wait"),
             )
+            // Another place of the Qur'an says it: offered, never gone to unasked.
+            val there = ui.elsewhere
+            if (there != null && content != null) Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.recite_elsewhere), style = Type.label, color = P.textDim)
+                Spacer(Modifier.width(8.dp))
+                PillButton(stringResource(R.string.quran_at, content!!.sura(there.sura).tname, there.aya), { s.goElsewhere() })
+            }
         } else if (ui.locating && ui.targets.isNotEmpty()) {
             // Looked for under the page: what is heard, and the places that say it when there are several.
             ui.heard?.let {
@@ -372,7 +406,11 @@ private fun AyahWords(
     size: Int,
     faults: Map<Int, TajweedCheck.Finding> = emptyMap(),
     onFault: (Int, TajweedCheck.Finding) -> Unit = { _, _ -> },
+    /** Words with a letter or a short vowel not heard as written, and where in the word. */
+    unclear: Map<Int, Int> = emptyMap(),
+    onUnclear: (Int, Int) -> Unit = { _, _ -> },
 ) {
+    val unclearColor = P.error
     val style = Type.quran(size)
     // The word to say next: turquoise on a pill of the same colour, as the word being recited
     // while listening (QuranText); hidden text keeps the pill only.
@@ -412,6 +450,8 @@ private fun AyahWords(
                 val marked by animateFloatAsState(if (next) 1f else 0f, tween(140), label = "marker")
                 // A long vowel of this word not held as its rule asks: a line under it in the rule's colour, a tap says more.
                 val fault = faults[w]
+                // Or a letter of it not heard as written: a broken line under it, in the mistakes' colour.
+                val letter = unclear[w]?.takeIf { fault == null && st == WordStatus.OK }
                 val faultColor = fault?.let { tajweedColor(it.rule.family, P.isDark) }
                 Text(
                     word,
@@ -419,7 +459,13 @@ private fun AyahWords(
                     color = shown,
                     modifier = Modifier
                         .then(if (next) Modifier.bringIntoViewRequester(inView).onSizeChanged { markSize[0] = it } else Modifier)
-                        .then(if (fault != null) Modifier.clip(RoundedCornerShape(8.dp)).clickable { onFault(w, fault) } else Modifier)
+                        .then(
+                            when {
+                                fault != null -> Modifier.clip(RoundedCornerShape(8.dp)).clickable { onFault(w, fault) }
+                                letter != null -> Modifier.clip(RoundedCornerShape(8.dp)).clickable { onUnclear(w, letter) }
+                                else -> Modifier
+                            },
+                        )
                         .then(if (hidden) Modifier.clip(RoundedCornerShape(8.dp)).background(P.surfaceHigh) else Modifier)
                         // Drawn as QuranText draws it: hugging the letters, a little wider than
                         // the word, without moving the words around it.
@@ -427,6 +473,12 @@ private fun AyahWords(
                             if (faultColor != null) {
                                 val y = this.size.height * 0.9f
                                 drawLine(faultColor, Offset(3.dp.toPx(), y), Offset(this.size.width - 3.dp.toPx(), y), 2.5.dp.toPx(), androidx.compose.ui.graphics.StrokeCap.Round)
+                            } else if (letter != null) {
+                                val y = this.size.height * 0.9f
+                                drawLine(
+                                    unclearColor, Offset(3.dp.toPx(), y), Offset(this.size.width - 3.dp.toPx(), y), 2.5.dp.toPx(), androidx.compose.ui.graphics.StrokeCap.Round,
+                                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 5.dp.toPx())),
+                                )
                             }
                             if (marked <= 0f) return@drawBehind
                             val box = this.size
@@ -593,12 +645,57 @@ private fun faultSheet(context: android.content.Context, word: String, f: Tajwee
     },
 )
 
-/** After the recitation: how the long vowels were held. */
+/** The letter of [word] at [at] with its signs (a sign alone: with the letter that bears it). */
+private fun letterAt(word: String, at: Int): String {
+    fun sign(c: Char) = Character.getType(c) == Character.NON_SPACING_MARK.toInt()
+    var from = at.coerceIn(0, word.lastIndex)
+    while (from > 0 && sign(word[from])) from--
+    var to = from + 1
+    while (to < word.length && sign(word[to])) to++
+    return word.substring(from, to)
+}
+
+/** A word read right with a letter or a short vowel the sound doesn't bear out. */
+private fun unclearSheet(word: String, at: Int) = SheetSpec(
+    title = word,
+    content = {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(10.dp).clip(CircleShape).background(P.error))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.recite_sound), style = Type.title, color = P.text)
+                Spacer(Modifier.weight(1f))
+                Text(letterAt(word, at), style = Type.quran(26), color = P.error)
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.recite_sound_body), style = Type.body, color = P.text)
+            Spacer(Modifier.height(10.dp))
+            Text(stringResource(R.string.recite_sound_how), style = Type.label, color = P.textDim)
+        }
+    },
+)
+
+/** After the recitation: how the long vowels were held, and the words to say again. */
 @Composable
 private fun TajweedSummary(ui: ReciteUi, firstWord: List<Int>) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp)) {
         SectionLabel(stringResource(R.string.recite_tajweed))
         Spacer(Modifier.height(8.dp))
+        if (ui.unclear.isNotEmpty()) {
+            Text(pluralStringResource(R.plurals.recite_sound_words, ui.unclear.size, ui.unclear.size), style = Type.title, color = P.text)
+            for ((flat, at) in ui.unclear.entries.sortedBy { it.key }) {
+                val a = firstWord.indexOfLast { it <= flat }.coerceIn(0, ui.targets.lastIndex)
+                val word = ui.targets[a].words.getOrNull(flat - firstWord[a]) ?: continue
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(ui.targets[a].ref.toString() + " · " + stringResource(R.string.recite_sound), style = Type.labelBold, color = P.error, modifier = Modifier.weight(1f))
+                    Text(letterAt(word, at), style = Type.quran(22), color = P.error, maxLines = 1)
+                    Spacer(Modifier.width(16.dp))
+                    Text(word, style = Type.quran(24), color = P.text, maxLines = 1)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+        }
         if (ui.timed == 0 && ui.tajweed.isEmpty()) {
             Text(stringResource(R.string.recite_tajweed_nothing), style = Type.body, color = P.textDim)
             return@Column

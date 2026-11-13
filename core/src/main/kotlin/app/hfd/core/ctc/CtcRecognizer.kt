@@ -4,7 +4,8 @@ package app.hfd.core.ctc
  * Reads an utterance with a CTC model, in the terms the recitation's follower speaks
  * ([app.hfd.core.recite.Follower]): the text heard, or, asked to check a text ("?\n" then the
  * words), the text heard, a tab, and what holding each word to the sound costs; or, asked where a
- * text lies in time ("@\n" then the text), the frame of each of its characters.
+ * text lies in time ("@\n" then the text), the frame of each of its characters; or, asked how a
+ * text read right was pronounced ("~\n" then the words), each word's worst character and its cost.
  */
 class CtcRecognizer(private val model: CtcModel, private val vocabulary: CtcVocabulary = CtcVocabulary.QURAN) {
     private val mel = Mel()
@@ -32,6 +33,12 @@ class CtcRecognizer(private val model: CtcModel, private val vocabulary: CtcVoca
             val placed = out?.let { Ctc.placed(it, vocabulary, expected.substring(TIMES.length)) } ?: return text
             return text + "\t" + out.frames + ";" + placed.joinToString(",")
         }
+        if (expected.startsWith(SOUNDS)) {
+            // "~\n<words>": per word, its worst character's cost (nats) and where in the word it is.
+            val words = expected.substring(SOUNDS.length).split(' ').filter { it.isNotEmpty() }
+            val forced = out?.let { Ctc.forced(it, vocabulary, words.joinToString(" ")) } ?: return text
+            return text + "\t" + words.indices.joinToString(",") { w -> String.format(java.util.Locale.US, "%.2f:%d", forced.worst[w], forced.worstAt[w]) }
+        }
         if (!expected.startsWith(CHECK)) return text
         val words = expected.substring(CHECK.length).split(' ').filter { it.isNotEmpty() }
         val forced = out?.let { Ctc.forced(it, vocabulary, words.joinToString(" ")) }
@@ -52,6 +59,29 @@ class CtcRecognizer(private val model: CtcModel, private val vocabulary: CtcVoca
             val placed = tail.substringAfter(';').split(',').map { it.toIntOrNull() ?: return null }
             return frames to placed.toIntArray()
         }
+
+        /**
+         * Asked how a text the follower read right was pronounced: a word the letters were found
+         * in may still have one of them, or a short vowel, that the sound doesn't bear out.
+         */
+        const val SOUNDS = "~\n"
+
+        /** Each word's worst character, from a reading asked with [SOUNDS]: its cost (nats) and its place in the word; null without them. */
+        fun sounds(reading: String): List<Pair<Float, Int>>? {
+            val tail = reading.substringAfterLast('\t', "").takeIf { ':' in it } ?: return null
+            return tail.split(',').map { item ->
+                (item.substringBefore(':').toFloatOrNull() ?: return null) to (item.substringAfter(':').toIntOrNull() ?: return null)
+            }
+        }
+
+        /**
+         * Nats over which a word's worst character wasn't said as written ([SOUNDS]). Measured on
+         * the bench's āyāt said as the text is (13 Nov, tools/ctc/vowelstudy.py, 1,533 words; the
+         * text changed, not the voice): of the words said 99 % cost under 4.8 and 0.13 % over 8;
+         * with one short vowel written as another the word costs over 8 for 91.5 %, with one
+         * letter as another for 94.3 %.
+         */
+        const val UNCLEAR = 8f
         private const val MIN_SAMPLES = 1600
         /** A word no frame could be given to: as the follower's CHECK_FAILED. */
         const val FAILED = 99f

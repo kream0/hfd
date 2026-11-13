@@ -20,6 +20,7 @@ import app.hfd.core.recite.MuffledWarning
 import app.hfd.core.recite.ReciteTarget
 import app.hfd.core.recite.Segmenter
 import app.hfd.core.recite.Stall
+import app.hfd.core.recite.Tracker
 import app.hfd.core.recite.Utterance
 import app.hfd.core.recite.WordStatus
 import app.hfd.diag.Diag
@@ -62,11 +63,16 @@ data class ReciteUi(
     val lost: Boolean = false,
     /**
      * The long vowels not held as their rule asks, when the reciter asked for that check
-     * ([app.hfd.data.AppSettings.reciteTajweed]): by word (counted from the first āya's first
+     * ([ReciteLevel.TAJWEED]): by word (counted from the first āya's first
      * word). [timed]: how many long vowels with a set length were timed so far.
      */
     val tajweed: Map<Int, TajweedCheck.Finding> = emptyMap(),
     val timed: Int = 0,
+    /**
+     * Words read right in which a letter or a short vowel wasn't heard as written, with the same
+     * check: the word (counted as [tajweed]'s) and where in it that character is.
+     */
+    val unclear: Map<Int, Int> = emptyMap(),
     /** The text recited: a passage's id, or a sūra's ([QuranListening.id]); empty until it is found. */
     val id: String = "",
     /**
@@ -78,6 +84,16 @@ data class ReciteUi(
     val candidates: List<QuranSearch.Recited> = emptyList(),
     /** While the place is looked for with a text shown meanwhile (the sūra that was open): the āya of it to show. */
     val view: Int? = null,
+    /**
+     * The recitation waits at the marked word: what was just said left the text there (a word said
+     * differently or passed over), and it goes on once that word is said ([ReciteLevel.FREE]).
+     */
+    val waiting: Boolean = false,
+    /**
+     * What is being said isn't the text from the marker but is another place of the Qur'an: the
+     * reciter may go there ([ReciteSession.goElsewhere]). The recitation never goes by itself.
+     */
+    val elsewhere: AyahRef? = null,
 ) {
     val done: Boolean get() = next == null && !locating
 }
@@ -92,8 +108,10 @@ data class ReciteUi(
  *
  * With [anywhere], nothing need be given to recite: what is said is looked for in the whole
  * Qur'an as it is heard ([Locator]), and the recitation is followed in that place's sūra from the
- * word it was found at; the reciter who goes elsewhere is found again there, and a sūra finished
- * goes on into the next. Main-thread API.
+ * word it was found at. From there it stays with the text: what isn't the text from the marker
+ * moves nothing (the reciter takes it up again there; another place they are clearly reciting is
+ * offered, [ReciteUi.elsewhere]), and a sūra finished goes on into the next. How mistakes are
+ * dealt with is the reciter's choice ([ReciteLevel]). Main-thread API.
  */
 class ReciteSession(
     fadilaId: String,
@@ -121,7 +139,7 @@ class ReciteSession(
 
     /** A text being recited and how far: the passage given, or the sūra the recitation was found in. */
     private class Text(val id: String, val targets: List<ReciteTarget>) {
-        val follower = Follower(targets)
+        val follower = Follower(targets, skip = Tracker.WAIT_WORDS)
         val tracker = follower.tracker
         /** When each āya was first finished, and those already written to the log. */
         val finishedAt = LinkedHashMap<AyahRef, Long>()
@@ -147,6 +165,8 @@ class ReciteSession(
         val decided = BooleanArray(tracker.size)
         /** The stretches read right so far, each beat timed ([TajweedCheck]); a stretch said again replaces the first saying. */
         val stretches = ArrayList<List<TajweedCheck.Timed>>()
+        /** Words read right with a character the sound doesn't bear out, and where in the word ([CtcRecognizer.SOUNDS]). */
+        val unclear = HashMap<Int, Int>()
         /** The first word followed, when the place was found inside the text. */
         var origin = 0
     }
@@ -175,6 +195,8 @@ class ReciteSession(
     private var foundBy = -1
     /** Looking for where the reciter went, when what they say is no longer the text from the marker. */
     private var astray: Locator? = null
+    /** Where they are, when found, and the utterance that said it: offered, not gone to ([goElsewhere]). */
+    private var offered: Pair<Locator.Found, Int>? = null
     private val recorder = Recorder(audioManager())
     private val recognizer = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     /** Utterances waiting: final ones in order, and a partial one replaced by the next reading. */
@@ -268,9 +290,11 @@ class ReciteSession(
                         if (moved != 0 || follower.voice != null || tracker.done) {
                             strays = 0
                             astray = null
+                            propose(null)
                         } else if (said) {
-                            // Maybe another place of the Qur'an: the recitation goes there.
-                            strays = if (text != null && elsewhere(u.id, text)) 0 else strays + 1
+                            // Maybe another place of the Qur'an: it is offered, the recitation stays.
+                            strays++
+                            if (text != null) elsewhere(u.id, text)
                         }
                         val lost = strays >= STRAYS_LOST
                         if (lost != _ui.value.lost) {
@@ -316,22 +340,36 @@ class ReciteSession(
     /**
      * A whole utterance that followed nothing of the text from the marker: looked for in the
      * whole Qur'an (it needs more letters than a first place does, and where the reciter is
-     * settles a phrase said in several places). Found, the recitation goes on there. True if so.
+     * settles a phrase said in several places). Found, the place is offered ([ReciteUi.elsewhere]):
+     * the recitation stays where it is until the reciter asks (the owner, 13 Nov: it went there by
+     * itself, the text scrolling away and back).
      */
-    private fun elsewhere(id: Int, text: String): Boolean {
-        val a = anywhere ?: return false
-        if (!placed) return false
+    private fun elsewhere(id: Int, text: String) {
+        val a = anywhere ?: return
+        if (!placed) return
         val here = targets[tracker.locate(tracker.position.coerceAtMost(tracker.size - 1)).first].ref
         val l = astray ?: Locator(a.search, here, Locator.MIN_LETTERS_ELSEWHERE).also { astray = it }
         val found = l.heard(text, final = true)
         Diag.log("recite.elsewhere", "id" to id, "text" to text, "from" to here.key, "found" to found?.ref?.key, "word" to found?.word, "score" to found?.score)
-        found ?: return false
+        found ?: return
         astray = null
-        // (The utterance is over for the follower: in the same sūra its words are marked as they
-        // were heard; in another, that sūra's follower takes it as its first.)
+        propose(found to id)
+    }
+
+    private fun propose(place: Pair<Locator.Found, Int>?) {
+        offered = place
+        if (_ui.value.elsewhere != place?.first?.ref) _ui.value = _ui.value.copy(elsewhere = place?.first?.ref)
+    }
+
+    /** The reciter goes to the place offered ([ReciteUi.elsewhere]): the recitation is followed from what was said there. */
+    fun goElsewhere() {
+        val (found, id) = offered ?: return
+        propose(null)
+        Diag.log("recite.moved", "to" to found.ref.key, "word" to found.word)
+        // (In the same sūra the words said are marked as they were heard; in another, that
+        // sūra's follower takes the utterance as its first.)
         if (place(found.ref, found.word)) tracker.feed(found.phrase) else follower.heard(id, found.phrase, true)
-        afterProgress(text, final = true)
-        return true
+        afterProgress(null, final = true)
     }
 
     /**
@@ -357,10 +395,11 @@ class ReciteSession(
         shown = at
         t.origin = if (same) minOf(t.origin, at) else at
         strays = 0
+        offered = null
         Diag.log("recite.placed", "ref" to ref.key, "word" to word, "sura" to t.id, "same" to same)
         _ui.value = snapshot(
-            if (same) _ui.value.copy(candidates = emptyList(), lost = false)
-            else _ui.value.copy(candidates = emptyList(), lost = false, results = emptyList(), tajweed = emptyMap(), timed = 0),
+            if (same) _ui.value.copy(candidates = emptyList(), lost = false, waiting = false, elsewhere = null)
+            else _ui.value.copy(candidates = emptyList(), lost = false, waiting = false, elsewhere = null, results = emptyList(), tajweed = emptyMap(), timed = 0, unclear = emptyMap()),
         )
         return same
     }
@@ -452,7 +491,8 @@ class ReciteSession(
         queue.removeAll { it.id <= lastId }
         _ui.value = _ui.value.copy(pending = (_ui.value.pending - dropped).coerceAtLeast(0))
         strays = 0
-        _ui.value = _ui.value.copy(lost = false)
+        propose(null)
+        _ui.value = _ui.value.copy(lost = false, waiting = false)
         // The hinted word shows at once.
         shown = maxOf(shown, tracker.position)
         afterProgress(null, final = true)
@@ -469,9 +509,23 @@ class ReciteSession(
 
     /** A reading of utterance [id]: partial ones move the text on, the final one stays. */
     private fun onHeard(id: Int, text: String, final: Boolean): Int {
-        val moved = follow(id, text, final)
+        val from = tracker.position
+        follow(id, text, final)
+        settle(id, final, from)
         afterProgress(text.ifBlank { null }, final)
-        return moved
+        return tracker.position - from
+    }
+
+    /**
+     * A whole utterance is read (and checked): reciting freely, the recitation goes back to the
+     * first word it left wrong or missed and waits there ([Follower.settle]).
+     */
+    private fun settle(id: Int, final: Boolean, from: Int) {
+        val at = if (final) follower.settle(id) else null
+        if (at != null) Diag.log("recite.wait", "id" to id, "word" to at, "ref" to targets[tracker.locate(at).first].ref.key)
+        // Waiting until the recitation moves again (on, or back).
+        val waiting = at != null || (_ui.value.waiting && tracker.position == from)
+        if (waiting != _ui.value.waiting) _ui.value = _ui.value.copy(waiting = waiting)
     }
 
     /**
@@ -481,29 +535,34 @@ class ReciteSession(
      * 10 Oct): most of the owner's mistakes were the model's.
      */
     private suspend fun onHeard(id: Int, text: String, final: Boolean, check: Utterance?): Int {
-        val moved = follow(id, text, final)
+        val from = tracker.position
+        val level = level()
+        follow(id, text, final)
         val sound = if (check != null) prepared ?: Clarity.prepare(check.pcm) else null
         if (check != null && sound != null) follower.toCheck(id)?.let { c ->
             val again = withContext(recognizer) { speech.reader()?.invoke(sound, c.expected) }
             val costs = again?.let(Follower.Check::costs)
             if (costs != null) {
-                val right = follower.checked(c, costs)
-                Diag.log("recite.check", "id" to id, "words" to c.words.joinToString(","), "right" to right, "reading" to again)
+                // (Reciting freely a mistake holds the reciter up: only what is clearly another word does.)
+                val right = follower.checked(c, costs, if (level == ReciteLevel.FREE) Follower.CHECK_TOLERANCE_FREE else Follower.CHECK_TOLERANCE)
+                Diag.log("recite.check", "id" to id, "level" to level.name, "words" to c.words.joinToString(","), "right" to right, "reading" to again)
             }
         }
         // (Timing is an extra: whatever goes wrong in it, the recitation goes on.)
         // (Not the utterance a place was found by: what was said before it may be read with it.)
-        if (sound != null && id != foundBy && tajweed() && speech.timing) follower.read(id)?.let { read ->
+        if (sound != null && id != foundBy && level == ReciteLevel.TAJWEED && speech.timing) follower.read(id)?.let { read ->
             try {
                 time(id, read, sound)
+                sounds(id, read, sound)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Diag.log("recite.tajweedError", "id" to id, "error" to (e.message ?: e.javaClass.simpleName))
             }
         }
+        settle(id, final, from)
         afterProgress(text.ifBlank { null }, final)
-        return moved
+        return tracker.position - from
     }
 
     /**
@@ -530,13 +589,39 @@ class ReciteSession(
         )
     }
 
-    /** Long vowels shown as not held (the screenshot test). */
-    fun previewTajweed(found: List<TajweedCheck.Finding>, timed: Int) {
-        _ui.value = _ui.value.copy(tajweed = found.associateBy { it.word }, timed = timed)
+    /**
+     * The words of a stretch read right, held to its sound letter by letter: one whose worst
+     * character costs more than [CtcRecognizer.UNCLEAR] has a letter or a short vowel that wasn't
+     * said as written (a stretch said again replaces what its first saying found).
+     */
+    private suspend fun sounds(id: Int, read: Follower.Read, sound: FloatArray) {
+        val reading = withContext(recognizer) { speech.reader()?.invoke(sound, CtcRecognizer.SOUNDS + read.text) } ?: return
+        val found = CtcRecognizer.sounds(reading) ?: return
+        val opening = read.opening.size
+        if (found.size != opening + read.to - read.from) return
+        for (w in read.from until read.to) {
+            val (cost, at) = found[opening + w - read.from]
+            // (The disconnected letters are held notes the model doesn't write as they are written.)
+            val (a, word) = tracker.locate(w)
+            val letters = word == 0 && Tracker.isLetters(targets[a].ref)
+            if (cost > CtcRecognizer.UNCLEAR && at >= 0 && !letters) t.unclear[w] = at else t.unclear.remove(w)
+        }
+        _ui.value = _ui.value.copy(unclear = t.unclear.toMap())
+        Diag.log(
+            "recite.sounds", "id" to id, "from" to read.from, "to" to read.to,
+            "worst" to (found.maxOfOrNull { it.first } ?: 0f),
+            "found" to (read.from until read.to).filter { it in t.unclear }.joinToString(",") { "$it:${t.unclear[it]}:${"%.1f".format(java.util.Locale.US, found[opening + it - read.from].first)}" },
+        )
+    }
+
+    /** Long vowels shown as not held, and words as not said as written (the screenshot test). */
+    fun previewTajweed(found: List<TajweedCheck.Finding>, timed: Int, unclear: Map<Int, Int> = emptyMap()) {
+        _ui.value = _ui.value.copy(tajweed = found.associateBy { it.word }, timed = timed, unclear = unclear)
     }
 
     private fun follow(id: Int, text: String, final: Boolean): Int {
         val before = tracker.position
+        follower.waits = level() == ReciteLevel.FREE
         val moved = follower.heard(id, text, final)
         Diag.log(if (final) "recite.heard" else "recite.partial", "id" to id, "text" to text, "from" to before, "to" to tracker.position, "moved" to moved, "done" to tracker.done)
         return moved
@@ -581,16 +666,17 @@ class ReciteSession(
      * brings several at once); going back shows at once.
      */
     private fun catchUp() {
-        if (tracker.position <= shown) {
-            shown = tracker.position
+        if (follower.reach <= shown) {
+            shown = follower.reach
             _ui.value = snapshot(_ui.value)
             return
         }
         _ui.value = snapshot(_ui.value)
         if (reveal?.isActive == true) return
         reveal = scope.launch {
-            while (shown < tracker.position) {
-                val behind = tracker.position - shown
+            // (No further than a word the recitation may have to wait at: Follower.reach.)
+            while (shown < follower.reach) {
+                val behind = follower.reach - shown
                 shown++
                 _ui.value = snapshot(_ui.value)
                 delay((REVEAL_MS / behind).coerceIn(25L, 90L))
@@ -611,10 +697,13 @@ class ReciteSession(
         }
     }
 
-    /** [r] without the mistakes on words that were right once ([wasRight]). */
+    /**
+     * [r] without the mistakes on words that were right once ([wasRight]), and with the words the
+     * recitation waited at ([Follower.stumbled]): said right in the end, but not at first.
+     */
     private fun withoutRight(r: AyahResult): AyahResult {
         val start = tracker.startOf(targets.indexOfFirst { it.ref == r.ref })
-        return r.copy(mistakes = r.mistakes.filter { !wasRight[start + it] })
+        return r.copy(mistakes = (0 until r.words).filter { (it in r.mistakes && !wasRight[start + it]) || follower.stumbled[start + it] })
     }
 
     private fun snapshot(base: ReciteUi): ReciteUi {
@@ -638,8 +727,8 @@ class ReciteSession(
     companion object {
         /** The reference clip the models are tried on ([SpeechReader]), set by the app (a WAV in the assets). */
         @Volatile var referenceClip: () -> FloatArray? = { null }
-        /** Whether the reciter asked for the long vowels to be timed ([app.hfd.data.AppSettings.reciteTajweed]). */
-        @Volatile var tajweed: () -> Boolean = { false }
+        /** How mistakes are dealt with ([app.hfd.data.AppSettings.reciteLevel]). */
+        @Volatile var level: () -> ReciteLevel = { ReciteLevel.FREE }
         /** Whether the owner asked for recordings to be sent ([Diag.attach]). */
         @Volatile var recordings: () -> Boolean = { false }
         /** Whether Recite's screen listens as soon as it opens (not in the screenshot test, which has no microphone). */

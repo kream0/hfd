@@ -176,12 +176,21 @@ class Result(
     val marks: List<Mark> = emptyList(),
     /** Readings while an āya was said again, and those that had the marker in it (or just after it). */
     val againIn: Int = 0, val againAll: Int = 0,
+    /** Whole utterances that would hold up a reciter reciting freely, and those that moved nothing. */
+    val holds: Int = 0, val strays: Int = 0,
+    /** With an āya skipped by the reciter: whether the recitation waits at it (null: none skipped). */
+    val waited: Boolean? = null,
 ) {
+    /** The reciter says the text as it is (no word swapped, no āya skipped): being held up is the app's doing. */
+    val clean: Boolean get() = swapped == 0 && waited == null && !id.startsWith("owner-")
+
     private val warning get() = (if (warned > 0) "  MUFFLED WARNING $warned/$finals" else "") +
         (if (redRight > 0) "  red then right $redRight (shown $redRightShown)" else "") +
         (if (checks > 0) "  checks $checks (+$rescued)" else "") +
         (if (swapped > 0) "  SWAPPED WORDS CAUGHT $caught/$swapped" else "") +
-        (if (againAll > 0) "  SAID AGAIN: marker in it $againIn/$againAll" else "")
+        (if (againAll > 0) "  SAID AGAIN: marker in it $againIn/$againAll" else "") +
+        (if (holds > 0) "  HELD UP $holds" else "") + (if (strays > 0) "  followed nothing $strays" else "") +
+        (waited?.let { if (it) "  WAITS AT THE SKIPPED AYA" else "  WENT ON PAST THE SKIPPED AYA" } ?: "")
 
     fun line(): String {
         if (id.startsWith("owner-")) {
@@ -222,12 +231,21 @@ class Totals {
     private val marks = ArrayList<Mark>()
     private var againIn = 0
     private var againAll = 0
+    private var finals = 0
+    private var holds = 0
+    private var strays = 0
+    private var cleanFinals = 0
+    private var cleanHolds = 0
+    private var cleanStrays = 0
+    private var skips = 0
+    private var skipsWaited = 0
 
     /** Its counts ("<name> counts said ok …") and lags ("<name> lags place:lag …"), a line each. */
     fun dump(name: String): String =
         "$name counts said=$said ok=$ok wrong=$wrong missed=$missed pending=$pending cases=$cases timed=$timed " +
             "swapped=$swapped caught=$caught checks=$checks rescued=$rescued redRight=$redRight redRightShown=$redRightShown " +
-            "againIn=$againIn againAll=$againAll\n" +
+            "againIn=$againIn againAll=$againAll finals=$finals holds=$holds strays=$strays cleanFinals=$cleanFinals cleanHolds=$cleanHolds cleanStrays=$cleanStrays " +
+            "skips=$skips skipsWaited=$skipsWaited\n" +
             "$name lags " + lags.indices.joinToString(" ") { String.format(Locale.US, "%d:%.2f", places.getOrElse(it) { 1 }, lags[it]) } + "\n" +
             "$name marks " + marks.joinToString(" ") { String.format(Locale.US, "%d:%.2f:%.2f:%.2f", it.place, it.left, it.leftNext, it.reached) } + "\n"
 
@@ -241,6 +259,9 @@ class Totals {
         redRight += r.redRight; redRightShown += r.redRightShown
         marks += r.marks
         againIn += r.againIn; againAll += r.againAll
+        finals += r.finals; holds += r.holds; strays += r.strays
+        if (r.clean) { cleanFinals += r.finals; cleanHolds += r.holds; cleanStrays += r.strays }
+        if (r.waited != null) { skips++; if (r.waited) skipsWaited++ }
         cases++
     }
 
@@ -276,15 +297,17 @@ class Totals {
         val l = lags.sorted()
         fun q(f: Double) = if (l.isEmpty()) Double.NaN else l[((l.size - 1) * f).toInt()]
         return String.format(
-            Locale.US, "ALL %d cases: ok %d/%d (%.1f %%), wrong %d, missed %d, pending %d; lag p50 %.1f s, p90 %.1f s; mistakes caught %d/%d; checks %d (+%d); red then right %d (shown %d); said again: marker in it %d/%d",
+            Locale.US, "ALL %d cases: ok %d/%d (%.1f %%), wrong %d, missed %d, pending %d; lag p50 %.1f s, p90 %.1f s; mistakes caught %d/%d; checks %d (+%d); red then right %d (shown %d); said again: marker in it %d/%d; " +
+                "of %d utterances: held up %d, followed nothing %d (said as the text is: %d and %d of %d); skipped aya waited at %d/%d",
             cases, ok, said, 100.0 * ok / maxOf(1, said), wrong, missed, pending, q(0.5), q(0.9), caught, swapped, checks, rescued, redRight, redRightShown, againIn, againAll,
+            finals, holds, strays, cleanHolds, cleanStrays, cleanFinals, skipsWaited, skips,
         )
     }
 }
 
 private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val steer: Boolean = true) {
     private val targets = case.refs.map { ReciteTarget(it, Arabic.words(Assets.quran.text(it).orEmpty())) }
-    private val follower = Follower(targets, holdsEdges = HOLD_EDGE, keepsGoingBack = KEEP_BACK, steersPrevious = STEER_PREVIOUS, ayaStartTies = AYA_START_TIES, finalRules = FINAL_RULES)
+    private val follower = Follower(targets, holdsEdges = HOLD_EDGE, keepsGoingBack = KEEP_BACK, steersPrevious = STEER_PREVIOUS, ayaStartTies = AYA_START_TIES, finalRules = FINAL_RULES, skip = SKIP)
     private val tracker = follower.tracker
     private val n = tracker.size
     private val shownAt = DoubleArray(n) { Double.NaN }
@@ -315,6 +338,13 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private var checking: Triple<Follower.Check, String, Double>? = null
     private var checks = 0
     private var rescued = 0
+    /**
+     * Whole utterances that would hold up a reciter reciting freely (a word left wrong or missed
+     * after the check at the free tolerance: the recitation waits there, ReciteLevel.FREE), and
+     * those that said something and moved nothing (the recitation waits where it is).
+     */
+    private var holds = 0
+    private var strays = 0
     private var decodeNanos = 0L
     private val readings = StringBuilder()
 
@@ -366,7 +396,12 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private fun step(t: Double) {
         checking?.let { (c, text, at) ->
             if (t < at) return
-            val right = Follower.Check.costs(text)?.let { follower.checked(c, it, CHECK_TOLERANCE) } ?: 0
+            val costs = Follower.Check.costs(text)
+            val right = costs?.let { follower.checked(c, it, CHECK_TOLERANCE) } ?: 0
+            // (Held to the text to its end, and each mistake within the free tolerance: not held up.)
+            val free = costs != null && costs.size == c.opening + c.to - c.from && costs.none { it >= Follower.CHECK_FAILED } &&
+                c.words.all { costs[c.opening + it - c.from] <= Follower.CHECK_TOLERANCE_FREE }
+            if (!free) holds++
             checks++
             rescued += right
             readings.append(String.format(Locale.US, "      %6.1f s  #%d check   %d of %d right: %s\n", at, c.id, right, c.words.size, text.replace('\t', ' ')))
@@ -384,10 +419,12 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                     }
                 }
                 if (u.final && muffledWarning.heard(Clarity.isMuffled(u.pcm), u.seconds, moved)) warned++
+                if (u.final && moved == 0 && follower.voice == null && !tracker.done && Arabic.skeleton(text).length >= 6) strays++
                 readings.append(String.format(Locale.US, "      %6.1f s  #%d %s %4.1f s: %s\n", at, u.id, if (u.final) "final  " else "partial", u.seconds, text))
                 inFlight = null
                 // As the app: a whole utterance's mistakes are read again held to the text, before they show.
                 val c = if (u.final && steer && CHECK_TOLERANCE > 0) follower.toCheck(u.id) else null
+                if (c == null && u.final && follower.toCheck(u.id) != null) holds++
                 if (c != null) {
                     val again = decoder.transcribe(Clarity.prepare(u.pcm), expected = c.expected)
                     checking = Triple(c, again, at + readingTime(u.seconds))
@@ -543,6 +580,11 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             redRight, redRightShown,
             markerTimes,
             againIn, againAll,
+            holds, strays,
+            // An āya the reciter skipped: the recitation is still at its first word, nothing marked after.
+            waited = targets.indices.firstOrNull { a -> a < lastRecited && targets[a].ref !in case.spans && !case.owner }?.let { a ->
+                tracker.position == tracker.startOf(a) && (tracker.position until n).all { tracker.status[it] == WordStatus.PENDING }
+            },
         )
     }
 
@@ -550,6 +592,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         const val RATE = Segmenter.RATE.toDouble()
         /** Checking mistakes (Follower.Check) with this tolerance (nats); 0: not (HFD_CHECK_TOLERANCE). */
         val CHECK_TOLERANCE = System.getenv("HFD_CHECK_TOLERANCE")?.toFloatOrNull() ?: Follower.CHECK_TOLERANCE
+        /** Words in a row a reading may pass over (Tracker): the app's, the recitation waits; HFD_SKIP_WORDS=40: it went on past a skipped āya (2.8.0). */
+        val SKIP = System.getenv("HFD_SKIP_WORDS")?.toIntOrNull() ?: Tracker.WAIT_WORDS
         /** The phone's time per reading relative to the app's model (a bigger model: HFD_PHONE_FACTOR). */
         val PHONE_FACTOR = System.getenv("HFD_PHONE_FACTOR")?.toDoubleOrNull() ?: 1.0
         /** Partial readings' unfinished last words wait (Follower.holdEdge); HFD_HOLD_EDGE=0: not (1.15.3). */

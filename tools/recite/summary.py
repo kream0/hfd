@@ -50,7 +50,10 @@ for config, dirs in configs.items():
               f"missed {c['missed']}, pending {c['pending']}; lag p50 {quantile(l, .5):.1f} s, p90 {quantile(l, .9):.1f} s; "
               f"mistakes caught {c['caught']}/{c['swapped']}; checks {c['checks']} (+{c['rescued']}); "
               f"red then right {c['redRight']} (shown {c['redRightShown']}); "
-              f"said again: marker in it {c['againIn']}/{c['againAll']}")
+              f"said again: marker in it {c['againIn']}/{c['againAll']}; "
+              f"of {c['finals']} utterances: held up {c['holds']}, followed nothing {c['strays']} "
+              f"(said as the text is: {c['cleanHolds']} and {c['cleanStrays']} of {c['cleanFinals']}); "
+              f"skipped aya waited at {c['skipsWaited']}/{c['skips']}")
     by = collections.defaultdict(list)
     for p, v in lags["all"]:
         by[p].append(v)
