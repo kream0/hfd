@@ -354,6 +354,12 @@ class ReciteSession(
         Diag.log("recite.elsewhere", "id" to id, "text" to text, "from" to here.key, "found" to found?.ref?.key, "word" to found?.word, "score" to found?.score)
         found ?: return
         astray = null
+        // (Words of the text around the marker, said with a mistake or out of order, are not
+        // elsewhere: the reciter is told to take it up again at the marker, no more.)
+        if (a.id(found.ref.sura) == t.id) {
+            val at = targets.indexOfFirst { it.ref == found.ref }.takeIf { it >= 0 }?.let { tracker.startOf(it) + found.word }
+            if (at != null && at in tracker.position - NEAR_BEFORE..tracker.position + NEAR_AFTER) return
+        }
         propose(found to id)
     }
 
@@ -750,6 +756,9 @@ class ReciteSession(
         /** Letters an utterance must say to count as a phrase that followed nothing, and how many such in a row. */
         private const val STRAY_LETTERS = 6
         private const val STRAYS_LOST = 2
+        /** Words before and after the marker that are not another place to offer ([elsewhere]). */
+        private const val NEAR_BEFORE = 20
+        private const val NEAR_AFTER = 40
         /** Places listed while none stands out, at most. */
         private const val MAX_PLACES = 5
         private const val SURAS = 114
