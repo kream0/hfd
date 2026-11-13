@@ -214,6 +214,20 @@ class ReciteSession(
     private val muffledWarning = MuffledWarning()
     /** Whole utterances in a row that said something and followed nothing ([ReciteUi.lost]). */
     private var strays = 0
+    /** The utterance being followed, and where the recitation stood at its first reading ([moved]). */
+    private var utterance = -1
+    private var utteranceFrom = 0
+    /** The word the recitation waits at ([ReciteUi.waiting]); −1: none. */
+    private var waitingAt = -1
+    /**
+     * Whether the place found by what was said ([locate]) has been borne out: the reciter went on
+     * from there for [CONFIRM_WORDS] words. Until then it is a guess, and one that isn't followed
+     * is left for the place said next ([elsewhere]): a wrong first place must not hold the
+     * recitation (the owner, 13 Nov: put in an-Naḥl by the isti'ādha, then held there while
+     * reciting al-Baqara). Once borne out, another place is only offered.
+     */
+    private var borneOut = true
+    private var followedSince = 0
     private val startedAt = System.currentTimeMillis()
     private var reveal: Job? = null
     /** The sound of the whole utterance just read, as the recogniser was given it (its check and its timing listen to the same). */
@@ -289,28 +303,59 @@ class ReciteSession(
                         val warn = muffledWarning.heard(muffled, u.seconds, moved, symbols, sure)
                         Diag.log("recite.voice", "id" to u.id, "seconds" to u.seconds, "symbols" to symbols, "sure" to sure, "muffled" to muffled, "moved" to moved, "warn" to warn)
                         if (warn != _ui.value.muffled) _ui.value = _ui.value.copy(muffled = warn)
-                        // Words heard, and neither the text from the marker nor words before it
-                        // (the marker would be on those): twice in a row, the reciter is told.
-                        // (The isti'ādha or the basmala before the text is no stray phrase.)
-                        val said = text != null && Arabic.skeleton(follower.withoutOpening(text)).length >= STRAY_LETTERS
-                        if (moved != 0 || follower.voice != null || tracker.done) {
-                            strays = 0
-                            astray = null
-                            propose(null)
-                        } else if (said) {
-                            // Maybe another place of the Qur'an: it is offered, the recitation stays.
-                            strays++
-                            if (text != null) elsewhere(u.id, text)
-                        }
-                        val lost = strays >= STRAYS_LOST
-                        if (lost != _ui.value.lost) {
-                            if (lost) Diag.log("recite.lost", "position" to tracker.position)
-                            _ui.value = _ui.value.copy(lost = lost)
-                        }
+                        afterWhole(u.id, text, moved)
                     }
                 }
             }
         }
+    }
+
+    /**
+     * A whole utterance is read and followed ([moved] words from where it began). Words heard,
+     * and neither the text from the marker nor words before it (the marker would be on those):
+     * twice in a row, the reciter is told; and what was said is looked for elsewhere.
+     */
+    private fun afterWhole(id: Int, text: String?, moved: Int) {
+        // (The isti'ādha or the basmala before the text is no stray phrase.)
+        val said = text != null && Arabic.skeleton(follower.withoutOpening(text)).length >= STRAY_LETTERS
+        if (!borneOut && moved > 0 && id != foundBy) {
+            followedSince += moved
+            if (followedSince >= CONFIRM_WORDS) borneOut = true
+        }
+        if (moved != 0 || follower.voice != null || tracker.done) {
+            strays = 0
+            astray = null
+            propose(null)
+        } else if (said) {
+            // Maybe another place of the Qur'an: offered, or taken while the place is still a guess.
+            strays++
+            if (text != null) elsewhere(id, text)
+        }
+        val lost = strays >= STRAYS_LOST
+        if (lost != _ui.value.lost) {
+            if (lost) Diag.log("recite.lost", "position" to tracker.position)
+            _ui.value = _ui.value.copy(lost = lost)
+        }
+    }
+
+    /**
+     * One utterance as the recogniser gives it, reading after reading, the last one whole, and
+     * what follows a whole utterance (the screenshot test: no microphone; [onHeard] for one read once).
+     */
+    fun heardAs(vararg readings: String) {
+        val id = ++lastId
+        var moved = 0
+        var last: String? = null
+        for ((i, r) in readings.withIndex()) {
+            val final = i == readings.lastIndex
+            val reading = if (placed) (if (id == foundBy) locator?.phrase(r) ?: r else r) else locate(id, r, final) ?: continue
+            moved = onHeard(id, reading, final)
+            last = r
+        }
+        if (placed) afterWhole(id, last ?: readings.last(), moved)
+        reveal?.cancel()
+        shown = follower.reach
+        _ui.value = snapshot(_ui.value)
     }
 
     private fun offer(u: Utterance) {
@@ -340,6 +385,8 @@ class ReciteSession(
         }
         place(found.ref, found.word)
         foundBy = id
+        borneOut = false
+        followedSince = 0
         return found.phrase
     }
 
@@ -354,7 +401,8 @@ class ReciteSession(
         val a = anywhere ?: return
         if (!placed) return
         val here = targets[tracker.locate(tracker.position.coerceAtMost(tracker.size - 1)).first].ref
-        val l = astray ?: Locator(a.search, here, Locator.MIN_LETTERS_ELSEWHERE).also { astray = it }
+        // (A place that was only a guess says nothing of where the reciter is likely to be.)
+        val l = astray ?: Locator(a.search, if (borneOut) here else a.near, Locator.MIN_LETTERS_ELSEWHERE).also { astray = it }
         val found = l.heard(text, final = true)
         Diag.log("recite.elsewhere", "id" to id, "text" to text, "from" to here.key, "found" to found?.ref?.key, "word" to found?.word, "score" to found?.score)
         found ?: return
@@ -366,6 +414,12 @@ class ReciteSession(
             if (at != null && at in tracker.position - NEAR_BEFORE..tracker.position + NEAR_AFTER) return
         }
         propose(found to id)
+        // (The place followed until now was only a guess: this one is taken in its stead.)
+        if (!borneOut) {
+            goElsewhere()
+            strays = 0
+            if (_ui.value.lost) _ui.value = _ui.value.copy(lost = false)
+        }
     }
 
     private fun propose(place: Pair<Locator.Found, Int>?) {
@@ -377,7 +431,9 @@ class ReciteSession(
     fun goElsewhere() {
         val (found, id) = offered ?: return
         propose(null)
-        Diag.log("recite.moved", "to" to found.ref.key, "word" to found.word)
+        Diag.log("recite.moved", "to" to found.ref.key, "word" to found.word, "asked" to borneOut)
+        // (Asked for: the reciter knows where they are. Else it is another guess.)
+        followedSince = 0
         // (In the same sūra the words said are marked as they were heard; in another, that
         // sūra's follower takes the utterance as its first.)
         if (place(found.ref, found.word)) tracker.feed(found.phrase) else follower.heard(id, found.phrase, true)
@@ -408,6 +464,7 @@ class ReciteSession(
         t.origin = if (same) minOf(t.origin, at) else at
         strays = 0
         offered = null
+        waitingAt = -1
         Diag.log("recite.placed", "ref" to ref.key, "word" to word, "sura" to t.id, "same" to same)
         _ui.value = snapshot(
             if (same) _ui.value.copy(candidates = emptyList(), lost = false, waiting = false, elsewhere = null)
@@ -419,6 +476,7 @@ class ReciteSession(
     /** One of the places listed while none stood out ([ReciteUi.candidates]), chosen by the reciter. */
     fun choose(hit: QuranSearch.Recited) {
         place(hit.ref, hit.word)
+        borneOut = true
         locator = null
     }
 
@@ -509,6 +567,7 @@ class ReciteSession(
         queue.removeAll { it.id <= lastId }
         _ui.value = _ui.value.copy(pending = (_ui.value.pending - dropped).coerceAtLeast(0))
         strays = 0
+        waitingAt = -1
         propose(null)
         _ui.value = _ui.value.copy(lost = false, waiting = false)
         // The hinted word shows at once.
@@ -527,25 +586,33 @@ class ReciteSession(
 
     /** A reading of utterance [id]: partial ones move the text on, the final one stays. */
     private fun onHeard(id: Int, text: String, final: Boolean): Int {
-        val from = tracker.position
         follow(id, text, final)
-        settle(id, final, from)
+        settle(id, final)
         afterProgress(text.ifBlank { null }, final)
-        return tracker.position - from
+        return moved(id)
     }
 
     /**
      * A whole utterance is read (and checked): reciting freely, the recitation goes back to the
      * first word it left wrong or missed and waits there ([Follower.settle]).
      */
-    private fun settle(id: Int, final: Boolean, from: Int) {
+    private fun settle(id: Int, final: Boolean) {
         val at = if (final) follower.settle(id) else null
         if (at != null) Diag.log("recite.wait", "id" to id, "word" to at, "ref" to targets[tracker.locate(at).first].ref.key, "edge" to follower.atEdge)
         // Waiting until the recitation moves again (on, or back). (Not for the words an utterance
         // ends on: a pause inside a phrase; they are only not said yet.)
-        val waiting = (at != null && !follower.atEdge) || (_ui.value.waiting && tracker.position == from)
+        if (at != null && !follower.atEdge) waitingAt = at else if (tracker.position != waitingAt) waitingAt = -1
+        val waiting = waitingAt >= 0
         if (waiting != _ui.value.waiting) _ui.value = _ui.value.copy(waiting = waiting)
     }
+
+    /**
+     * How far utterance [id] has taken the recitation, from where its first reading found it
+     * (not from its reading before: by the whole one, the partial ones have said nearly all of it,
+     * and 2.9.0 counted every utterance as having followed nothing: "I've lost you" while the
+     * text followed, the owner's session of 13 Nov).
+     */
+    private fun moved(id: Int): Int = if (id == utterance) tracker.position - utteranceFrom else 0
 
     /**
      * The same, from the recogniser: the mistakes a whole utterance ([check]) leaves are checked
@@ -554,7 +621,6 @@ class ReciteSession(
      * 10 Oct): most of the owner's mistakes were the model's.
      */
     private suspend fun onHeard(id: Int, text: String, final: Boolean, check: Utterance?): Int {
-        val from = tracker.position
         val level = level()
         follow(id, text, final)
         val sound = if (check != null) prepared ?: Clarity.prepare(check.pcm) else null
@@ -579,9 +645,9 @@ class ReciteSession(
                 Diag.log("recite.tajweedError", "id" to id, "error" to (e.message ?: e.javaClass.simpleName))
             }
         }
-        settle(id, final, from)
+        settle(id, final)
         afterProgress(text.ifBlank { null }, final)
-        return tracker.position - from
+        return moved(id)
     }
 
     /**
@@ -640,6 +706,10 @@ class ReciteSession(
 
     private fun follow(id: Int, text: String, final: Boolean): Int {
         val before = tracker.position
+        if (id != utterance) {
+            utterance = id
+            utteranceFrom = before
+        }
         // (Not on Whisper's readings: free, its mistakes are just not lit, and the recitation goes on.)
         follower.waits = level() == ReciteLevel.FREE && !speech.rough
         val moved = follower.heard(id, text, final)
@@ -767,6 +837,8 @@ class ReciteSession(
         /** Letters an utterance must say to count as a phrase that followed nothing, and how many such in a row. */
         private const val STRAY_LETTERS = 6
         private const val STRAYS_LOST = 2
+        /** Words the reciter goes on for from a place found, for it to be theirs ([borneOut]). */
+        private const val CONFIRM_WORDS = 4
         /** Words before and after the marker that are not another place to offer ([elsewhere]). */
         private const val NEAR_BEFORE = 20
         private const val NEAR_AFTER = 40

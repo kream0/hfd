@@ -558,6 +558,31 @@
   pending 116 against 2.8.0's 30, 17, 52; swaps 4/5): where it mishears more than three words in
   a row the recitation now waits and a recording doesn't take them up again; 19 of its utterances
   said as the text is would hold a free reciter up, which is why free doesn't wait on its readings.
+- 2.9.1, from the owner's first session on 2.9.0 (13 Nov, read in the diagnostics; "beginning
+  with the isti'ādha and the basmala the search puts me in a place, and al-Baqara recited after
+  it is not followed"):
+  - `Locator` knew the two formulas letter for letter only. The recogniser has only learnt the
+    Qur'an's text, where the isti'ādha is not: it wrote the owner's «أَعَوذُ بِٱللَِّ مِنَ ٱلشَّيْطَـٰنِ ٱلرَّجِيمِ»
+    (a letter missing) and EveryAyah's `audhubillah.mp3` «بِسْأَعُوذُ بِٱلللَّهِ…» (with the «بس» it
+    begins a sūra with), which then read as an-Naḥl 98's end (`found=16:98 word=4 score=1.0`).
+    Now by letters (`attempt`'s `begins` / `starts`: a quarter of the letters may differ; the
+    basmala too). `LocatorTest.theIstiadhaAsTheRecogniserWritesItIsNotAPlace`; both location
+    benches unchanged on their cached readings (392/400 and 56/58, none wrong).
+  - A place found by what was said is a guess until the reciter goes on from it
+    (`ReciteSession.borneOut`: `CONFIRM_WORDS` 4 words followed by later utterances): until then
+    a whole utterance found elsewhere takes its place by itself (`elsewhere` → `goElsewhere`); once
+    borne out it is only offered, as 2.9.0 did from the first word (which held the owner in
+    an-Naḥl). A place asked for (`Anywhere.start`, `choose`, a passage) is borne out from the start.
+  - **2.9.0 said "I've lost you" while the text followed**: `onHeard` returned the words the
+    whole reading added to the partial ones (none) where `Follower.heard` gave those from the
+    utterance's start, so every utterance counted as a stray phrase (`recite.voice moved=0`
+    throughout, `recite.lost position=8` in a passage followed to word 87). `moved(id)` is from
+    where the utterance's first reading found the recitation. Not seen before the release: the
+    bench uses `Follower.heard`'s own count, the screenshot test only whole utterances. Now
+    `ReciteSession.heardAs(readings…)` gives an utterance as the recogniser does (partial
+    readings, then whole, then `afterWhole`: strays, lost, elsewhere), and `ScreenshotTest`
+    checks: followed is not lost, two phrases of something else are, the owner's isti'ādha is no
+    place, a guess is left for what is said next, a place borne out is not.
 - The bench (`ReciteBench`): `HFD_SKIP_WORDS`; per case and in the totals "held up" (whole
   utterances that would hold a free reciter: a mistake left after the check at the free
   tolerance), "followed nothing", both also for the recitations said as the text is (there,

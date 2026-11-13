@@ -291,6 +291,35 @@ class ScreenshotTest {
             // (112:3's third word, وَلَمْ.)
             org.junit.Assert.assertEquals(2 to 2, r.next)
         }
+        // As the recogniser gives it: each utterance read again and again as it grows, then whole.
+        // Followed, it is not "lost" (2.9.0 said so after two utterances: it counted the words
+        // the whole reading added to the partial ones, none); two phrases of something else are.
+        ui {
+            Graph.closeRecite()
+            vm.flow = null
+        }
+        ui {
+            vm.recite(content.fadila("ikhlas")!!)
+            Graph.recite.value!!.run {
+                heardAs("قل", "قل هو الله", "قل هو الله أحد")
+                heardAs("الله", "الله الصمد", "الله الصمد")
+                heardAs("لم يلد", "لم يلد ولم يولد", "لم يلد ولم يولد")
+            }
+        }
+        Graph.recite.value!!.ui.value.let { r ->
+            org.junit.Assert.assertFalse(r.lost)
+            org.junit.Assert.assertFalse(r.waiting)
+            org.junit.Assert.assertEquals(3 to 0, r.next)
+        }
+        ui { Graph.recite.value!!.run { heardAs("إنا أعطيناك الكوثر"); heardAs("فصل لربك وانحر") } }
+        org.junit.Assert.assertTrue(Graph.recite.value!!.ui.value.lost)
+        ui { Graph.recite.value!!.heardAs("ولم يكن", "ولم يكن له كفوا أحد") }
+        org.junit.Assert.assertFalse(Graph.recite.value!!.ui.value.lost)
+        ui {
+            Graph.closeRecite()
+            vm.flow = null
+        }
+        reciteIkhlas()
         // Listening: the button alive with the voice, and the notice in its line (nothing covers the text).
         ui { Graph.recite.value!!.previewListening(level = 0.75f, waiting = true) }
         both("recite-listening")
@@ -378,6 +407,36 @@ class ScreenshotTest {
         Graph.recite.value!!.ui.value.let { u ->
             org.junit.Assert.assertFalse(u.locating)
             org.junit.Assert.assertEquals(app.hfd.core.quran.AyahRef(18, 14), u.targets[u.next!!.first].ref)
+        }
+        ui {
+            Graph.closeRecite()
+            vm.flow = null
+        }
+        // Begun with the isti'ādha and the basmala, as the recogniser wrote the owner's (13 Nov):
+        // they are no place (2.9.0 went to an-Naḥl 98 on them); al-Baqara after them is.
+        ui { vm.reciteAnywhere() }
+        ui { Graph.recite.value!!.heardAs("أَعَوذُ بِٱللَِّ", "أَعَوذُ بِٱللَِّ مِنَ ٱلشَّيْطَـٰنِ ٱلرَّجِيمِ") }
+        org.junit.Assert.assertTrue(Graph.recite.value!!.ui.value.locating)
+        ui { Graph.recite.value!!.heardAs("بِسْنللَهٱلرَّحيممِِ ذَٰلِكَ ٱلْكِتَـٰبُ لَا رَيْبَ فِيهِ هُدًى لِّلْمُتَّقِينَ") }
+        Graph.recite.value!!.ui.value.let { u ->
+            org.junit.Assert.assertEquals("sura:2", u.id)
+            org.junit.Assert.assertEquals(app.hfd.core.quran.AyahRef(2, 3), u.targets[u.next!!.first].ref)
+        }
+        // A place found is a guess until the reciter goes on from it: another passage said
+        // instead takes its place by itself.
+        ui { Graph.recite.value!!.heardAs(content.text(app.hfd.core.quran.AyahRef(18, 13))) }
+        Graph.recite.value!!.ui.value.let { u ->
+            org.junit.Assert.assertEquals("sura:18", u.id)
+            org.junit.Assert.assertEquals(app.hfd.core.quran.AyahRef(18, 14), u.targets[u.next!!.first].ref)
+            org.junit.Assert.assertNull(u.elsewhere)
+        }
+        // Gone on from: it is theirs. Another passage is then only offered, the recitation stays.
+        ui { Graph.recite.value!!.heardAs(content.text(app.hfd.core.quran.AyahRef(18, 14))) }
+        ui { Graph.recite.value!!.heardAs(content.text(app.hfd.core.quran.AyahRef(36, 12))) }
+        Graph.recite.value!!.ui.value.let { u ->
+            org.junit.Assert.assertEquals("sura:18", u.id)
+            org.junit.Assert.assertEquals(app.hfd.core.quran.AyahRef(18, 15), u.targets[u.next!!.first].ref)
+            org.junit.Assert.assertEquals(app.hfd.core.quran.AyahRef(36, 12), u.elsewhere)
         }
         ui {
             Graph.closeRecite()

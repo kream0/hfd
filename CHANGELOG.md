@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.9.1
+Fixed: beginning with "aʿūdhu billāh…" and the basmala no longer sends the recitation to a wrong place, and "I've lost you" no longer shows while the text is following.
+- **The isti'ādha and the basmala are no longer taken for a passage.** Said before reciting, the isti'ādha could be heard a letter off and read as the end of a verse of an-Naḥl (16:98): the app went there, and what you recited next (al-Baqara, say) was not followed. They are now recognised as they are heard, not only letter for letter.
+- **A first place is a guess until you go on from it.** If the app does place you somewhere and you recite something else instead, it now goes there by itself. Once you have gone on for a few words where it placed you, it stays with you as in 2.9.0, and another passage is only offered.
+- **Fixed: "I've lost you: take it up again at the marked word" shown for nothing.** In 2.9.0 it came up after two phrases even when every word was followed (it counted the words wrongly). It now shows only when two phrases in a row really follow nothing.
+
 ## 2.9.0
 Reciting waits for you: after a mistake the text stays at the word you left, instead of jumping further on and turning what lies between red. And you choose what a mistake does: Free, Strict or Tajwīd.
 - **It waits where you are.** Reciting in the Qur'an, a mistake followed by words that also appear a few verses later sent the text there, marked everything in between as missed, then came back when you said the right thing. Now the recitation never leaves you: what isn't the text from the marked word moves nothing, and a line says "Take it up again at the marked word". It goes on as soon as you say that word. Saying a verse again still takes you back to it, as before.

@@ -140,4 +140,40 @@ class LocatorTest {
         // The utterance's later readings are read as the one that found it.
         assertTrue(l.phrase("ٱللَّهُ لَآ إِلَـٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ لَا تَأْخُذُهُۥ سِنَةٌ وَلَا نَوْمٌ").endsWith("نَوْمٌ"))
     }
+
+    /** Each reading in turn ("…" ends one still being said), until a place is found. */
+    private fun follow(l: Locator, vararg readings: String): Locator.Found? {
+        for (r in readings) l.heard(r.removeSuffix("…"), final = !r.endsWith("…"))?.let { return it }
+        return null
+    }
+
+    @Test
+    fun theIstiadhaAsTheRecogniserWritesItIsNotAPlace() {
+        // (The owner, 13 Nov: beginning with the isti'ādha and the basmala put the recitation
+        // somewhere, and al-Baqara recited after them was not followed. The recogniser has only
+        // learnt the Qur'an's text, where the isti'ādha is not: it writes it with the «بس» it
+        // begins a sūra with, or a letter off; EveryAyah's audhubillah.mp3 of four reciters.)
+        val written = listOf(
+            "بِسأَعَُوذُ بِٱلَّهلِ…", "بِسْسْأَعُوذُ بِٱلللَّهِ مِنَ ٱلشَّيْطَانِ…", "بِسْأَعُوذُ بِٱلللَّهِ مِنَ ٱلشَّيْطَـٰنِ ٱلرَّجِيمِ…",
+            "بِسْأَعُوذُ بِٱلللَّهِ مِنَ ٱلشَّيْطَـٰنِ ٱلرَّجِيمِ…", "بِسْأَعُوذُ بِٱلللَّهِ مِنَ ٱلشَّيْطَـٰنِ ٱلرَّجِيمِ",
+        )
+        assertNull(follow(Locator(search), *written.toTypedArray()))
+        assertNull(follow(Locator(search), "بأَعُوذُ  ِٱللَّهَِ مِن لشَْرِ…", "بأَعُوذُ  ِٱللَّهَِ مِن لشَْرِ…", "أَعَُوذُ بِٱللَّهِ مِنَ ٱلشَّيْطَـٰنِ ٱلرَّجِيمِ"))
+        // Then the basmala, a letter off too; then al-Baqara, its letters written as they are.
+        val l = Locator(search)
+        assertNull(follow(l, *written.toTypedArray()))
+        assertNull(follow(l, "بِسْمِ ٱللَّهِ…", "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ…", "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِمِ"))
+        assertEquals(AyahRef(2, 1) to 0, at(follow(l, "بِسٱللَّمٓ ذَٰلِكَ ٱلْكِتَـٰبُ لَا رَيْبَ فِيهِ هُدًى لِّلْمُتَّقِينَ")))
+        // All in one breath, before a passage inside a sūra.
+        assertEquals(
+            AyahRef(2, 255) to 0,
+            at(follow(Locator(search), "بِسْأَعُوذُ بِٱلللَّهِ مِنَ ٱلشَّيْطَـٰنِ ٱلرَّجِيمِ بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ ٱللَّهُ لَآ إِلَـٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ لَا تَأْخُذُهُۥ سِنَةٌ وَلَا نَوْمٌ")),
+        )
+        // The owner's own, 13 Nov (2.9.0 put it in an-Naḥl 98, at «مِنَ ٱلشَّيْطَٰنِ ٱلرَّجِيمِ»).
+        val owner = Locator(search)
+        assertNull(follow(owner, "ِ", "أَعَوذُ بِٱللَِّ مِنَ ٱلشَّيْطَـٰنِ ٱلرَّجِيمِ"))
+        assertEquals(AyahRef(2, 1) to 0, at(follow(owner, "بِسْنللَهٱلرَّحيممِِ ذَٰلِكَ ٱلْكِتَـٰبُ لَا رَيْبَ فِيهِ هُدًى لِّلْمُتَّقِينَ")))
+        // The verse that tells to say it is still found, from its own beginning.
+        assertEquals(AyahRef(16, 98) to 0, at(follow(Locator(search), "فَإِذَا قَرَأْتَ ٱلْقُرْءَانَ فَٱسْتَعِذْ بِٱللَّهِ مِنَ ٱلشَّيْطَـٰنِ ٱلرَّجِيمِ")))
+    }
 }

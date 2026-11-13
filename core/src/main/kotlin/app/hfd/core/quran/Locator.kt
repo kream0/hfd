@@ -145,20 +145,36 @@ class Locator(
 
     private fun attempt(all: List<String>, final: Boolean, keepBasmala: Boolean): Attempt? {
         val skeletons = all.map { Arabic.skeleton(it) }
-        fun begins(p: List<String>, from: Int): Boolean {
-            val w = skeletons.drop(from)
-            return w.isNotEmpty() && w.size <= p.size && (0 until w.size - 1).all { w[it] == p[it] } && p[w.size - 1].startsWith(w.last())
+        // The isti'ādha and the basmala as they are heard, not letter for letter: the recogniser
+        // has only learnt the Qur'an's text, where the isti'ādha is not. It writes it with a
+        // letter off or with the «بس» it begins a sūra with («أَعَوذُ بِٱللَِّ مِنَ ٱلشَّيْطَـٰنِ ٱلرَّجِيمِ»,
+        // «بِسْأَعُوذُ بِٱلللَّهِ…»), which then read as the end of an-Naḥl 98 (the owner, 13 Nov:
+        // placed there by the isti'ādha, al-Baqara recited after it was not followed).
+        /** The words from [from] to the end are [formula]'s beginning, or all of it. */
+        fun begins(formula: String, from: Int): Boolean {
+            val s = skeletons.drop(from).joinToString("")
+            return s.length >= 2 && s.length <= formula.length + FORMULA_SLACK && ahead(s, formula) <= maxOf(1, s.length / 4)
         }
-        fun starts(p: List<String>, from: Int): Boolean = skeletons.size >= from + p.size && p.indices.all { skeletons[from + it] == p[it] }
+        /** How many words from [from] are [formula] said whole, with more after them; 0 if they are not. */
+        fun starts(formula: String, words: Int, from: Int): Int {
+            var best = 0
+            var least = formula.length / 4 + 1
+            for (k in maxOf(1, words - 2)..minOf(words + 1, skeletons.size - from)) {
+                val d = distance(skeletons.subList(from, from + k).joinToString(""), formula)
+                if (d < least) { least = d; best = k }
+            }
+            return best
+        }
         // Still saying the isti'ādha or the basmala: nothing of the text yet.
         if (begins(ISTIADHA, 0)) return null
-        var from = if (starts(ISTIADHA, 0)) ISTIADHA.size else 0
-        if (begins(BASMALA, from)) return null
-        val basmala = starts(BASMALA, from)
+        var from = starts(ISTIADHA, ISTIADHA_WORDS, 0)
+        if (begins(BASMALA_LETTERS, from)) return null
+        val formula = starts(BASMALA_LETTERS, BASMALA.size, from)
+        val basmala = formula > 0
         if (keepBasmala) {
             // Al-Fātiḥa, if its second āya is what follows the basmala (among the places that say it).
             if (!basmala) return null
-            val rest = all.drop(from + BASMALA.size)
+            val rest = all.drop(from + formula)
             if (letters(rest) < MIN_LETTERS_AFTER_BASMALA) return null
             val hits = text.recited(rest.joinToString(" "))
             val top = hits.firstOrNull() ?: return null
@@ -167,7 +183,7 @@ class Locator(
             val pick = QuranSearch.Recited(FATIHA, 0, second.last, second.score, second.whole + BASMALA.size)
             return Attempt(emptyList(), all.drop(from), true, hits, pick, listOf(pick))
         }
-        if (basmala) from += BASMALA.size
+        if (basmala) from += formula
         // What isn't a word of the text, at the beginning; and at the end (a word half said, or
         // heard as none: its few letters must not choose between two places).
         var first = from
@@ -192,10 +208,28 @@ class Locator(
             // found from its first word, or its first word's sound alone): the sūra's first āya.
             if (basmala && pick != null && pick.ref.sura == 1 && pick.ref.aya == 2) {
                 val whole = QuranSearch.Recited(FATIHA, 0, pick.last, pick.score, pick.whole + BASMALA.size)
-                return Attempt(emptyList(), all.drop(from - BASMALA.size), true, hits, whole, listOf(whole))
+                return Attempt(emptyList(), all.drop(from - formula), true, hits, whole, listOf(whole))
             }
             return Attempt(all.subList(from, first), phrase, false, hits, pick, close)
         }
+    }
+
+    /** Letters changed, added or left out between [a] and [b]. */
+    private fun distance(a: String, b: String): Int = edits(a, b).last()
+
+    /** The same between [a] and the beginning of [b] nearest to it. */
+    private fun ahead(a: String, b: String): Int = edits(a, b).min()
+
+    /** For each beginning of [b] (none of it, its first letter, …, all of it): the letters to change, add or leave out to make [a] of it. */
+    private fun edits(a: String, b: String): IntArray {
+        var row = IntArray(b.length + 1) { it }
+        for (i in 1..a.length) {
+            val next = IntArray(b.length + 1)
+            next[0] = i
+            for (j in 1..b.length) next[j] = minOf(row[j] + 1, next[j - 1] + 1, row[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1)
+            row = next
+        }
+        return row
     }
 
     /** The same word, or one letter from it (as heard). */
@@ -282,7 +316,11 @@ class Locator(
         private const val MAX_OPENING_WORDS = 6
         private val FATIHA = AyahRef(1, 1)
         private val FATIHA_SECOND = AyahRef(1, 2)
-        private val ISTIADHA = Arabic.words("أعوذ بالله من الشيطان الرجيم").map { Arabic.skeleton(it) }
+        private val ISTIADHA_WORDS = Arabic.words("أعوذ بالله من الشيطان الرجيم").size
+        private val ISTIADHA = Arabic.skeleton("أعوذ بالله من الشيطان الرجيم")
         private val BASMALA = Arabic.words("بسم الله الرحمن الرحيم").map { Arabic.skeleton(it) }
+        private val BASMALA_LETTERS = BASMALA.joinToString("")
+        /** Letters a formula may be heard with beyond its own, and still be it. */
+        private const val FORMULA_SLACK = 4
     }
 }
