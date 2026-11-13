@@ -235,6 +235,8 @@ class ReciteSession(
     @Volatile private var prepared: FloatArray? = null
     /** The same before it was brought to a normal level, and what a whole utterance ends on, kept for the next ([Carry]). */
     @Volatile private var heardRaw: FloatArray? = null
+    /** The sound of the reading just made (of an utterance whole or still being said), as the recogniser heard it. */
+    @Volatile private var heardSound: FloatArray? = null
     private val carry = Carry()
 
     private val _ui = MutableStateFlow(snapshot(ReciteUi(targets, emptyList(), null)))
@@ -274,6 +276,7 @@ class ReciteSession(
                         // (After what the utterance before ended on, when a pause cut a word: Carry.)
                         val raw = if (placed) carry.join(u.id, u.pcm, tracker.position) else u.pcm
                         val pcm = Clarity.prepare(raw)
+                        heardSound = pcm
                         if (u.final) {
                             prepared = pcm
                             heardRaw = raw
@@ -633,7 +636,22 @@ class ReciteSession(
      */
     private suspend fun onHeard(id: Int, text: String, final: Boolean, check: Utterance?): Int {
         val level = level()
-        follow(id, text, final)
+        // Still being said, and the recogniser can hold a text to the sound at once (the CTC one):
+        // a word not right so far is checked now, not when the reciter pauses, so that what was
+        // said after it doesn't wait for the pause to show (2.10.0: seconds late in a long phrase).
+        val now = if (!final && speech.timing) heardSound else null
+        follow(id, text, final, hold = now == null)
+        if (now != null) {
+            follower.toCheck(id, partial = true)?.let { c ->
+                val again = withContext(recognizer) { speech.reader()?.invoke(now, c.expected) }
+                val costs = again?.let(Follower.Check::costs)
+                if (costs != null) {
+                    val right = follower.checked(c, costs)
+                    Diag.log("recite.check", "id" to id, "partial" to true, "words" to c.words.joinToString(","), "right" to right, "costs" to again.substringAfterLast('\t'))
+                }
+            }
+            follower.hold(id)
+        }
         val sound = if (check != null) prepared ?: Clarity.prepare(check.pcm) else null
         if (check != null && sound != null) follower.toCheck(id)?.let { c ->
             val again = withContext(recognizer) { speech.reader()?.invoke(sound, c.expected) }
@@ -737,7 +755,7 @@ class ReciteSession(
         _ui.value = _ui.value.copy(tajweed = found.associateBy { it.word }, timed = timed, unclear = unclear)
     }
 
-    private fun follow(id: Int, text: String, final: Boolean): Int {
+    private fun follow(id: Int, text: String, final: Boolean, hold: Boolean = true): Int {
         val before = tracker.position
         if (id != utterance) {
             utterance = id
@@ -748,7 +766,7 @@ class ReciteSession(
         // readings, too rough for that: its mistakes are marked (or just not lit, free) and it goes on.
         follower.waits = !speech.rough
         tracker.strict = !speech.rough
-        val moved = follower.heard(id, text, final)
+        val moved = follower.heard(id, text, final, hold)
         Diag.log(if (final) "recite.heard" else "recite.partial", "id" to id, "text" to text, "from" to before, "to" to tracker.position, "moved" to moved, "done" to tracker.done)
         return moved
     }

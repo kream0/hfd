@@ -56,11 +56,35 @@ class Follower(
     var voice: Int? = null
         private set
 
-    /** A reading of utterance [id]; returns how far the recitation moved from before it. */
-    fun heard(id: Int, text: String, final: Boolean): Int {
+    /**
+     * Words of the utterance being followed that its check has listened to while it was still
+     * being said ([toCheck] with partial), and those it found said ([checked]): they stay right
+     * in its later readings, and the others aren't asked about again until it is whole.
+     */
+    private var tried = BooleanArray(tracker.size)
+    private var righted = BooleanArray(tracker.size)
+    /**
+     * Words a whole utterance's check refused: the recitation waited at them. They are not asked
+     * about again while the next utterance is still being said, only once it is whole (asked
+     * every time, a word that was not said ends up passing: the bench's «يُنفِقُونَ» said «يُؤْمِنُونَ»,
+     * refused at 9.9 nats on its own utterance, cost 4.3 a moment into the next one).
+     */
+    private val refused = BooleanArray(tracker.size)
+
+    /**
+     * A reading of utterance [id]; returns how far the recitation moved from before it.
+     * [hold] false: a reading of an utterance still being said doesn't yet stop at a word not
+     * right ([waits]); the caller has such words checked first ([toCheck], [checked]), then calls
+     * [hold]. (2.10.0 stopped at once and left the word for the whole utterance's check: one word
+     * read a letter off, early in a long phrase, kept everything after it dark until the reciter
+     * paused: three seconds and more on the owner's 15-second phrases, 13 Nov.)
+     */
+    fun heard(id: Int, text: String, final: Boolean, hold: Boolean = true): Int {
         if (id <= closed) return 0
         if (id != current) {
             current = id
+            tried = BooleanArray(tracker.size)
+            righted = BooleanArray(tracker.size)
             // What the utterances before recited is kept (the reciter may go back, and take it up again from there).
             tracker.remember()
             before = tracker.mark()
@@ -80,7 +104,8 @@ class Follower(
             followed = null
             wentBack = null
         }
-        if (final) {
+        // (Of every reading: one still growing is checked too, [toCheck] with partial.)
+        run {
             val all = text.split(Regex("\\s+")).filter { it.isNotBlank() }
             finalOpening = all.take(all.size - clean.split(Regex("\\s+")).count { it.isNotBlank() })
         }
@@ -123,6 +148,10 @@ class Follower(
             val kept = tracker.mark()
             if (tracker.feed(clean) == 0) tracker.reset(kept)
         }
+        // What the check found said in an earlier reading of this utterance stays right.
+        for (w in from until tracker.position) {
+            if (righted[w] && (tracker.status[w] == WordStatus.WRONG || tracker.status[w] == WordStatus.MISSED)) tracker.status[w] = WordStatus.OK
+        }
         val now = tracker.status
         val prev = previous
         stable = BooleanArray(now.size) { it >= from && prev != null && prev[it] == WordStatus.OK && now[it] == WordStatus.OK }
@@ -138,12 +167,27 @@ class Follower(
             closed = id
         } else {
             // Still speaking: the voice is on the last word heard, unless it ends on one held back.
-            var held = holdsEdges && holdEdge(from)
+            // (To be checked at once, [hold] false: only the last word it reaches may not be said whole yet.)
+            var held = holdsEdges && holdEdge(from, onlyLast = waits && !hold)
             // (Waiting: nothing shows past a word not right so far; the whole reading and its check decide.)
-            if (waits) firstBad(from)?.let { holdAt(it); held = true }
+            if (waits && hold) firstBad(from)?.let { holdAt(it); held = true }
             if (voice == null && !held && tracker.position > from) voice = tracker.position - 1
         }
         return tracker.position - from
+    }
+
+    /**
+     * After a reading of utterance [id] still being said, followed without stopping ([heard] with
+     * hold false) and checked: nothing shows past a word still not right; the whole utterance and
+     * its check decide.
+     */
+    fun hold(id: Int) {
+        if (!waits || id != current || id <= closed) return
+        val from = before?.position ?: return
+        firstBad(from)?.let {
+            holdAt(it)
+            voice = null
+        }
     }
 
     /**
@@ -152,9 +196,9 @@ class Follower(
      * readings every 0.3 s turned such words red, then white, the owner, 11 Oct). They wait, not
      * yet recited, for a reading that goes past them or the utterance's end. True if any wait.
      */
-    private fun holdEdge(from: Int): Boolean {
+    private fun holdEdge(from: Int, onlyLast: Boolean = false): Boolean {
         var edge = tracker.position
-        while (edge > from && tracker.status[edge - 1] != WordStatus.OK) edge--
+        while (edge > from && tracker.status[edge - 1] != WordStatus.OK && !(onlyLast && edge < tracker.position)) edge--
         if (edge == tracker.position) return false
         val status = tracker.status.copyOf()
         for (w in edge until tracker.position) status[w] = WordStatus.PENDING
@@ -305,6 +349,8 @@ class Follower(
          * the sound, a word that was not said still costs little one time in ten.
          */
         val unheard: Set<Int> = emptySet(),
+        /** Of an utterance still being said: asked once, and more is asked of the sound ([CHECK_PARTIAL_MARGIN]). */
+        val partial: Boolean = false,
     ) {
         /** For the recogniser. */
         val expected: String get() = "?\n$text"
@@ -316,7 +362,7 @@ class Follower(
         }
     }
 
-    /** The isti'ādha / basmala words the last final reading began with. */
+    /** The isti'ādha / basmala words the last reading began with. */
     private var finalOpening: List<String> = emptyList()
 
     /**
@@ -363,16 +409,21 @@ class Follower(
         return (finalOpening + said).joinToString(" ")
     }
 
-    /** The mistakes whole utterance [id] (just followed) left in what it covered, if any. */
-    fun toCheck(id: Int): Check? {
+    /**
+     * The mistakes whole utterance [id] (just followed) left in what it covered, if any.
+     * [partial]: the same of an utterance still being said (followed with hold false): the words
+     * not right so far, each asked about once (those it ends on are only not said yet, and wait:
+     * [holdEdge]).
+     */
+    fun toCheck(id: Int, partial: Boolean = false): Check? {
         if (id != current) return null
         val from = began() ?: return null
         val to = tracker.position
         if (to <= from) return null
-        val bad = (from until to).filter { tracker.status[it] == WordStatus.WRONG || tracker.status[it] == WordStatus.MISSED }
+        val bad = (from until to).filter { (tracker.status[it] == WordStatus.WRONG || tracker.status[it] == WordStatus.MISSED) && !(partial && (tried[it] || refused[it])) }
         if (bad.isEmpty()) return null
         val text = (finalOpening + tracker.text(from, to)).joinToString(" ")
-        return Check(id, from, to, text, bad, finalOpening.size, if (tracker.strict) bad.filter { !tracker.nearly[it] }.toSet() else emptySet())
+        return Check(id, from, to, text, bad, finalOpening.size, if (tracker.strict) bad.filter { !tracker.nearly[it] }.toSet() else emptySet(), partial)
     }
 
     /**
@@ -382,12 +433,20 @@ class Follower(
      * whose short words fit any voice: لا, إلا at 1–3 nats on the owner's 3:3, 10 Oct).
      */
     fun checked(check: Check, costs: List<Float>, tolerance: Float = CHECK_TOLERANCE): Int {
+        for (w in check.words) tried[w] = true
         if (costs.size != check.opening + check.to - check.from) return 0
         if (costs.any { it >= CHECK_FAILED }) return 0
         // A word the free reading did not hear takes more convincing ([CHECK_TOLERANCE_UNHEARD]):
         // «قل كان» said for «قُلْ مَن كَانَ» went on past «مَن» (the owner, 13 Nov).
-        val right = check.words.filter { costs[check.opening + it - check.from] <= if (it in check.unheard) minOf(tolerance, CHECK_TOLERANCE_UNHEARD) else tolerance }
-        for (w in right) tracker.status[w] = WordStatus.OK
+        // (Still being said: the word is asked about again once the utterance is whole if this
+        // refuses it, so this asks for more, or two chances would pass twice as many words not said.)
+        val margin = if (check.partial) CHECK_PARTIAL_MARGIN else 0f
+        val right = check.words.filter { costs[check.opening + it - check.from] <= (if (it in check.unheard) minOf(tolerance, CHECK_TOLERANCE_UNHEARD) else tolerance) - margin }
+        if (!check.partial) for (w in check.words) refused[w] = w !in right
+        for (w in right) {
+            tracker.status[w] = WordStatus.OK
+            righted[w] = true
+        }
         return right.size
     }
 
@@ -455,6 +514,8 @@ class Follower(
          * nats), 6.8 and more for the rest (cut by a pause, or not heard at all).
          */
         const val CHECK_TOLERANCE_UNHEARD = 5f * 3f / 7f
+        /** What a check made while the utterance is still being said asks for more: a nat (6 for 7, 4 for 5). */
+        const val CHECK_PARTIAL_MARGIN = 3f / 7f
         /** A word's cost when the reading couldn't be held to the text there (bias.h HFD_CHECK_FAIL). */
         const val CHECK_FAILED = 99f
         /** Words before the utterance's start it may begin with (said again). */

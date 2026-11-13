@@ -363,6 +363,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private var wholeEnd = 0.0
     private var keptAt = 0.0
     private var carried = 0
+    /** The sound of the reading in flight (a word not right is checked on it at once). */
+    private var flightSound: FloatArray? = null
     private var checks = 0
     private var rescued = 0
     /**
@@ -527,7 +529,21 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         }
         inFlight?.let { (u, text, at) ->
             if (t >= at) {
-                val moved = follower.heard(u.id, text, u.final)
+                // As the app: a word not right in an utterance still being said is checked at once (the
+                // same sound: the recogniser has it), before anything waits for it.
+                val now = flightSound.takeIf { PARTIAL_CHECK && !u.final && steer && CHECK_TOLERANCE > 0 }
+                val moved = follower.heard(u.id, text, u.final, hold = now == null)
+                if (now != null) {
+                    follower.toCheck(u.id, partial = true)?.let { c ->
+                        val again = decoder.transcribe(now, expected = c.expected)
+                        val costs = Follower.Check.costs(again)
+                        val right = costs?.let { follower.checked(c, it, CHECK_TOLERANCE) } ?: 0
+                        checks++
+                        rescued += right
+                        readings.append(String.format(Locale.US, "      %6.1f s  #%d check   %d of %d right, still speaking: %s\n", at, u.id, right, c.words.size, again.substringAfterLast('\t')))
+                    }
+                    follower.hold(u.id)
+                }
                 // As the app: an utterance the readings stall in is ended at its pause (Stall).
                 stall.heard(u, tracker.position)?.let { sample ->
                     segmenter?.splitAt(u.id, sample)?.let { split ->
@@ -559,7 +575,9 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             if (resumed.add(u.id)) resume(u)
             if (u.final) finals++ else partials++
             val started = System.nanoTime()
-            val text = decoder.transcribe(sound(u), expected = if (steer) follower.expected(u.id) else "")
+            val heard = sound(u)
+            flightSound = heard
+            val text = decoder.transcribe(heard, expected = if (steer) follower.expected(u.id) else "")
             inFlightSure = decoder.sure
             decodeNanos += System.nanoTime() - started
             inFlight = Triple(u, text, t + readingTime(u.seconds))
@@ -723,6 +741,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         val STRICT = System.getenv("HFD_STRICT")?.let { it == "1" } ?: !System.getenv("HFD_CTC").isNullOrBlank()
         /** What an utterance ends on after its last word read right goes before the next one's sound (Carry): the app's when letter for letter; HFD_CARRY=0: not. */
         val CARRY = STRICT && System.getenv("HFD_CARRY") != "0"
+        /** A word not right in an utterance still being said is checked at once (Follower.toCheck partial): the app's when letter for letter; HFD_PARTIAL_CHECK=0: only once whole (2.10.0). */
+        val PARTIAL_CHECK = STRICT && System.getenv("HFD_PARTIAL_CHECK") != "0"
         /** How long before a word's beginning an utterance that begins with it may begin (the segmenter keeps a little of the silence before). */
         const val RESUME_SLACK = 0.35
         /** The phone's time per reading relative to the app's model (a bigger model: HFD_PHONE_FACTOR). */

@@ -264,4 +264,52 @@ class FollowerWaitTest {
         rough.heard(0, said.joinToString(" "), final = true)
         assertEquals(WordStatus.OK, rough.tracker.status[words.lastIndex])
     }
+
+    @Test
+    fun aWordReadALetterOffDoesNotHoldBackTheRestOfThePhrase() {
+        // (The owner on 2.10.0, 13 Nov: ten words said, shown three seconds later. One word read
+        // a letter off early in a long phrase kept everything after it dark until the pause.)
+        val words = aya(1)
+        val off = words.toMutableList().also { it[1] = it[1].dropLast(2) + "م" }
+        for (free in listOf(true, false)) {
+            val f = strict(kahf, free).also { it.waits = true }
+            // As the phrase grows, the second word a letter off in every reading.
+            f.heard(0, off.take(3).joinToString(" "), final = false, hold = false)
+            // Not at the phrase's edge any more: asked about at once, and the sound holds it.
+            val check = f.toCheck(0, partial = true)!!
+            assertEquals(listOf(1), check.words)
+            assertEquals(1, f.checked(check, List(check.to - check.from) { if (it == 1) 1.5f else 0f }))
+            f.hold(0)
+            assertEquals(3, f.tracker.position)
+            // The next readings go on past it, without asking again.
+            for (n in 4..7) {
+                f.heard(0, off.take(n).joinToString(" "), final = false, hold = false)
+                assertNull(f.toCheck(0, partial = true))
+                f.hold(0)
+                assertEquals(n, f.tracker.position)
+            }
+            f.heard(0, off.take(8).joinToString(" "), final = true)
+            assertNull(f.toCheck(0))
+            assertNull(f.settle(0))
+            assertEquals(8, f.tracker.position)
+            assertEquals(0, f.red())
+        }
+        // A word the sound does not hold stops the phrase there, asked about once while it grows,
+        // and again once it is whole.
+        val g = strict(kahf, free = true)
+        g.heard(0, off.take(3).joinToString(" "), final = false, hold = false)
+        g.toCheck(0, partial = true)!!.let { c -> assertEquals(0, g.checked(c, List(c.to - c.from) { if (it == 1) 4f else 0f })) }
+        g.hold(0)
+        assertEquals(1, g.tracker.position)
+        g.heard(0, off.take(5).joinToString(" "), final = false, hold = false)
+        assertNull(g.toCheck(0, partial = true))
+        g.hold(0)
+        assertEquals(1, g.tracker.position)
+        g.heard(0, off.take(6).joinToString(" "), final = true)
+        val whole = g.toCheck(0)!!
+        assertEquals(listOf(1), whole.words)
+        g.checked(whole, List(whole.to - whole.from) { if (it == 1) 4f else 0f })
+        assertEquals(1, g.settle(0))
+        assertEquals(1, g.tracker.position)
+    }
 }

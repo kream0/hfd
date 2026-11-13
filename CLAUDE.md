@@ -456,6 +456,40 @@
   same word as its description), counts one button in the bar, and fails if the search field's
   microphone or the palette come back.
 
+## 2.10.0 lagged: a word checked while the phrase goes on (2.10.1, the owner, 13 Nov: "the tracking is way too laggy: I have the time to say 10 words and it goes up 3 seconds after. I have a powerful phone. Maybe because I was in tajweed mode. Check if you have some data")
+- Not speed (the phone: a reading 67 ms at 0–3 s of sound, 296 ms at 9–12 s, 582 ms at 18–21 s;
+  a check on the sound just read 0–11 ms, its frames are kept), nor the level. 2.10.0 stopped a
+  reading of an utterance still being said at its first word not right (`holdAt`) and left that
+  word to the whole utterance's check; letter for letter, one word read a letter off early in a
+  phrase kept all that followed dark until the pause, and the owner's phrases last 10–20 s.
+- Measured on the owner's own readings: the session of 19:12 on 2.9.1 (al-Baqara 92–98, Strict,
+  422 readings logged as `recite.partial` / `recite.heard`), replayed through `Follower` with
+  each rule (the check taken to pass: no sound here). Against 2.9.1, each word shows later by:
+  2.10.0 p50 0.3 s, p75 1.1, p90 3.2, max 9.4 (30 of 119 words over a second); 2.10.1 p50 0.0,
+  p75 0.3, p90 0.6, max 3.1 (2 of 119). **The 2.10.0 session itself never reached ntfy** (the
+  last from the phone is that 2.9.1 one, 19:03–19:14; two pulls, 19:46 and 20:05): to look at
+  when the owner recites next.
+- The fix: `Follower.heard(…, hold = false)` for a reading still growing (the app's with the
+  CTC recogniser): only the last word it reaches waits as not said yet (`holdEdge(onlyLast)`);
+  `toCheck(id, partial = true)` gives the words not right before it, each **once** per
+  utterance (`tried`), the recogniser holds them to the sound it has just read
+  (`ReciteSession.heardSound`), `checked` rights those the sound bears out (`righted`: they
+  stay right in the utterance's later readings), then `hold(id)` stops at one still not right.
+  The whole utterance's check asks again about those refused.
+- Asked several times, a word not said ends up passing: with the check as it was, the bench's
+  «يُنفِقُونَ» said «يُؤْمِنُونَ» (refused at 9.9 nats on its utterance) cost 4.3 nats a moment into the
+  next one, with its sound carried over, and went through (swaps 3/5). So a check made while
+  speaking asks a nat more (`CHECK_PARTIAL_MARGIN`: 6 for 7, 4 for 5), and a word a whole
+  utterance's check refused (`refused`) is not asked about again until the next one is whole.
+- The bench (`HFD_PARTIAL_CHECK`, on with `HFD_STRICT`; 60 cases, this sandbox, CTC): ok
+  1978/2118, wrong 0, missed 0, swaps 4/5, skipped āya waited at 3/3, 6 stalls in 5 recitations
+  (29 words), lag p50 −0.2 s, p90 0.5; words shown over a second late: an āya's first word 16
+  of 271, middle ones 38 of 1,421 (2.10.0: 23 of 260 and 81 of 1,376); checks 209, 122 words
+  righted (2.10.0: 48 and 37). `recite.check` with `partial=true` and the costs in the
+  diagnostics.
+- The owner's recordings: only sessions closed are sent (`recite.session`, `diag.recording`);
+  the 2.9.1 session's was not in the log (the app was updated over it).
+
 ## Going back, then on from where one had got to (2.10.1, the owner, 13 Nov, on 2.9.1: "I recite up to the middle of an āya, go back to its start, change my mind and want to pick up from the middle: I'm stuck, I have to recite all the way to the middle again. Same if I recite five āyāt and then one already recited: it goes back there and I can't get back to my progress")
 - Why: going back (`Tracker.back`) puts the position after the words said again and the words
   after it pending; since 2.9.0 a chunk may begin three words past the position at most, so
