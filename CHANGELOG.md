@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.10.1
+After going back, you can take it up again where you had got to, without reciting everything in between again.
+- **Back to the start of an āya, then on from its middle.** You recite half an āya, say its first words again, then change your mind: say the words where you had stopped and the recitation is there again. Until now it stayed at the start until you had said everything again up to that point.
+- **Onto an āya already recited, then back to where you were.** Reciting an earlier āya by mistake took the recitation there and left you stuck. Now say the next words of where you had got to (or any phrase of what you have already recited) and it follows from there; the words in between stay as they were.
+- It still never goes past a word you have not said: only what you have already recited can be skipped over this way.
+- Saying everything again from where you went back still works as before, word by word.
+
 ## 2.10.0
 Reciting never goes past a word you haven't said, at any level, and a word that only resembles the next one no longer lights up.
 - **No word is skipped.** Saying "qul kāna" for «قُلْ مَن كَانَ» lit «كَانَ» after «قُلْ». A word the app did not hear now counts only if your voice, listened to again against the text, clearly holds it; otherwise the marker waits on that word.

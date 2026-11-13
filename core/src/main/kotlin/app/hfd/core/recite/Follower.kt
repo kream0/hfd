@@ -61,6 +61,8 @@ class Follower(
         if (id <= closed) return 0
         if (id != current) {
             current = id
+            // What the utterances before recited is kept (the reciter may go back, and take it up again from there).
+            tracker.remember()
             before = tracker.mark()
             previous = null
             stable = BooleanArray(tracker.size)
@@ -156,7 +158,7 @@ class Follower(
         if (edge == tracker.position) return false
         val status = tracker.status.copyOf()
         for (w in edge until tracker.position) status[w] = WordStatus.PENDING
-        tracker.reset(Tracker.Mark(edge, status))
+        tracker.reset(Tracker.Mark(edge, status, tracker.resumed))
         return true
     }
 
@@ -183,7 +185,7 @@ class Follower(
     private fun holdAt(w: Int) {
         val status = tracker.status.copyOf()
         for (k in w until status.size) status[k] = WordStatus.PENDING
-        tracker.reset(Tracker.Mark(w, status))
+        tracker.reset(Tracker.Mark(w, status, tracker.resumed))
     }
 
     /**
@@ -248,7 +250,7 @@ class Follower(
                 else -> WordStatus.MISSED
             }
         }
-        tracker.reset(Tracker.Mark(maxOf(tracker.position, last + 1), status))
+        tracker.reset(Tracker.Mark(maxOf(tracker.position, last + 1), status, tracker.resumed))
     }
 
     /**
@@ -325,9 +327,19 @@ class Follower(
      */
     class Read internal constructor(val from: Int, val to: Int, val text: String, val opening: List<String>)
 
+    /**
+     * The first word the utterance being followed said: where the recitation was, or the word it
+     * was taken up again at, further on among those already recited ([Tracker.resumed]: the words
+     * between were not said this time, and no sound of this utterance is theirs).
+     */
+    private fun began(): Int? {
+        val from = before?.position ?: return null
+        return tracker.resumed?.takeIf { it > from && it <= tracker.position } ?: from
+    }
+
     fun read(id: Int): Read? {
         if (id != current) return null
-        val from = before?.position ?: return null
+        val from = began() ?: return null
         val to = tracker.position
         if (to <= from || (from until to).any { tracker.status[it] != WordStatus.OK }) return null
         return Read(from, to, (finalOpening + tracker.text(from, to)).joinToString(" "), finalOpening)
@@ -346,14 +358,15 @@ class Follower(
         val b = before ?: return null
         val to = tracker.position
         if (to < b.position || tracker.status.indices.any { it < b.position && tracker.status[it] != b.statusAt(it) }) return null
-        val said = if (to > b.position) listOf(tracker.text(b.position, to)) else emptyList()
+        val from = began() ?: return null
+        val said = if (to > from) listOf(tracker.text(from, to)) else emptyList()
         return (finalOpening + said).joinToString(" ")
     }
 
     /** The mistakes whole utterance [id] (just followed) left in what it covered, if any. */
     fun toCheck(id: Int): Check? {
         if (id != current) return null
-        val from = before?.position ?: return null
+        val from = began() ?: return null
         val to = tracker.position
         if (to <= from) return null
         val bad = (from until to).filter { tracker.status[it] == WordStatus.WRONG || tracker.status[it] == WordStatus.MISSED }

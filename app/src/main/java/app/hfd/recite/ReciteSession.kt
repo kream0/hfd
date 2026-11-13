@@ -792,6 +792,8 @@ class ReciteSession(
      * brings several at once); going back shows at once.
      */
     private fun catchUp() {
+        // Taken up again further on, among words already recited: those between were shown before, and are at once.
+        tracker.resumed?.let { if (it > shown && it <= follower.reach) shown = it }
         if (follower.reach <= shown) {
             shown = follower.reach
             _ui.value = snapshot(_ui.value)

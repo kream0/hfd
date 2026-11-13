@@ -319,6 +319,29 @@ class ScreenshotTest {
             Graph.closeRecite()
             vm.flow = null
         }
+        // An āya already recited said again, then on from where the recitation had got to: it
+        // goes back, and is taken up again there without saying what lies between (the owner,
+        // 13 Nov: stuck at the āya said again).
+        ui {
+            vm.recite(content.fadila("ikhlas")!!)
+            Graph.recite.value!!.run {
+                heardAs("قل", "قل هو الله", "قل هو الله أحد")
+                heardAs("الله", "الله الصمد", "الله الصمد")
+                heardAs("لم يلد", "لم يلد ولم يولد", "لم يلد ولم يولد")
+                heardAs("قل", "قل هو الله", "قل هو الله أحد")
+            }
+        }
+        org.junit.Assert.assertEquals(1 to 0, Graph.recite.value!!.ui.value.next)
+        ui { Graph.recite.value!!.heardAs("ولم", "ولم يكن له", "ولم يكن له كفوا") }
+        Graph.recite.value!!.ui.value.let { r ->
+            org.junit.Assert.assertEquals(3 to 4, r.next)
+            org.junit.Assert.assertFalse(r.lost)
+            org.junit.Assert.assertEquals(14, r.status.flatten().count { it == app.hfd.core.recite.WordStatus.OK })
+        }
+        ui {
+            Graph.closeRecite()
+            vm.flow = null
+        }
         reciteIkhlas()
         // Listening: the button alive with the voice, and the notice in its line (nothing covers the text).
         ui { Graph.recite.value!!.previewListening(level = 0.75f, waiting = true) }

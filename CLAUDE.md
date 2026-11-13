@@ -129,7 +129,7 @@
   session there, from diag.yml's large-v3 transcription). `HFD_BENCH_ONLY` (a regular
   expression) picks cases for a quick local run (`gradle :core:cleanTest :core:test --tests
   …ReciteBench` with HFD_BENCH, HFD_DECODER, HFD_MODEL: whisper.cpp and the model build and
-  download here, and since 10 Nov EveryAyah too: `prepare.py <dir>` makes the 58 cases in 2 min,
+  download here, and since 10 Nov EveryAyah too: `prepare.py <dir>` makes the cases (60 since 2.10.1) in 2 min,
   a 30 s case then runs in about a minute with `HFD_BENCH_FREE=0`; one gradle run at a time).
   Iterate here, then confirm on CI (a full run takes over an hour).
 - GitHub's `ubuntu-latest` is 26.04 since November; on 11 Nov its apt mirrors didn't resolve from
@@ -455,6 +455,30 @@
   "Réciter en lisant" in its choice (`choose`, `find_text`: the item's text, the button has the
   same word as its description), counts one button in the bar, and fails if the search field's
   microphone or the palette come back.
+
+## Going back, then on from where one had got to (2.10.1, the owner, 13 Nov, on 2.9.1: "I recite up to the middle of an āya, go back to its start, change my mind and want to pick up from the middle: I'm stuck, I have to recite all the way to the middle again. Same if I recite five āyāt and then one already recited: it goes back there and I can't get back to my progress")
+- Why: going back (`Tracker.back`) puts the position after the words said again and the words
+  after it pending; since 2.9.0 a chunk may begin three words past the position at most, so
+  what had been recited beyond had to be said again word for word.
+- `Tracker.frontier`: how far the recitation has got, and `remembered`, each word as it was
+  when last recited; kept by `remember()`, which `Follower.heard` calls when a new utterance
+  begins (never from a reading still growing: `Mark` / `reset` don't touch them). In `align` a
+  chunk may begin, at no cost, at any word before the frontier, or at the frontier itself; the
+  words it begins after are as they were (not missed, not counted among the three it may pass
+  over) and `Tracker.resumed` is its first word (in `Mark`; `Follower.began`: the check, the
+  timing, `edge` and `read` hold only the words this utterance said to its sound). It takes a
+  clear match, as passing over a phrase does (three quarters of the chunk's letters; 16
+  letters, or as many as the words between hold if fewer), and 6 letters at the frontier itself
+  (`RESUME_MIN_LETTERS`). Never past the frontier: what lies beyond was not said
+  (`FollowerResumeTest`: 18:5 after 18:1–3 and a return to 18:1 moves nothing).
+- The same text said in two places (a refrain): the nearer place wins (the first best end), so
+  saying it all again from where one went back is followed word by word as before.
+- `ReciteSession.catchUp` shows the words between at once (they were shown before: no sweep).
+  `ScreenshotTest`: al-Ikhlāṣ 1–3, the first āya again, then the fourth.
+- The bench: two recitations added (60 cases; `prepare.py`): fatiha-dossary-flow-again12342567
+  and imran-opening-alafasy-flow-again12324, an āya said again then straight on from where the
+  recitation had got to: 29/29 and 37/37 here. The 58 others come out as before to the word
+  (this sandbox, CTC: 1911/2052, the same lines case by case).
 
 ## No word passed, no word that only resembles (2.10.0, the owner, 13 Nov: "if I do a variation that slightly resembles the next word, it sometimes highlighted it. In either mode, free, strict or tajweed, it should never skip a word: I say 'Qul kana' for 'Qul man kana' and it highlights 'kana' after 'Qul'")
 - Why it happened (2.9.x): the tracker took a word as right with most of its letters heard

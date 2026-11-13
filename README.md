@@ -133,7 +133,9 @@ that the app updates itself from new releases. Android 8.0 or newer.
   recogniser did not write, is listened to again held to the text, `Follower.Check`), words that
   are also the text's a few āyāt later move nothing, and another place of the Qur'an the reciter
   is clearly saying is offered, not gone to. A word a pause cut in two is heard whole: what an
-  utterance ends on goes before the next one's sound (`Carry`). The word being said stays
+  utterance ends on goes before the next one's sound (`Carry`). A reciter who goes back (an
+  āya's start, an āya already recited) can take it up again where they had got to, or anywhere
+  among the words already recited, without saying what lies between again (`Tracker.frontier`). The word being said stays
   in view down a long āya, an āya's end turns gold once recited whole (red with a mistake), a
   bar counts the words and the mistakes so far, and the screen says to take it up again at the
   marked word when the recitation waits. The microphone is cut into utterances at short pauses

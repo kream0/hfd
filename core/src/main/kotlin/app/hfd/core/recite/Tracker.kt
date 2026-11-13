@@ -94,6 +94,38 @@ class Tracker(
     var position: Int = 0
         private set
 
+    /**
+     * How far the recitation has got: the words before it were recited ([remember]), and stay so
+     * when the reciter goes back to say some of them again. From there they may take it up again
+     * anywhere among those words, or where they had got to, without saying it all again (the
+     * owner, 13 Nov: gone back to an āya's start from its middle, or onto an āya already
+     * recited, the recitation was stuck there until everything had been said again). Never past
+     * it: what lies beyond was not said.
+     */
+    var frontier: Int = 0
+        private set
+
+    /** What each word was when last recited ([remember]). */
+    private val remembered: Array<WordStatus> = Array(flat.size) { WordStatus.PENDING }
+
+    /**
+     * The word the recitation was taken up again at, further on among the words already recited
+     * (those between are as they were, not said this time); null when it went on from where it
+     * was. Since the last [remember].
+     */
+    var resumed: Int? = null
+        private set
+
+    /**
+     * What is recited up to the position is kept: the words as they are now, and how far it has
+     * got ([frontier]). Called between utterances (a reading still growing may be replaced).
+     */
+    fun remember() {
+        for (w in 0 until position) if (status[w] != WordStatus.PENDING) remembered[w] = status[w]
+        if (position > frontier) frontier = position
+        resumed = null
+    }
+
     val size: Int get() = flat.size
     val done: Boolean get() = position >= flat.size
 
@@ -135,15 +167,16 @@ class Tracker(
     private var aligned = 0
 
     /** Where the recitation stands, to come back to ([reset]). */
-    class Mark internal constructor(internal val position: Int, internal val status: Array<WordStatus>) {
+    class Mark internal constructor(internal val position: Int, internal val status: Array<WordStatus>, internal val resumed: Int? = null) {
         internal fun statusAt(w: Int): WordStatus = status[w]
     }
 
-    fun mark(): Mark = Mark(position, status.copyOf())
+    fun mark(): Mark = Mark(position, status.copyOf(), resumed)
 
     fun reset(to: Mark) {
         position = to.position
         to.status.copyInto(status)
+        resumed = to.resumed
     }
 
     /** The reciter asked for the next word: it counts as a mistake and the position moves on. */
@@ -388,7 +421,9 @@ class Tracker(
         // next one, went past a verse a few words at a time: the bench, 13 Nov).
         val behind = if (waits) (position - 1 downTo 0).takeWhile { status[it] == WordStatus.WRONG || status[it] == WordStatus.MISSED }.count() else 0
         val reach = (skip - behind).coerceAtLeast(0)
-        val end = minOf(flat.size, position + maxOf(MIN_WINDOW, hWords.size * 3) + reach)
+        // (Up to where the recitation had got, when it has gone back: it may be taken up again anywhere before that.)
+        val got = maxOf(position, frontier)
+        val end = minOf(flat.size, got + maxOf(MIN_WINDOW, hWords.size * 3) + reach)
         val e = StringBuilder()
         val owner = ArrayList<Int>()
         // The last words recited too, for a chunk that starts by saying them again.
@@ -410,8 +445,10 @@ class Tracker(
         for (i in 1..n) {
             d[i, 0] = when {
                 i - 1 < p -> d[i - 1, 0]
+                // Words recited before the reciter went back: taken up again at any of them.
+                owner[i - 1] < frontier -> d[i - 1, 0]
                 // (Waiting: the chunk begins within the few words it may pass over.)
-                waits && owner[i - 1] >= position + reach -> FAR
+                waits && owner[i - 1] >= got + reach -> FAR
                 else -> d[i - 1, 0] - SKIP
             }
             for (j in 1..m) {
@@ -459,19 +496,25 @@ class Tracker(
         // (a four-letter word sharing two letters with the next words isn't them). Don't move.
         if (span <= 0 || same < MIN_MATCH_FRACTION * m || ahead < MIN_MATCH_FRACTION * span) return 0
         // Passing over words takes a clear match, as long as what it passes over (up to a phrase).
-        val passed = owner[start] - position
-        val enough = (start - p).coerceIn(JUMP_MIN_LETTERS, JUMP_ENOUGH_LETTERS)
+        val first = owner[start]
+        val passed = first - position
+        // (Taken up again where the recitation had got to: a few letters; elsewhere among the words recited, as a phrase passed over.)
+        val enough = if (frontier > position && first == frontier) RESUME_MIN_LETTERS else (start - p).coerceIn(JUMP_MIN_LETTERS, JUMP_ENOUGH_LETTERS)
         if (passed >= 2 && (same < JUMP_MATCH_FRACTION * m || ahead < JUMP_MATCH_FRACTION * span || ahead < enough)) return 0
         // Words up to the last one the chunk reached (a word cut at the end counts whole).
         var lastWord = owner[best - 1]
-        var now = (position..lastWord).map { w -> statusOf(owner.indices.filter { owner[it] == w }, matched, touched, w) }
+        // Those it begins after, recited before the reciter went back, are as they were.
+        val kept = (minOf(first, frontier) - position).coerceAtLeast(0)
+        var now = (position..lastWord).map { w ->
+            if (w - position < kept) remembered[w] else statusOf(owner.indices.filter { owner[it] == w }, matched, touched, w)
+        }
         // Waiting: more words in a row not right than may be passed over, and the reciter has left
         // the text there. What the chunk says after them isn't followed.
         if (waits) {
             var run = behind
             var from = 0
             for (k in now.indices) {
-                if (now[k] == WordStatus.OK) { run = 0; from = k + 1 } else run++
+                if (now[k] == WordStatus.OK || k < kept) { run = 0; from = k + 1 } else run++
                 if (run > skip) {
                     lastWord = position + from - 1
                     now = now.take(from)
@@ -484,7 +527,8 @@ class Tracker(
         // 3:5's start, matched اللَّهَ's last letter and lit إِنَّ اللَّهَ two seconds early; the
         // owner's session of 2 Oct).
         // (Strict: or nearly right, for the check to listen to.)
-        if (WordStatus.OK !in now && !(strict && (position..lastWord).any { w -> near(owner.indices.filter { owner[it] == w }, matched) })) return 0
+        if (now.size <= kept) return 0
+        if (WordStatus.OK !in now.drop(kept) && !(strict && (position + kept..lastWord).any { w -> near(owner.indices.filter { owner[it] == w }, matched) })) return 0
         aligned = same
         // Words before the position the chunk began with, said again and now right: a correction
         // counts, as when the recitation goes back ([back]). Never the other way: a word recited
@@ -499,8 +543,9 @@ class Tracker(
         }
         for (w in position..lastWord) {
             status[w] = now[w - position]
-            nearly[w] = near(owner.indices.filter { owner[it] == w }, matched)
+            if (w - position >= kept) nearly[w] = near(owner.indices.filter { owner[it] == w }, matched)
         }
+        if (kept > 0) resumed = position + kept
         val moved = lastWord + 1 - position
         position = lastWord + 1
         return moved
@@ -544,6 +589,8 @@ class Tracker(
         const val JUMP_MATCH_FRACTION = 0.75
         const val JUMP_MIN_LETTERS = 4
         const val JUMP_ENOUGH_LETTERS = 16
+        /** Letters a chunk must match to take the recitation up again where it had got to before going back ([frontier]). */
+        const val RESUME_MIN_LETTERS = 6
         /**
          * Share of a (long) word's letters that must match for it to count as right; a
          * three-letter word may have one wrong. At the phone's level the model often mishears a

@@ -92,6 +92,10 @@ CASES = [(p, r, "flow", None) for p in PASSAGES if p != "imran-opening" for r in
     ("fatiha", "alafasy", "sco", None),
     ("baqara-opening", "husary", "sco", None),
     ("ikhlas", "dossary", "sco", None),
+    # An āya already recited said again, then straight on from where the recitation had got to
+    # (the owner, 13 Nov: stuck there until everything between had been said again).
+    ("fatiha", "dossary", "flow", [1, 2, 3, 4, 2, 5, 6, 7]),
+    ("imran-opening", "alafasy", "flow", [1, 2, 3, 2, 4]),
 ]
 # A word recited wrongly, as a learner does (another word of the passage in its place, cut from the
 # reciter's audio by its word timings): (passage, reciter, variant, None, (āya, word, the word said
