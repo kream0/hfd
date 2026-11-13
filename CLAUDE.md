@@ -544,6 +544,12 @@
   Itqan Ayah. Not found in use: Lawḥ (the wooden tablet of the Maghreb's Qur'anic schools: the
   favourite), Istiẓhār, Talqīn (also said of prompting the dying: a connotation), Msīd. Nothing
   renamed: the package id (`app.hfd`) and the updater follow whatever is decided, later.
+  The owner's answer (13 Nov): those say nothing to someone who has no Arabic; "Tarteel" is the
+  model, a word of the Qur'an that also sounds well in English and French. Second round, words of
+  the Qur'an: taken: Mathani (a memorisation app), Moddakir / Mudakir, Tilawa (several), Thabit /
+  Thabbit, Hafizun, Tathkera; not found in use: Safara (80:15, the scribes; the favourite),
+  Mahfouz (85:22), Dhikra (51:55), Maknoun (56:78). Still a quick search, nothing decided.
+- Warsh is not a priority (the owner, 13 Nov): Ḥafṣ is what is wanted. Nothing to build.
 - CI on 30bb75e (13 Nov, the code of 2.9.0, both configs in one run): ctc 2023/2052 (wrong 4,
   missed 0, pending 25: the 20 more than 2.8.0's 2043 are the āya skipped in
   baqara-opening-maher-flow-skip1245, waited at; swaps 3/5, the borderline one again on that
