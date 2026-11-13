@@ -483,6 +483,17 @@
     lenient (`CHECK_TOLERANCE_FREE` 4.3 = the CTC's worst character at 10 nats for 7): being held
     up for a word said right costs more than letting a near one pass. The way out of a word the
     model won't hear: the hint (from memory), or Strict.
+    Only with the CTC model: on Whisper's readings (`SpeechReader.rough`: 47 of the bench's 2,052
+    words left wrong or missed, the CTC's 4) free recitation doesn't wait, it only shows nothing red.
+    The words a whole utterance ends on, with none right after them, are only not said yet
+    (`Follower.atEdge`): the recitation is at them, without a stumble nor the line. A reciter who
+    pauses inside a phrase is cut there, sometimes inside a word: Ḥuṣarī's slow recitation holds
+    doubled letters and ghunnas so quietly that the segmenter ends the utterance in them
+    («وَأَنزَلَ ٱلتَّوْرَىٰةَ» → "وَأَنزَلَت" / "ٱتَّوْرَىىٰةَ": the next utterance says the word, no harm;
+    «ءَايَٰتٌ مُّحْكَمَٰتٌ» → "ءَايَـٰتٌ مّ" / "فَمَاتُننْهُنَّ": the word is in neither, and a free reciter is
+    held up at it for nothing). All the bench's such holds are Ḥuṣarī's. The next lever: when a
+    word is left bad right after an utterance that ended on it, check the two utterances' sound
+    joined, before holding.
   - STRICT: as 2.8.0 marked mistakes (red after the check, the recitation goes on), within the
     three words.
   - TAJWEED: Strict, plus on every whole utterance read right (`Follower.read`; CTC model only)

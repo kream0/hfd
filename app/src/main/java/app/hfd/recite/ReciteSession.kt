@@ -286,7 +286,8 @@ class ReciteSession(
                         if (warn != _ui.value.muffled) _ui.value = _ui.value.copy(muffled = warn)
                         // Words heard, and neither the text from the marker nor words before it
                         // (the marker would be on those): twice in a row, the reciter is told.
-                        val said = text != null && Arabic.skeleton(text).length >= STRAY_LETTERS
+                        // (The isti'ādha or the basmala before the text is no stray phrase.)
+                        val said = text != null && Arabic.skeleton(follower.withoutOpening(text)).length >= STRAY_LETTERS
                         if (moved != 0 || follower.voice != null || tracker.done) {
                             strays = 0
                             astray = null
@@ -522,9 +523,10 @@ class ReciteSession(
      */
     private fun settle(id: Int, final: Boolean, from: Int) {
         val at = if (final) follower.settle(id) else null
-        if (at != null) Diag.log("recite.wait", "id" to id, "word" to at, "ref" to targets[tracker.locate(at).first].ref.key)
-        // Waiting until the recitation moves again (on, or back).
-        val waiting = at != null || (_ui.value.waiting && tracker.position == from)
+        if (at != null) Diag.log("recite.wait", "id" to id, "word" to at, "ref" to targets[tracker.locate(at).first].ref.key, "edge" to follower.atEdge)
+        // Waiting until the recitation moves again (on, or back). (Not for the words an utterance
+        // ends on: a pause inside a phrase; they are only not said yet.)
+        val waiting = (at != null && !follower.atEdge) || (_ui.value.waiting && tracker.position == from)
         if (waiting != _ui.value.waiting) _ui.value = _ui.value.copy(waiting = waiting)
     }
 
@@ -621,7 +623,8 @@ class ReciteSession(
 
     private fun follow(id: Int, text: String, final: Boolean): Int {
         val before = tracker.position
-        follower.waits = level() == ReciteLevel.FREE
+        // (Not on Whisper's readings: free, its mistakes are just not lit, and the recitation goes on.)
+        follower.waits = level() == ReciteLevel.FREE && !speech.rough
         val moved = follower.heard(id, text, final)
         Diag.log(if (final) "recite.heard" else "recite.partial", "id" to id, "text" to text, "from" to before, "to" to tracker.position, "moved" to moved, "done" to tracker.done)
         return moved

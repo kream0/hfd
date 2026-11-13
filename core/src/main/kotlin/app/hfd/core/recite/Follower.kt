@@ -190,8 +190,18 @@ class Follower(
      * it goes back to the first word the utterance left wrong or missed, to be said again from
      * there (returned; null when every word is right, or when it doesn't wait). A word right
      * before the utterance stays right, however it was read this time.
+     *
+     * The words the utterance ends on, when none after them is right, are only not said yet
+     * ([atEdge]): a reciter who pauses inside a phrase is cut there, sometimes inside a word
+     * (Ḥuṣarī's «وَأَنزَلَ ٱلتَّوْرَىٰةَ», the doubled tāʾ begun before the breath: the first utterance ends
+     * on a scrap of the word, the next one says it; the bench, 13 Nov). The recitation is at them,
+     * and they are no stumble unless what is said next leaves them out.
      */
+    var atEdge = false
+        private set
+
     fun settle(id: Int): Int? {
+        atEdge = false
         if (!waits || id != current) return null
         val b = before ?: return null
         val status = tracker.status
@@ -199,7 +209,8 @@ class Follower(
             if ((status[w] == WordStatus.WRONG || status[w] == WordStatus.MISSED) && b.statusAt(w) == WordStatus.OK) status[w] = WordStatus.OK
         }
         val w = firstBad(0) ?: return null
-        stumbled[w] = true
+        atEdge = w >= b.position && (w until tracker.position).none { status[it] == WordStatus.OK }
+        if (!atEdge) stumbled[w] = true
         holdAt(w)
         voice = null
         return w

@@ -178,7 +178,7 @@ class Result(
     val againIn: Int = 0, val againAll: Int = 0,
     /** Whole utterances that would hold up a reciter reciting freely, and those that moved nothing. */
     val holds: Int = 0, val strays: Int = 0,
-    /** With an āya skipped by the reciter: whether the recitation waits at it (null: none skipped). */
+    /** With an āya skipped by the reciter: whether the recitation is still in it at the end, waiting (null: none skipped). */
     val waited: Boolean? = null,
 ) {
     /** The reciter says the text as it is (no word swapped, no āya skipped): being held up is the app's doing. */
@@ -399,9 +399,10 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             val costs = Follower.Check.costs(text)
             val right = costs?.let { follower.checked(c, it, CHECK_TOLERANCE) } ?: 0
             // (Held to the text to its end, and each mistake within the free tolerance: not held up.)
-            val free = costs != null && costs.size == c.opening + c.to - c.from && costs.none { it >= Follower.CHECK_FAILED } &&
-                c.words.all { costs[c.opening + it - c.from] <= Follower.CHECK_TOLERANCE_FREE }
-            if (!free) holds++
+            val held = costs == null || costs.size != c.opening + c.to - c.from || costs.any { it >= Follower.CHECK_FAILED }
+            val bad = if (held) c.words else c.words.filter { costs!![c.opening + it - c.from] > Follower.CHECK_TOLERANCE_FREE }
+            // (Not the words the utterance ends on with none right after them: only not said yet, Follower.atEdge.)
+            if (bad.isNotEmpty() && (bad.first() until c.to).any { tracker.status[it] == WordStatus.OK }) holds++
             checks++
             rescued += right
             readings.append(String.format(Locale.US, "      %6.1f s  #%d check   %d of %d right: %s\n", at, c.id, right, c.words.size, text.replace('\t', ' ')))
@@ -419,12 +420,12 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                     }
                 }
                 if (u.final && muffledWarning.heard(Clarity.isMuffled(u.pcm), u.seconds, moved)) warned++
-                if (u.final && moved == 0 && follower.voice == null && !tracker.done && Arabic.skeleton(text).length >= 6) strays++
+                if (u.final && moved == 0 && follower.voice == null && !tracker.done && Arabic.skeleton(follower.withoutOpening(text)).length >= 6) strays++
                 readings.append(String.format(Locale.US, "      %6.1f s  #%d %s %4.1f s: %s\n", at, u.id, if (u.final) "final  " else "partial", u.seconds, text))
                 inFlight = null
                 // As the app: a whole utterance's mistakes are read again held to the text, before they show.
                 val c = if (u.final && steer && CHECK_TOLERANCE > 0) follower.toCheck(u.id) else null
-                if (c == null && u.final && follower.toCheck(u.id) != null) holds++
+                if (c == null && u.final) follower.toCheck(u.id)?.let { left -> if ((left.words.first() until left.to).any { tracker.status[it] == WordStatus.OK }) holds++ }
                 if (c != null) {
                     val again = decoder.transcribe(Clarity.prepare(u.pcm), expected = c.expected)
                     checking = Triple(c, again, at + readingTime(u.seconds))
@@ -583,7 +584,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             holds, strays,
             // An āya the reciter skipped: the recitation is still at its first word, nothing marked after.
             waited = targets.indices.firstOrNull { a -> a < lastRecited && targets[a].ref !in case.spans && !case.owner }?.let { a ->
-                tracker.position == tracker.startOf(a) && (tracker.position until n).all { tracker.status[it] == WordStatus.PENDING }
+                tracker.position >= tracker.startOf(a) && tracker.position < tracker.startOf(a + 1)
             },
         )
     }

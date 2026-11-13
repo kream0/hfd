@@ -111,6 +111,26 @@ class FollowerWaitTest {
     }
 
     @Test
+    fun theWordsAnUtteranceEndsOnAreOnlyNotSaidYet() {
+        val f = follower(free = true)
+        // A pause inside 18:1, after a scrap of its fifth word.
+        assertEquals(4, f.say(0, aya(1).take(4) + aya(1)[4].take(2)))
+        assertTrue(f.atEdge)
+        assertFalse(f.stumbled[4])
+        assertEquals(4, f.tracker.position)
+        // The word said after the pause: it goes on, no stumble.
+        assertNull(f.say(1, aya(1).drop(4)))
+        assertEquals(start(2), f.tracker.position)
+        assertFalse(f.stumbled.any { it })
+        // Left out by what is said next: a stumble.
+        val g = follower(free = true)
+        g.say(0, aya(1).take(4) + aya(1)[4].take(2))
+        assertEquals(4, g.say(1, aya(1).drop(5)))
+        assertFalse(g.atEdge)
+        assertTrue(g.stumbled[4])
+    }
+
+    @Test
     fun nothingShowsPastItWhileTheCheckRuns() {
         val f = follower(free = true)
         val said = aya(1).toMutableList().also { it[4] = aya(2)[0] }

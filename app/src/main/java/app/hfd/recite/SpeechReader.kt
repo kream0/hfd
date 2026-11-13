@@ -27,6 +27,12 @@ class SpeechReader(private val models: () -> ReciteModels) {
     /** Whether the model reading places letters in time (the CTC one does): the long vowels can then be timed. */
     val timing: Boolean get() = ctc != null
 
+    /**
+     * Whisper reads: it mishears a word in forty of a clean recitation (the bench: 47 of 2,052
+     * left wrong or missed, the CTC model 4), too many to hold a reciter up at each ([ReciteLevel.FREE]).
+     */
+    val rough: Boolean get() = ctc == null && whisper != null
+
     fun reader(): ((FloatArray, String) -> String?)? {
         ctc?.let { return it::transcribe }
         whisper?.let { w -> return { pcm, expected -> w.transcribe(pcm, expected) } }
