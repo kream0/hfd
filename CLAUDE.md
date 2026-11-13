@@ -583,6 +583,14 @@
     readings, then whole, then `afterWhole`: strays, lost, elsewhere), and `ScreenshotTest`
     checks: followed is not lost, two phrases of something else are, the owner's isti'ādha is no
     place, a guess is left for what is said next, a place borne out is not.
+  - CI on 12dd08d (2.9.1's code): smoke passed; the Locate bench 391/400 with **one wrong** on that
+    run (opening-45-1, al-Jāthiya's opening put at 42:3): its runner read the āya otherwise than
+    this sandbox and the run of 12 Nov did («ٱلْكِتَتَـٰبِ», then «ٱٱلَّفِى ٱلسَّمَِ»: the int8 model's
+    arithmetic on another CPU, as for the Recite bench's borderline swap). Those readings give
+    42:3 with 2.9.0's locator too (replayed here): not the formulas' change. What it shows:
+    «مِنَ ٱللَّهِ ٱلْعَزِيزِ ٱلْحَكِيمِ», which three sūras open with, is settled by a few letters of the
+    next utterance. A first place being a guess now, the recitation leaves it when what follows
+    isn't there.
 - The bench (`ReciteBench`): `HFD_SKIP_WORDS`; per case and in the totals "held up" (whole
   utterances that would hold a free reciter: a mistake left after the check at the free
   tolerance), "followed nothing", both also for the recitations said as the text is (there,
