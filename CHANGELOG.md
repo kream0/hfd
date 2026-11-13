@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.9.0
+Reciting waits for you: after a mistake the text stays at the word you left, instead of jumping further on and turning what lies between red. And you choose what a mistake does: Free, Strict or Tajwīd.
+- **It waits where you are.** Reciting in the Qur'an, a mistake followed by words that also appear a few verses later sent the text there, marked everything in between as missed, then came back when you said the right thing. Now the recitation never leaves you: what isn't the text from the marked word moves nothing, and a line says "Take it up again at the marked word". It goes on as soon as you say that word. Saying a verse again still takes you back to it, as before.
+- **It no longer looks elsewhere in the Qur'an by itself.** If you clearly start reciting another passage, the app offers it ("Reciting elsewhere? Al-Kahf 10") and goes there only if you tap it.
+- **Three levels**, chosen with the pill at the top of the Recite screen (or in Settings → Reciting aloud):
+  - **Free** (the default): nothing is ever marked in red. A word said differently or left out simply isn't lit: the marker waits on it until you say it.
+  - **Strict**: a word said differently or left out turns red and the recitation goes on (as it did until now), but never past more than three words.
+  - **Tajwīd**: as Strict, with two checks on what you recite right. The long vowels of 4 counts or more that aren't held long enough are underlined (as before, it was a switch in Settings). New: each word is compared with your voice letter by letter, and a word in which a letter or a short vowel wasn't heard as written is underlined with a broken red line; tap it to see which letter.
+- **How reliable the pronunciation check is.** On 1,533 words recited correctly by four reciters, 2 were underlined wrongly (0.13 %). With one short vowel of the text changed for another, the word is caught 9 times in 10; with one letter changed, 94 %. That was measured by changing the text, not the voice: a real slip can still be missed, and a muffled voice can be underlined wrongly. It needs the new recognition model.
+- In Free, an āya of a passage you were held up in still counts as recited with a mistake for your learning schedule, even though nothing was shown in red.
+
 ## 2.8.0
 One button instead of two, and everything that was said twice is gone.
 - **One button.** The bar had a play button and a microphone side by side, plus "next" and an arrow. Now it has one round button: it does what you did last (recite, or listen; its icon says which) and pauses what is playing. **Hold it** and a small menu opens above it: Recite from memory, Recite while reading, Listen. Choose one and it starts; the button does the same from then on.
