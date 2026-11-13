@@ -483,6 +483,8 @@ private fun AyahWords(
                 val hidden = st == WordStatus.PENDING && !showText
                 val color = when {
                     hidden -> Color.Transparent
+                    // (The word waited at, where mistakes are marked: a mistake, under the marker.)
+                    next && (st == WordStatus.WRONG || st == WordStatus.MISSED) -> P.error
                     next -> mark
                     else -> when (st) {
                         WordStatus.PENDING -> P.textFaint

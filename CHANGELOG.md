@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.10.0
+Reciting never goes past a word you haven't said, at any level, and a word that only resembles the next one no longer lights up.
+- **No word is skipped.** Saying "qul kāna" for «قُلْ مَن كَانَ» lit «كَانَ» after «قُلْ». A word the app did not hear now counts only if your voice, listened to again against the text, clearly holds it; otherwise the marker waits on that word.
+- **A word that resembles is not the word.** A word counted as said with most of its letters heard, so something close to the next word could light it. Every letter must now be heard; a near miss is listened to again before it counts.
+- **Strict and Tajwīd wait too.** At the three levels the recitation stays at the word until you say it. What differs is what you see: Free shows nothing in red; Strict and Tajwīd turn the word you stumbled on red, and it stays red once you say it right, so you see what to work on.
+- **A pause inside a word doesn't hold you up.** A breath in the middle of a word cut it in two, and neither half is the word. The app now hears the end of what you said before the pause together with what comes after it.
+- Measured on 43 recitations said without a mistake (1,644 words, four reciters): none of the clean, fast, muffled or slow ones is stopped for nothing. In heavy noise, rumble or call-quality audio it still happens (4 times in 10 such recitations, one word to say again each time), and a phone in a pocket is not followed.
+- Known limits: a skipped word still slips through about 2 times in 100; a word whose letters are right but whose vowels are not (يَلِدْ for يُولَدْ) is followed, and only Tajwīd underlines it. With the older recognition model (Tarteel's) nothing changes: it mishears too often to wait at each word.
+
 ## 2.9.1
 Fixed: beginning with "aʿūdhu billāh…" and the basmala no longer sends the recitation to a wrong place, and "I've lost you" no longer shows while the text is following.
 - **The isti'ādha and the basmala are no longer taken for a passage.** Said before reciting, the isti'ādha could be heard a letter off and read as the end of a verse of an-Naḥl (16:98): the app went there, and what you recited next (al-Baqara, say) was not followed. They are now recognised as they are heard, not only letter for letter.

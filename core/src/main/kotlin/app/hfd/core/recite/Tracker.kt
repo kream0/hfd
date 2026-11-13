@@ -48,6 +48,16 @@ class Tracker(
 ) {
     /** Whether the recitation waits for the reciter where they left the text ([skip]). */
     private val waits: Boolean get() = skip < SKIP_WORDS
+
+    /**
+     * Letter for letter (the app's, with the recogniser that writes what it hears: the CTC one).
+     * A word is right only with every letter of it heard. One that resembles it ([nearly]: three
+     * letters of four, as the recogniser's own slips are forgiven otherwise) is wrong until the
+     * check has listened to it ([Follower.Check]): said a little differently, it looked right
+     * (the owner, 13 Nov).
+     */
+    var strict = false
+
     private val flat: List<String> = targets.flatMap { it.words }
     private val skel: List<String> = flat.map { Arabic.skeleton(it) }
     /** Words that are disconnected letters (الٓمٓ, حمٓ, يسٓ…). */
@@ -72,6 +82,13 @@ class Tracker(
     }
 
     val status: Array<WordStatus> = Array(flat.size) { WordStatus.PENDING }
+
+    /**
+     * Words most of whose letters the last chunk that reached them heard (a three-letter word may
+     * have one wrong, a longer one a quarter: [OK_FRACTION]). The others the recogniser did not
+     * write at all, or as something else: the check takes more convincing of those.
+     */
+    val nearly = BooleanArray(flat.size)
 
     /** First word not recited yet (flat index); [size] when done. */
     var position: Int = 0
@@ -208,7 +225,10 @@ class Tracker(
                 if (w >= position && run > skip) { last = maxOf(w - run, position - 1); break }
             }
         }
-        for (w in s.first..last) status[w] = now[w - s.first]
+        for (w in s.first..last) {
+            status[w] = now[w - s.first]
+            nearly[w] = near(s.owner.indices.filter { s.owner[it] == w }, s.matched)
+        }
         for (w in last + 1 until flat.size) status[w] = WordStatus.PENDING
         if (last != s.lastWord) cut = null
         val moved = last + 1 - position
@@ -348,10 +368,17 @@ class Tracker(
         val hits = idx.count { matched[it] }
         return when {
             idx.isEmpty() || letters[w] -> WordStatus.OK
-            hits == idx.size || (idx.size == 3 && hits == 2) || (idx.size >= 4 && hits >= idx.size * OK_FRACTION) -> WordStatus.OK
+            hits == idx.size -> WordStatus.OK
+            !strict && near(idx, matched) -> WordStatus.OK
             idx.any { touched[it] } -> WordStatus.WRONG
             else -> WordStatus.MISSED
         }
+    }
+
+    /** Most of a word's letters heard: a three-letter word may have one wrong, a longer one a quarter ([OK_FRACTION]). */
+    private fun near(idx: List<Int>, matched: BooleanArray): Boolean {
+        val hits = idx.count { matched[it] }
+        return hits == idx.size || (idx.size == 3 && hits == 2) || (idx.size >= 4 && hits >= idx.size * OK_FRACTION)
     }
 
     private fun align(hWords: List<String>): Int {
@@ -411,6 +438,10 @@ class Tracker(
         while (i > 0 && j > 0) {
             val eq = e[i - 1] == h[j - 1]
             when {
+                // (Letter for letter: a letter heard once that two words could own, the end of one
+                // and the start of the next, is the earlier word's. «وَأَنزَلَت», the breath taken inside
+                // «ٱلتَّوْرَىٰةَ», gave its lām to the scrap of the second word and left «وَأَنزَلَ» short.)
+                strict && i > 1 && owner[i - 1] != owner[i - 2] && owner[i - 1] >= position && d[i, j] == d[i - 1, j] - GAP -> i--
                 d[i, j] == d[i - 1, j - 1] + (if (eq) MATCH else -MISMATCH) -> {
                     touched[i - 1] = true
                     if (eq) { matched[i - 1] = true; same++ }
@@ -452,7 +483,8 @@ class Tracker(
         // Not one of them right: a breath or a scrap, not the reciter going on (أَهْ, a breath at
         // 3:5's start, matched اللَّهَ's last letter and lit إِنَّ اللَّهَ two seconds early; the
         // owner's session of 2 Oct).
-        if (WordStatus.OK !in now) return 0
+        // (Strict: or nearly right, for the check to listen to.)
+        if (WordStatus.OK !in now && !(strict && (position..lastWord).any { w -> near(owner.indices.filter { owner[it] == w }, matched) })) return 0
         aligned = same
         // Words before the position the chunk began with, said again and now right: a correction
         // counts, as when the recitation goes back ([back]). Never the other way: a word recited
@@ -465,7 +497,10 @@ class Tracker(
                 ) status[w] = WordStatus.OK
             }
         }
-        for (w in position..lastWord) status[w] = now[w - position]
+        for (w in position..lastWord) {
+            status[w] = now[w - position]
+            nearly[w] = near(owner.indices.filter { owner[it] == w }, matched)
+        }
         val moved = lastWord + 1 - position
         position = lastWord + 1
         return moved

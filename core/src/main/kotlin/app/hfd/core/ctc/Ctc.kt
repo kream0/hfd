@@ -69,6 +69,17 @@ object Ctc {
         }
     }
 
+    /** The frame each character of the text read freely ([greedy]) is first written at. */
+    fun written(out: CtcOutput): IntArray {
+        val at = ArrayList<Int>()
+        var previous = -1
+        for ((t, s) in out.best().withIndex()) {
+            if (s != previous && s != out.blank) at += t
+            previous = s
+        }
+        return at.toIntArray()
+    }
+
     /** How [text]'s words lie on the frames once the text is held to them, and what that costs. */
     class Forced(
         /** Per word: the mean over its frames of what its character loses to the frame's likeliest symbol (nats). */

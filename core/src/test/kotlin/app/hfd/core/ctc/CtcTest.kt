@@ -72,6 +72,16 @@ class CtcTest {
     }
 
     @Test
+    fun saysWhereItWroteEachCharacter() {
+        val at = Ctc.written(output)
+        assertEquals(aya.length, at.size)
+        assertTrue((1 until at.size).all { at[it] > at[it - 1] } && at.first() >= 0 && at.last() < output.frames)
+        // As the text held to the sound places them, a frame or two apart.
+        val placed = Ctc.placed(output, vocabulary, aya)!!
+        assertTrue(at.indices.all { kotlin.math.abs(at[it] - placed[it]) <= 2 })
+    }
+
+    @Test
     fun theTextSaidCostsNothingAndAnotherWordDoes() {
         val right = Ctc.forced(output, vocabulary, aya)!!
         assertEquals(4, right.mean.size)

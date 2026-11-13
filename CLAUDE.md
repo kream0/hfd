@@ -456,6 +456,60 @@
   same word as its description), counts one button in the bar, and fails if the search field's
   microphone or the palette come back.
 
+## No word passed, no word that only resembles (2.10.0, the owner, 13 Nov: "if I do a variation that slightly resembles the next word, it sometimes highlighted it. In either mode, free, strict or tajweed, it should never skip a word: I say 'Qul kana' for 'Qul man kana' and it highlights 'kana' after 'Qul'")
+- Why it happened (2.9.x): the tracker took a word as right with most of its letters heard
+  (`near`: two of three, three quarters of a longer one), passed over up to three words, and
+  the check then righted what it had passed held to the sound at 7 nats (10 when free), where
+  a word **not said** still passes 6 % of the time (11 % at 10): `tools/ctc/skipstudy.py`, the
+  bench's āyāt with one word more in the text than was said, 3,015 of them (median cost 23
+  nats whatever the word's length; under 5: 2.1 %, under 4.5: 1.4 %, under 4: 0.5 %).
+- Now, with the CTC recogniser, at **every level** (`ReciteSession.follow`:
+  `follower.waits = tracker.strict = !speech.rough`; Whisper's readings as before):
+  - `Tracker.strict`: a word is right only with every letter of it heard. `Tracker.nearly`
+    keeps which of the others had most of their letters (the old rule).
+  - The check (`Follower.Check.unheard`, `checked`): a nearly-right word passes at 7 nats
+    (`CHECK_TOLERANCE`), one the free reading did not write at 5 (`CHECK_TOLERANCE_UNHEARD`:
+    the bench's said-but-unwritten words, noisy recitations mostly, cost 0–3.8 for six of
+    fourteen, 4.1 and 4.5 for two, which at 4 nats each held a reciter up for five words; 6.8
+    and more for the rest). `CHECK_TOLERANCE_FREE` is gone.
+  - `settle` takes the recitation back to the first word left bad, at every level. Free shows
+    nothing red; Strict and Tajwīd show the word stumbled on red (`Follower.stumbled`, also
+    under the marker), and it stays red once said right (`ReciteSession.snapshot`).
+  - A letter heard once that two words could own (the end of one, the start of the next) is
+    the earlier word's (`align`'s trace back, strict only): «وَأَنزَلَت», the breath taken inside
+    «ٱلتَّوْرَىٰةَ», had left «وَأَنزَلَ» a letter short.
+- **`Carry`** (`:core` `recite/Carry.kt`, `CarryTest`): letter for letter, a pause inside a word
+  held the reciter up (Ḥuṣarī's Āl ʿImrān 1–9: seven times in 135 words; neither utterance says
+  the word). What a whole utterance ends on after the words it said of the text
+  (`Follower.edge`: null after a stumble or going back) is kept, 0.2–2 s, and goes before the
+  next utterance's sound for the recogniser (and the check, the timing); only into the next
+  utterance, with the recitation still at that word. Where it begins comes from what the
+  recogniser itself wrote (`CtcRecognizer.WRITTEN` "#": each written character's frame,
+  `Ctc.written`; `Carry.after`: the beginning of the reading nearest the words said, by
+  letters), two frames early. Tried first and dropped: holding the words said to the sound
+  (`TIMES`): in noise their last characters drift into what follows (bismi llāhi's kasra placed
+  in r-raḥīmi) and too little was kept. Diagnostics: `recite.carry` (seconds, word).
+- The bench (`HFD_STRICT`, `HFD_CARRY`, on with `HFD_CTC`): recordings can't say a word again,
+  so in those said once through as written (43 of the 58, 1,644 words) the tracker is put, at
+  each utterance's beginning, at the word then begun (the reciters' word timings; with kept
+  sound, the word it begins in): "STALLS n (m words to say again)", and the totals' "said once
+  through as written". Each check line lists its words as n(early) or u(nheard) with their nats.
+  This sandbox, the CTC model (2.9.1's rule first): strict without the rest 15 stalls in 10
+  recitations, 43 words; with the earlier-word rule and `Carry` 9 in 8, 40; with the unheard
+  bar at 5 for 4, **7 in 6, 30 words**: pocket (3 stalls, 26 words), noisy 1, rumble 2, call
+  audio 1. None in the clean, fast, muffled, paused or loud recitations. Whole bench: ok
+  1911/2052 (wrong 0, missed 0, pending 141: the swapped and skipped cases wait at the word,
+  as they should, and a recording never takes it up again), swaps caught 4/5, skipped āya
+  waited at 3/3, held up 12 of 370 utterances (5 of the 324 said as written), lag p50 −0.1 s,
+  p90 0.6 s (2.9.0: −0.3 / 0.4).
+- What is left: three of the seven stalls are at the segmenter's cut of an utterance that
+  reaches 20 s with no pause (rumble, call audio): the next utterance begins inside a word and
+  the model drops its first word (the lever: begin it a second earlier, the tracker already
+  takes words said again at a chunk's start). A word whose letters are the text's but whose
+  vowels are not (يُولَدْ said يَلِدْ, كَانَ / كُن: the skeleton has no alif) is still followed: only
+  Tajwīd's `sounds` underlines it. A stop consonant an utterance ends on can be cut before its
+  release (متشابهات read متشابهان when a long utterance ends at a 200 ms pause).
+
 ## The recitation waits; three levels (2.9.0, the owner, 13 Nov: "if I make a mistake and a few verses later there is a match, everything in between is marked red; it should wait where I stopped until I recite the right thing, not look for the next occurrence nor in the rest of the Qur'an: it scrolls away and back and invalidates whole passages. Prepare mistake detection: a free mode by default that marks nothing and only waits, a stricter mode that colours mistakes red, and a tajwīd mode stricter still that checks pronunciation and timing")
 - **It never goes on without the reciter.** `Tracker(skip = WAIT_WORDS)` (3; the app's, every
   level): a chunk may pass over or say wrong three words in a row at most, counted with the words
@@ -479,10 +533,9 @@
     `stumbled[w]` (counted as a mistake in the āya's result, so FSRS still learns from it), and
     the screen says "take it up again at the marked word" (`ReciteUi.waiting`) until it moves.
     `Follower.reach` keeps the display from running past such a word while the check runs. A
-    word right before the utterance stays right however it is read again. The check is more
-    lenient (`CHECK_TOLERANCE_FREE` 4.3 = the CTC's worst character at 10 nats for 7): being held
-    up for a word said right costs more than letting a near one pass. The way out of a word the
-    model won't hear: the hint (from memory), or Strict.
+    word right before the utterance stays right however it is read again. (2.9.x checked more
+    leniently when free, 10 nats for 7: gone in 2.10.0, it let words not said pass.) The way out
+    of a word the model won't hear: the hint (from memory).
     Only with the CTC model: on Whisper's readings (`SpeechReader.rough`: 47 of the bench's 2,052
     words left wrong or missed, the CTC's 4) free recitation doesn't wait, it only shows nothing red.
     The words a whole utterance ends on, with none right after them, are only not said yet
@@ -491,11 +544,10 @@
     doubled letters and ghunnas so quietly that the segmenter ends the utterance in them
     («وَأَنزَلَ ٱلتَّوْرَىٰةَ» → "وَأَنزَلَت" / "ٱتَّوْرَىىٰةَ": the next utterance says the word, no harm;
     «ءَايَٰتٌ مُّحْكَمَٰتٌ» → "ءَايَـٰتٌ مّ" / "فَمَاتُننْهُنَّ": the word is in neither, and a free reciter is
-    held up at it for nothing). All the bench's such holds are Ḥuṣarī's. The next lever: when a
-    word is left bad right after an utterance that ended on it, check the two utterances' sound
-    joined, before holding.
-  - STRICT: as 2.8.0 marked mistakes (red after the check, the recitation goes on), within the
-    three words.
+    held up at it for nothing). All the bench's such holds are Ḥuṣarī's. Since 2.10.0 the two
+    utterances' sound is joined there (`Carry`, above).
+  - STRICT: until 2.9.1 as 2.8.0 marked mistakes (red after the check, the recitation goes on,
+    within the three words); since 2.10.0 it waits as FREE does and the word stumbled on is red.
   - TAJWEED: Strict, plus on every whole utterance read right (`Follower.read`; CTC model only)
     the long vowels' timing (2.5.0) and `sounds`: the text held to the sound, each word's worst
     character (`CtcRecognizer.SOUNDS` "~\n<words>" → "cost:index" per word, `Ctc.Forced.worstAt`);

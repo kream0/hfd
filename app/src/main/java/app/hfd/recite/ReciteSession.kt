@@ -13,6 +13,7 @@ import app.hfd.core.tajweed.TajweedCheck
 import app.hfd.core.recite.Arabic
 import app.hfd.core.recite.AudioStats
 import app.hfd.core.recite.AyahResult
+import app.hfd.core.recite.Carry
 import app.hfd.core.recite.Clarity
 import app.hfd.core.recite.Follower
 import app.hfd.core.recite.Level
@@ -232,6 +233,9 @@ class ReciteSession(
     private var reveal: Job? = null
     /** The sound of the whole utterance just read, as the recogniser was given it (its check and its timing listen to the same). */
     @Volatile private var prepared: FloatArray? = null
+    /** The same before it was brought to a normal level, and what a whole utterance ends on, kept for the next ([Carry]). */
+    @Volatile private var heardRaw: FloatArray? = null
+    private val carry = Carry()
 
     private val _ui = MutableStateFlow(snapshot(ReciteUi(targets, emptyList(), null)))
     val ui: StateFlow<ReciteUi> = _ui.asStateFlow()
@@ -267,8 +271,13 @@ class ReciteSession(
                     val text = withContext(recognizer) {
                         // The phone's speech microphone is faint: at a normal level first (the bench
                         // does the same, Clarity.prepare).
-                        val pcm = Clarity.prepare(u.pcm)
-                        if (u.final) prepared = pcm
+                        // (After what the utterance before ended on, when a pause cut a word: Carry.)
+                        val raw = if (placed) carry.join(u.id, u.pcm, tracker.position) else u.pcm
+                        val pcm = Clarity.prepare(raw)
+                        if (u.final) {
+                            prepared = pcm
+                            heardRaw = raw
+                        }
                         if (u.final) {
                             heardChunks++
                             val st = AudioStats.of(u.pcm)
@@ -500,6 +509,7 @@ class ReciteSession(
             "model" to m.whisper?.length(), "ctc" to m.ctc?.length(), "done" to tracker.done,
         )
         if (m.whisper == null && m.ctc == null) return
+        carry.clear()
         _ui.value = _ui.value.copy(listening = true, error = null, loading = !speech.loaded)
         // Load the model now rather than on the first chunk.
         scope.launch {
@@ -563,6 +573,7 @@ class ReciteSession(
         if (!placed) return
         follower.hint(through = lastId) ?: return
         recorder.restart()
+        carry.clear()
         val dropped = queue.count { it.id <= lastId && it.final }
         queue.removeAll { it.id <= lastId }
         _ui.value = _ui.value.copy(pending = (_ui.value.pending - dropped).coerceAtLeast(0))
@@ -628,8 +639,7 @@ class ReciteSession(
             val again = withContext(recognizer) { speech.reader()?.invoke(sound, c.expected) }
             val costs = again?.let(Follower.Check::costs)
             if (costs != null) {
-                // (Reciting freely a mistake holds the reciter up: only what is clearly another word does.)
-                val right = follower.checked(c, costs, if (level == ReciteLevel.FREE) Follower.CHECK_TOLERANCE_FREE else Follower.CHECK_TOLERANCE)
+                val right = follower.checked(c, costs)
                 Diag.log("recite.check", "id" to id, "level" to level.name, "words" to c.words.joinToString(","), "right" to right, "reading" to again)
             }
         }
@@ -646,8 +656,31 @@ class ReciteSession(
             }
         }
         settle(id, final)
+        if (final) carryOn(id, sound)
         afterProgress(text.ifBlank { null }, final)
         return moved(id)
+    }
+
+    /**
+     * What whole utterance [id] ends on after the words it said of the text is kept, to be heard
+     * with the next utterance ([Carry]): a pause inside a word cuts it in two, and neither
+     * utterance says it. The recogniser says where each character it wrote lies in the sound
+     * (the one that does: the CTC model).
+     */
+    private suspend fun carryOn(id: Int, sound: FloatArray?) {
+        val raw = heardRaw
+        val said = if (sound != null && raw != null && raw.size == sound.size && speech.timing && id != foundBy) follower.edge(id) else null
+        if (said == null || raw == null) return carry.clear()
+        val written = try {
+            withContext(recognizer) { speech.reader()?.invoke(sound!!, CtcRecognizer.WRITTEN) }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+        val times = written?.let(CtcRecognizer::times) ?: return carry.clear()
+        carry.keep(raw, written.substringBefore('\t'), times.second, times.first, said, tracker.position)
+        if (carry.seconds > 0f) Diag.log("recite.carry", "id" to id, "seconds" to carry.seconds, "word" to tracker.position)
     }
 
     /**
@@ -710,8 +743,11 @@ class ReciteSession(
             utterance = id
             utteranceFrom = before
         }
-        // (Not on Whisper's readings: free, its mistakes are just not lit, and the recitation goes on.)
-        follower.waits = level() == ReciteLevel.FREE && !speech.rough
+        // With the recogniser that writes what it hears, at every level: letter for letter, and the
+        // recitation waits at a word not right (never past one: the owner, 13 Nov). Not on Whisper's
+        // readings, too rough for that: its mistakes are marked (or just not lit, free) and it goes on.
+        follower.waits = !speech.rough
+        tracker.strict = !speech.rough
         val moved = follower.heard(id, text, final)
         Diag.log(if (final) "recite.heard" else "recite.partial", "id" to id, "text" to text, "from" to before, "to" to tracker.position, "moved" to moved, "done" to tracker.done)
         return moved
@@ -806,7 +842,13 @@ class ReciteSession(
                 val undecided = (raw == WordStatus.WRONG || raw == WordStatus.MISSED) && (free || !decided[flat + w])
                 val st = if (undecided) WordStatus.PENDING else raw
                 if (st == WordStatus.OK && confirmed[flat + w]) wasRight[flat + w] = true
-                if (wasRight[flat + w]) WordStatus.OK else st
+                when {
+                    // Marking mistakes: the word the recitation waited at is one, and stays marked
+                    // once said right (it is what there is to work on).
+                    !free && follower.stumbled[flat + w] && flat + w <= tracker.position -> WordStatus.WRONG
+                    wasRight[flat + w] -> WordStatus.OK
+                    else -> st
+                }
             }.also { flat += targets[a].words.size }
         }
         // The marker is on the word being said (Follower.voice), else the next one; never past the

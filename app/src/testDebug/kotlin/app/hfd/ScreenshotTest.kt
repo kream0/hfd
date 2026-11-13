@@ -328,7 +328,7 @@ class ScreenshotTest {
         ui { Graph.recite.value!!.previewListening(level = 0.2f, muffled = true) }
         both("recite-muffled")
         rule.onNodeWithText(rule.activity.getString(R.string.recite_muffled)).assertExists()
-        // Strict: the word left out is marked, and the recitation went on.
+        // Strict: the word left out is marked, and the recitation waits at it all the same.
         ui {
             Graph.closeRecite()
             vm.flow = null
@@ -336,6 +336,10 @@ class ScreenshotTest {
         }
         reciteIkhlas()
         both("recite-strict")
+        org.junit.Assert.assertEquals(1, marked())
+        org.junit.Assert.assertEquals(2 to 2, Graph.recite.value!!.ui.value.next)
+        // Said right, the recitation goes on, and the word stays marked.
+        ui { Graph.recite.value!!.onHeard("ولم يولد") }
         org.junit.Assert.assertEquals(1, marked())
         org.junit.Assert.assertEquals(3 to 0, Graph.recite.value!!.ui.value.next)
         // The level's choice, from the screen's own button.

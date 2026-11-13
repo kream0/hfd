@@ -286,10 +286,10 @@
     <string name="recite_level_free">Free</string>
     <string name="recite_level_strict">Strict</string>
     <string name="recite_level_tajweed">Tajwīd</string>
-    <string name="recite_level_free_body">No mistake is marked. When a word isn\'t the text\'s, the recitation waits at that word until you say it. (With the older model it goes on instead: that one mishears too often to stop you.)</string>
-    <string name="recite_level_strict_body">A word said differently or left out turns red, and the recitation goes on.</string>
+    <string name="recite_level_free_body">No mistake is marked. When a word isn\'t the text\'s, or is left out, the recitation waits at that word until you say it. (With the older model it goes on instead: that one mishears too often to stop you.)</string>
+    <string name="recite_level_strict_body">The same, and the word you stumbled on turns red and stays red once said right: what there is to work on.</string>
     <string name="recite_level_tajweed_body">As Strict, and two checks on what you say right: a long vowel of 4 counts or more not held long enough, and a letter or a short vowel not heard as written, are underlined. With the new model.</string>
-    <string name="recite_level_always">Whatever the level, the recitation stays where you are: it never jumps further on by itself.</string>
+    <string name="recite_level_always">Whatever the level, the recitation never goes past a word you haven\'t said, nor further on by itself.</string>
     <string name="recite_wait">Take it up again at the marked word.</string>
     <string name="recite_wait_hidden">Take it up again at the marked word (the bulb shows it).</string>
     <string name="recite_elsewhere">Reciting elsewhere?</string>

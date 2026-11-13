@@ -178,6 +178,12 @@ class Result(
     val againIn: Int = 0, val againAll: Int = 0,
     /** Whole utterances that would hold up a reciter reciting freely, and those that moved nothing. */
     val holds: Int = 0, val strays: Int = 0,
+    /**
+     * In a recording that says the text once through: the times the recitation was behind the
+     * reciter when an utterance began (they would have had to say words again), and the words
+     * it had not followed then.
+     */
+    val stalls: Int = 0, val lost: Int = 0, val asWritten: Boolean = false,
     /** With an āya skipped by the reciter: whether the recitation is still in it at the end, waiting (null: none skipped). */
     val waited: Boolean? = null,
 ) {
@@ -190,6 +196,7 @@ class Result(
         (if (swapped > 0) "  SWAPPED WORDS CAUGHT $caught/$swapped" else "") +
         (if (againAll > 0) "  SAID AGAIN: marker in it $againIn/$againAll" else "") +
         (if (holds > 0) "  HELD UP $holds" else "") + (if (strays > 0) "  followed nothing $strays" else "") +
+        (if (stalls > 0) "  STALLS $stalls ($lost words to say again)" else "") +
         (waited?.let { if (it) "  WAITS AT THE SKIPPED AYA" else "  WENT ON PAST THE SKIPPED AYA" } ?: "")
 
     fun line(): String {
@@ -239,13 +246,18 @@ class Totals {
     private var cleanStrays = 0
     private var skips = 0
     private var skipsWaited = 0
+    private var stalls = 0
+    private var lost = 0
+    private var writtenCases = 0
+    private var writtenStalled = 0
+    private var writtenSaid = 0
 
     /** Its counts ("<name> counts said ok …") and lags ("<name> lags place:lag …"), a line each. */
     fun dump(name: String): String =
         "$name counts said=$said ok=$ok wrong=$wrong missed=$missed pending=$pending cases=$cases timed=$timed " +
             "swapped=$swapped caught=$caught checks=$checks rescued=$rescued redRight=$redRight redRightShown=$redRightShown " +
             "againIn=$againIn againAll=$againAll finals=$finals holds=$holds strays=$strays cleanFinals=$cleanFinals cleanHolds=$cleanHolds cleanStrays=$cleanStrays " +
-            "skips=$skips skipsWaited=$skipsWaited\n" +
+            "skips=$skips skipsWaited=$skipsWaited stalls=$stalls lost=$lost writtenCases=$writtenCases writtenStalled=$writtenStalled writtenSaid=$writtenSaid\n" +
             "$name lags " + lags.indices.joinToString(" ") { String.format(Locale.US, "%d:%.2f", places.getOrElse(it) { 1 }, lags[it]) } + "\n" +
             "$name marks " + marks.joinToString(" ") { String.format(Locale.US, "%d:%.2f:%.2f:%.2f", it.place, it.left, it.leftNext, it.reached) } + "\n"
 
@@ -262,6 +274,8 @@ class Totals {
         finals += r.finals; holds += r.holds; strays += r.strays
         if (r.clean) { cleanFinals += r.finals; cleanHolds += r.holds; cleanStrays += r.strays }
         if (r.waited != null) { skips++; if (r.waited) skipsWaited++ }
+        stalls += r.stalls; lost += r.lost
+        if (r.asWritten) { writtenCases++; writtenSaid += r.said; if (r.stalls > 0) writtenStalled++ }
         cases++
     }
 
@@ -298,9 +312,11 @@ class Totals {
         fun q(f: Double) = if (l.isEmpty()) Double.NaN else l[((l.size - 1) * f).toInt()]
         return String.format(
             Locale.US, "ALL %d cases: ok %d/%d (%.1f %%), wrong %d, missed %d, pending %d; lag p50 %.1f s, p90 %.1f s; mistakes caught %d/%d; checks %d (+%d); red then right %d (shown %d); said again: marker in it %d/%d; " +
-                "of %d utterances: held up %d, followed nothing %d (said as the text is: %d and %d of %d); skipped aya waited at %d/%d",
+                "of %d utterances: held up %d, followed nothing %d (said as the text is: %d and %d of %d); skipped aya waited at %d/%d; " +
+                "said once through as written (%d recitations, %d words): %d stalls in %d of them, %d words to say again",
             cases, ok, said, 100.0 * ok / maxOf(1, said), wrong, missed, pending, q(0.5), q(0.9), caught, swapped, checks, rescued, redRight, redRightShown, againIn, againAll,
             finals, holds, strays, cleanHolds, cleanStrays, cleanFinals, skipsWaited, skips,
+            writtenCases, writtenSaid, stalls, writtenStalled, lost,
         )
     }
 }
@@ -308,7 +324,7 @@ class Totals {
 private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decoder, val steer: Boolean = true) {
     private val targets = case.refs.map { ReciteTarget(it, Arabic.words(Assets.quran.text(it).orEmpty())) }
     private val follower = Follower(targets, holdsEdges = HOLD_EDGE, keepsGoingBack = KEEP_BACK, steersPrevious = STEER_PREVIOUS, ayaStartTies = AYA_START_TIES, finalRules = FINAL_RULES, skip = SKIP)
-    private val tracker = follower.tracker
+    private val tracker = follower.tracker.also { it.strict = STRICT; follower.waits = STRICT }
     private val n = tracker.size
     private val shownAt = DoubleArray(n) { Double.NaN }
     /** Words right once a whole utterance was read: they stay so (ReciteSession.wasRight). */
@@ -334,10 +350,19 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private var splits = 0
     private val queue = ArrayDeque<Utterance>()
     private var inFlight: Triple<Utterance, String, Double>? = null
+    private val resumed = HashSet<Int>()
     /** How sure the recogniser was of the reading in flight (the CTC one says). */
     private var inFlightSure: Float? = null
     /** A whole utterance's mistakes being read again (Follower.Check), and when that reading ends. */
     private var checking: Triple<Follower.Check, String, Double>? = null
+    /** What an utterance ended on, for the next one (Carry); the whole utterance last read, as the recogniser heard it. */
+    private val carry = Carry()
+    private var whole: FloatArray? = null
+    private var wholeRaw: FloatArray? = null
+    /** When the whole utterance last read ended, and when the sound kept of it begins, in the recording. */
+    private var wholeEnd = 0.0
+    private var keptAt = 0.0
+    private var carried = 0
     private var checks = 0
     private var rescued = 0
     /**
@@ -370,6 +395,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         var i = 0
         while (i + frame <= pcm.size) {
             t = (i + frame) / RATE
+            now = t
             seg.feed(pcm.copyOfRange(i, i + frame)).forEach(::offer)
             step(t)
             i += frame
@@ -378,6 +404,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         val rnd = Random(1)
         repeat(50) {
             t += frame / RATE
+            now = t
             seg.feed(FloatArray(frame) { (rnd.nextFloat() - 0.5f) * 0.0005f }).forEach(::offer)
             step(t)
         }
@@ -390,7 +417,88 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     }
 
     /** A newer reading of the utterance waiting replaces it (the app's queue does the same). */
+    /** The stream's time, and when each utterance began in it. */
+    private var now = 0.0
+    private val began = HashMap<Int, Double>()
+
+    /**
+     * When each word is begun (NaN: its āya isn't in the recording), and whether the recording
+     * says the text once through as it is: only then can the bench stand in for a reciter who,
+     * held up, takes the text up again. A recording doesn't: so at each utterance's beginning the
+     * recitation is put at the word then being begun, and what it had not followed before it is
+     * lost (pending), a stall.
+     */
+    private val beginsAt = DoubleArray(n) { Double.NaN }.also { b ->
+        var flat = 0
+        for (t in targets) {
+            val span = case.spans[t.ref]
+            if (span != null) {
+                val starts = case.wordStarts[t.ref]?.takeIf { it.size == t.words.size }
+                val weights = t.words.map { Arabic.skeleton(it).length + 1.0 }
+                val total = weights.sum()
+                var acc = 0.0
+                for (w in t.words.indices) {
+                    b[flat + w] = starts?.get(w) ?: (span.first + (span.second - span.first) * acc / total)
+                    acc += weights[w]
+                }
+            }
+            flat += t.words.size
+        }
+    }
+    private val asWritten = !case.owner && case.mistakes.isEmpty() && case.again.isEmpty() &&
+        targets.indices.none { a -> targets[a].ref !in case.spans && (a + 1..targets.lastIndex).any { targets[it].ref in case.spans } }
+    private var stalls = 0
+    private var lost = 0
+
+    private fun resume(u: Utterance) {
+        if (!STRICT || !asWritten) return
+        val t0 = began[u.id] ?: return
+        // The word the utterance begins with. With what the utterance before ended on in front of
+        // it (Carry): the word that sound begins in.
+        val joined = CARRY && carry.seconds > 0f
+        val at = (
+            if (joined) (0 until n).lastOrNull { !beginsAt[it].isNaN() && beginsAt[it] <= keptAt + RESUME_SLACK }
+            else (0 until n).firstOrNull { !beginsAt[it].isNaN() && beginsAt[it] >= t0 - RESUME_SLACK }
+            ) ?: return
+        if (tracker.position < at) {
+            stalls++
+            lost += at - tracker.position
+            readings.append(String.format(Locale.US, "      %6.1f s  #%d STALL: at word %d, the reciter at %d\n", t0, u.id, tracker.position, at))
+            tracker.startAt(at)
+        }
+    }
+
+    /** The utterance's sound for the recogniser: after what the one before ended on, if it was cut inside a word. */
+    private fun sound(u: Utterance): FloatArray {
+        val raw = if (CARRY) carry.join(u.id, u.pcm, tracker.position) else u.pcm
+        val pcm = Clarity.prepare(raw)
+        if (u.final) {
+            whole = pcm
+            wholeRaw = raw
+            wholeEnd = (began[u.id] ?: 0.0) + u.seconds
+        }
+        return pcm
+    }
+
+    /** As the app, once a whole utterance is settled: what it ended on after its last word read right is kept for the next. */
+    private fun carryOn(id: Int, at: Double) {
+        if (!CARRY) return
+        val pcm = whole
+        val raw = wholeRaw
+        val edge = follower.edge(id)
+        if (pcm == null || raw == null || edge == null) return carry.clear()
+        val written = decoder.transcribe(pcm, expected = app.hfd.core.ctc.CtcRecognizer.WRITTEN)
+        val times = app.hfd.core.ctc.CtcRecognizer.times(written) ?: return carry.clear()
+        carry.keep(raw, written.substringBefore('\t'), times.second, times.first, edge, tracker.position)
+        if (carry.seconds > 0f) {
+            carried++
+            keptAt = wholeEnd - carry.seconds
+            readings.append(String.format(Locale.US, "      %6.1f s  #%d kept %.2f s for the next, at word %d\n", at, id, carry.seconds, tracker.position))
+        }
+    }
+
     private fun offer(u: Utterance) {
+        began.putIfAbsent(u.id, now - u.seconds)
         if (queue.lastOrNull()?.let { !it.final && it.id == u.id } == true) queue.removeLast()
         queue.addLast(u)
     }
@@ -402,12 +510,18 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             val right = costs?.let { follower.checked(c, it, CHECK_TOLERANCE) } ?: 0
             // (Held to the text to its end, and each mistake within the free tolerance: not held up.)
             val held = costs == null || costs.size != c.opening + c.to - c.from || costs.any { it >= Follower.CHECK_FAILED }
-            val bad = if (held) c.words else c.words.filter { costs!![c.opening + it - c.from] > Follower.CHECK_TOLERANCE_FREE }
+            val bad = if (held) c.words else c.words.filter { costs!![c.opening + it - c.from] > Follower.CHECK_TOLERANCE }
             // (Not the words the utterance ends on with none right after them: only not said yet, Follower.atEdge.)
-            if (bad.isNotEmpty() && (bad.first() until c.to).any { tracker.status[it] == WordStatus.OK }) holds++
+            if (!STRICT && bad.isNotEmpty() && (bad.first() until c.to).any { tracker.status[it] == WordStatus.OK }) holds++
+            if (follower.settle(c.id) != null && !follower.atEdge) holds++
+            carryOn(c.id, at)
             checks++
             rescued += right
-            readings.append(String.format(Locale.US, "      %6.1f s  #%d check   %d of %d right: %s\n", at, c.id, right, c.words.size, text.replace('\t', ' ')))
+            // (Each mistake checked: n(early) or u(nheard), and its cost in nats.)
+            val each = if (costs == null || held) "" else c.words.joinToString(" ") { w ->
+                String.format(Locale.US, "%s%.1f", if (w in c.unheard) "u" else "n", costs[c.opening + w - c.from] / app.hfd.core.ctc.CtcRecognizer.COST_SCALE)
+            }
+            readings.append(String.format(Locale.US, "      %6.1f s  #%d check   %d of %d right [%s]: %s\n", at, c.id, right, c.words.size, each, text.replace('\t', ' ')))
             observe(at, final = true)
             checking = null
         }
@@ -427,9 +541,13 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                 inFlight = null
                 // As the app: a whole utterance's mistakes are read again held to the text, before they show.
                 val c = if (u.final && steer && CHECK_TOLERANCE > 0) follower.toCheck(u.id) else null
-                if (c == null && u.final) follower.toCheck(u.id)?.let { left -> if ((left.words.first() until left.to).any { tracker.status[it] == WordStatus.OK }) holds++ }
+                if (c == null && u.final) {
+                    if (!STRICT) follower.toCheck(u.id)?.let { left -> if ((left.words.first() until left.to).any { tracker.status[it] == WordStatus.OK }) holds++ }
+                    if (follower.settle(u.id) != null && !follower.atEdge) holds++
+                    carryOn(u.id, at)
+                }
                 if (c != null) {
-                    val again = decoder.transcribe(Clarity.prepare(u.pcm), expected = c.expected)
+                    val again = decoder.transcribe(whole ?: Clarity.prepare(u.pcm), expected = c.expected)
                     checking = Triple(c, again, at + readingTime(u.seconds))
                     return
                 }
@@ -438,9 +556,10 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         }
         if (inFlight == null) {
             val u = queue.removeFirstOrNull() ?: return
+            if (resumed.add(u.id)) resume(u)
             if (u.final) finals++ else partials++
             val started = System.nanoTime()
-            val text = decoder.transcribe(Clarity.prepare(u.pcm), expected = if (steer) follower.expected(u.id) else "")
+            val text = decoder.transcribe(sound(u), expected = if (steer) follower.expected(u.id) else "")
             inFlightSure = decoder.sure
             decodeNanos += System.nanoTime() - started
             inFlight = Triple(u, text, t + readingTime(u.seconds))
@@ -524,7 +643,8 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                 } else if (span != null && (t.ref to w) in case.mistakes) {
                     // Said wrongly on purpose: caught if it ends a mistake (white would hide it).
                     swapped++
-                    if (st != WordStatus.OK && st != WordStatus.PENDING) caught++
+                    // (Marked, or waited at: the recitation didn't go on as if it were right.)
+                    if ((st != WordStatus.OK && st != WordStatus.PENDING) || follower.stumbled[flat + w] || (STRICT && st == WordStatus.PENDING && tracker.position == flat + w)) caught++
                 } else if (span != null || case.owner) {
                     said++
                     when (st) {
@@ -585,6 +705,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             markerTimes,
             againIn, againAll,
             holds, strays,
+            stalls = stalls, lost = lost, asWritten = asWritten,
             // An āya the reciter skipped: the recitation is still at its first word, nothing marked after.
             waited = targets.indices.firstOrNull { a -> a < lastRecited && targets[a].ref !in case.spans && !case.owner }?.let { a ->
                 tracker.position >= tracker.startOf(a) && tracker.position < tracker.startOf(a + 1)
@@ -598,6 +719,12 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
         val CHECK_TOLERANCE = System.getenv("HFD_CHECK_TOLERANCE")?.toFloatOrNull() ?: Follower.CHECK_TOLERANCE
         /** Words in a row a reading may pass over (Tracker): the app's, the recitation waits; HFD_SKIP_WORDS=40: it went on past a skipped āya (2.8.0). */
         val SKIP = System.getenv("HFD_SKIP_WORDS")?.toIntOrNull() ?: Tracker.WAIT_WORDS
+        /** Letter for letter and no word passed over (Tracker.strict): the app's with the CTC recogniser; HFD_STRICT=0: not (2.9.1), =1: with whisper.cpp too. */
+        val STRICT = System.getenv("HFD_STRICT")?.let { it == "1" } ?: !System.getenv("HFD_CTC").isNullOrBlank()
+        /** What an utterance ends on after its last word read right goes before the next one's sound (Carry): the app's when letter for letter; HFD_CARRY=0: not. */
+        val CARRY = STRICT && System.getenv("HFD_CARRY") != "0"
+        /** How long before a word's beginning an utterance that begins with it may begin (the segmenter keeps a little of the silence before). */
+        const val RESUME_SLACK = 0.35
         /** The phone's time per reading relative to the app's model (a bigger model: HFD_PHONE_FACTOR). */
         val PHONE_FACTOR = System.getenv("HFD_PHONE_FACTOR")?.toDoubleOrNull() ?: 1.0
         /** Partial readings' unfinished last words wait (Follower.holdEdge); HFD_HOLD_EDGE=0: not (1.15.3). */

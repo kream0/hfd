@@ -195,4 +195,73 @@ class FollowerWaitTest {
         assertEquals(start(4), f.tracker.position)
         assertEquals(0, f.red())
     }
+
+    private val enemy = listOf(ReciteTarget(AyahRef(2, 97), Arabic.words(Assets.quran.text(AyahRef(2, 97)).orEmpty())))
+
+    /** As the app follows with the recogniser that writes what it hears: letter for letter, no word passed over. */
+    private fun strict(targets: List<ReciteTarget>, free: Boolean) =
+        Follower(targets, skip = Tracker.WAIT_WORDS).also { it.waits = free; it.tracker.strict = true }
+
+    @Test
+    fun aWordLeftOutIsNeverPassed() {
+        // (The owner, 13 Nov: «قل كان» said for «قُلْ مَن كَانَ عَدُوًّا», and «كَانَ» lit after «قُلْ».)
+        val words = enemy[0].words
+        val f = strict(enemy, free = true)
+        // As it grows: nothing shows past the word left out. Then whole, and checked.
+        for (n in 1..4) {
+            f.heard(0, (words.take(1) + words.drop(2).take(n)).joinToString(" "), final = n == 4)
+            if (n < 4) assertEquals(1, f.tracker.position)
+        }
+        val check = f.toCheck(0)!!
+        assertTrue(1 in check.unheard)
+        // Held to the sound, a word that was not said can cost little (one time in ten under
+        // 2.9.0's tolerance): not little enough for one the free reading did not hear.
+        f.checked(check, List(check.to - check.from) { if (it == 1) 2.5f else 0.2f })
+        assertEquals(1, f.settle(0))
+        assertEquals(1, f.tracker.position)
+        assertEquals(WordStatus.OK, f.tracker.status[0])
+        assertTrue((1 until f.tracker.size).all { f.tracker.status[it] == WordStatus.PENDING })
+        // Nor at an utterance's beginning: the word waited at left out again, what follows it said.
+        f.heard(1, words.drop(2).take(4).joinToString(" "), final = true)
+        f.toCheck(1)?.let { c -> f.checked(c, List(c.to - c.from) { if (it == 0) 30f else 0.2f }) }
+        f.settle(1)
+        assertEquals(1, f.tracker.position)
+        // Said with the word: it goes on.
+        f.heard(2, words.drop(1).take(4).joinToString(" "), final = true)
+        assertNull(f.settle(2))
+        assertEquals(5, f.tracker.position)
+        // A word the free reading dropped and the sound clearly holds is still righted.
+        val g = strict(enemy, free = true)
+        g.heard(0, (words.take(1) + words.drop(2).take(4)).joinToString(" "), final = true)
+        g.toCheck(0)!!.let { c -> g.checked(c, List(c.to - c.from) { 0.3f }) }
+        assertNull(g.settle(0))
+        assertEquals(6, g.tracker.position)
+    }
+
+    @Test
+    fun aWordThatOnlyResemblesIsNotRight() {
+        // 2:4's «يُوقِنُونَ» said «يُؤْمِنُونَ»: five letters of six. Not right until the check has listened.
+        val baqara = listOf(ReciteTarget(AyahRef(2, 4), Arabic.words(Assets.quran.text(AyahRef(2, 4)).orEmpty())))
+        val words = baqara[0].words
+        val said = words.dropLast(1) + Arabic.words(Assets.quran.text(AyahRef(2, 3)).orEmpty())[1]
+        val free = strict(baqara, free = true)
+        assertEquals(words.lastIndex, free.say(0, said))
+        assertEquals(words.lastIndex, free.tracker.position)
+        assertEquals(0, free.red())
+        val marking = strict(baqara, free = false)
+        marking.say(0, said)
+        assertEquals(WordStatus.WRONG, marking.tracker.status[words.lastIndex])
+        // The check finds it said (the recogniser's own slip): right.
+        val slip = strict(baqara, free = true)
+        slip.heard(0, said.joinToString(" "), final = true)
+        val check = slip.toCheck(0)!!
+        assertEquals(listOf(words.lastIndex), check.words)
+        slip.checked(check, List(words.size) { 0.3f })
+        assertNull(slip.settle(0))
+        assertEquals(words.size, slip.tracker.position)
+        // (Without strictness, as with whisper.cpp's rougher letters, it is taken for the word.)
+        val rough = follower(free = false).let { Follower(baqara, skip = Tracker.WAIT_WORDS) }
+        rough.heard(0, said.joinToString(" "), final = true)
+        assertEquals(WordStatus.OK, rough.tracker.status[words.lastIndex])
+    }
 }

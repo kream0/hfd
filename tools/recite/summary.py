@@ -53,7 +53,9 @@ for config, dirs in configs.items():
               f"said again: marker in it {c['againIn']}/{c['againAll']}; "
               f"of {c['finals']} utterances: held up {c['holds']}, followed nothing {c['strays']} "
               f"(said as the text is: {c['cleanHolds']} and {c['cleanStrays']} of {c['cleanFinals']}); "
-              f"skipped aya waited at {c['skipsWaited']}/{c['skips']}")
+              f"skipped aya waited at {c['skipsWaited']}/{c['skips']}; "
+              f"said once through as written ({c['writtenCases']} recitations, {c['writtenSaid']} words): "
+              f"{c['stalls']} stalls in {c['writtenStalled']} of them, {c['lost']} words to say again")
     by = collections.defaultdict(list)
     for p, v in lags["all"]:
         by[p].append(v)

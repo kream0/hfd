@@ -5,7 +5,8 @@ package app.hfd.core.ctc
  * ([app.hfd.core.recite.Follower]): the text heard, or, asked to check a text ("?\n" then the
  * words), the text heard, a tab, and what holding each word to the sound costs; or, asked where a
  * text lies in time ("@\n" then the text), the frame of each of its characters; or, asked how a
- * text read right was pronounced ("~\n" then the words), each word's worst character and its cost.
+ * text read right was pronounced ("~\n" then the words), each word's worst character and its cost;
+ * or, asked where what it read lies in time ("#"), the frame of each character it wrote.
  */
 class CtcRecognizer(private val model: CtcModel, private val vocabulary: CtcVocabulary = CtcVocabulary.QURAN) {
     private val mel = Mel()
@@ -37,6 +38,11 @@ class CtcRecognizer(private val model: CtcModel, private val vocabulary: CtcVoca
             val placed = out?.let { Ctc.placed(it, vocabulary, expected.substring(TIMES.length)) } ?: return text
             return text + "\t" + out.frames + ";" + placed.joinToString(",")
         }
+        if (expected == WRITTEN) {
+            // "#": the frame each character of the text it read is written at.
+            if (out == null) return text
+            return text + "\t" + out.frames + ";" + Ctc.written(out).joinToString(",")
+        }
         if (expected.startsWith(SOUNDS)) {
             // "~\n<words>": per word, its worst character's cost (nats) and where in the word it is.
             val words = expected.substring(SOUNDS.length).split(' ').filter { it.isNotEmpty() }
@@ -56,7 +62,14 @@ class CtcRecognizer(private val model: CtcModel, private val vocabulary: CtcVoca
         /** Asked where a text's letters lie in time ([app.hfd.core.tajweed.TajweedCheck]). */
         const val TIMES = "@\n"
 
-        /** The frames' count and each character's frame, from a reading asked with [TIMES]; null without them. */
+        /**
+         * Asked where the text it read itself lies in time: each of its characters' frame, as
+         * [times] reads them (what an utterance ends on is kept for the next one,
+         * [app.hfd.core.recite.Carry]).
+         */
+        const val WRITTEN = "#"
+
+        /** The frames' count and each character's frame, from a reading asked with [TIMES] or [WRITTEN]; null without them. */
         fun times(reading: String): Pair<Int, IntArray>? {
             val tail = reading.substringAfterLast('\t', "").takeIf { ';' in it } ?: return null
             val frames = tail.substringBefore(';').toIntOrNull() ?: return null

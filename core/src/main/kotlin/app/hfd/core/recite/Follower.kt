@@ -24,8 +24,9 @@ class Follower(
 ) {
     val tracker = Tracker(targets, ayaStartTies, skip)
     /**
-     * Free recitation: a word not said right isn't marked, the recitation waits at it until it
-     * is said ([settle]); what the reciter said after it in the same breath is to say again.
+     * The recitation waits at a word not said right until it is said ([settle]); what the reciter
+     * said after it in the same breath is to say again. The app's with the recogniser that writes
+     * what it hears, at every level (whether the word is shown as a mistake is the level's).
      * Otherwise the word is marked wrong or missed and the recitation goes on.
      */
     var waits = false
@@ -200,8 +201,12 @@ class Follower(
     var atEdge = false
         private set
 
+    /** The last [settle] left a word to say again with words right after it: a stumble. */
+    private var stumbledNow = false
+
     fun settle(id: Int): Int? {
         atEdge = false
+        stumbledNow = false
         if (!waits || id != current) return null
         val b = before ?: return null
         val status = tracker.status
@@ -210,7 +215,10 @@ class Follower(
         }
         val w = firstBad(0) ?: return null
         atEdge = w >= b.position && (w until tracker.position).none { status[it] == WordStatus.OK }
-        if (!atEdge) stumbled[w] = true
+        if (!atEdge) {
+            stumbled[w] = true
+            stumbledNow = true
+        }
         holdAt(w)
         voice = null
         return w
@@ -287,7 +295,15 @@ class Follower(
      * began with: [opening] words), and says what each word cost it against its own guess
      * (app/src/main/cpp/bias.h, hfd_check): [checked] takes a mistake that cost little as right.
      */
-    class Check internal constructor(val id: Int, val from: Int, val to: Int, val text: String, val words: List<Int>, val opening: Int) {
+    class Check internal constructor(
+        val id: Int, val from: Int, val to: Int, val text: String, val words: List<Int>, val opening: Int,
+        /**
+         * Those of [words] the free reading did not hear at all, or as something else (not
+         * [Tracker.nearly]; only told apart when the tracker goes letter for letter): held to
+         * the sound, a word that was not said still costs little one time in ten.
+         */
+        val unheard: Set<Int> = emptySet(),
+    ) {
         /** For the recogniser. */
         val expected: String get() = "?\n$text"
 
@@ -317,6 +333,23 @@ class Follower(
         return Read(from, to, (finalOpening + tracker.text(from, to)).joinToString(" "), finalOpening)
     }
 
+    /**
+     * After [settle]: what whole utterance [id] said of the text, as written (the isti'ādha or
+     * basmala it began with, then the words followed up to where the recitation now is; maybe
+     * nothing), when it went on or stayed. What the recogniser wrote after that is no word of the
+     * text yet: the beginning of the next one, cut by the pause, which the next utterance is
+     * heard with ([Carry]). Null when the recitation doesn't wait, when the reciter stumbled
+     * (what follows the word is to say again anyway), or went back.
+     */
+    fun edge(id: Int): String? {
+        if (!waits || id != current || stumbledNow) return null
+        val b = before ?: return null
+        val to = tracker.position
+        if (to < b.position || tracker.status.indices.any { it < b.position && tracker.status[it] != b.statusAt(it) }) return null
+        val said = if (to > b.position) listOf(tracker.text(b.position, to)) else emptyList()
+        return (finalOpening + said).joinToString(" ")
+    }
+
     /** The mistakes whole utterance [id] (just followed) left in what it covered, if any. */
     fun toCheck(id: Int): Check? {
         if (id != current) return null
@@ -326,7 +359,7 @@ class Follower(
         val bad = (from until to).filter { tracker.status[it] == WordStatus.WRONG || tracker.status[it] == WordStatus.MISSED }
         if (bad.isEmpty()) return null
         val text = (finalOpening + tracker.text(from, to)).joinToString(" ")
-        return Check(id, from, to, text, bad, finalOpening.size)
+        return Check(id, from, to, text, bad, finalOpening.size, if (tracker.strict) bad.filter { !tracker.nearly[it] }.toSet() else emptySet())
     }
 
     /**
@@ -338,7 +371,9 @@ class Follower(
     fun checked(check: Check, costs: List<Float>, tolerance: Float = CHECK_TOLERANCE): Int {
         if (costs.size != check.opening + check.to - check.from) return 0
         if (costs.any { it >= CHECK_FAILED }) return 0
-        val right = check.words.filter { costs[check.opening + it - check.from] <= tolerance }
+        // A word the free reading did not hear takes more convincing ([CHECK_TOLERANCE_UNHEARD]):
+        // «قل كان» said for «قُلْ مَن كَانَ» went on past «مَن» (the owner, 13 Nov).
+        val right = check.words.filter { costs[check.opening + it - check.from] <= if (it in check.unheard) minOf(tolerance, CHECK_TOLERANCE_UNHEARD) else tolerance }
         for (w in right) tracker.status[w] = WordStatus.OK
         return right.size
     }
@@ -397,11 +432,16 @@ class Follower(
          */
         const val CHECK_TOLERANCE = 3f
         /**
-         * The same when a mistake holds the reciter up ([waits]) rather than being marked: only a
-         * word clearly not the text's does. (The CTC recogniser's worst character at 10 nats, for
-         * 7: of the bench's words said, p99 costs 5.8; a word said for another, 8.4 to 14.)
+         * The same for a word the free reading did not hear ([Check.unheard]): the CTC recogniser's
+         * worst character at 5 nats, for 7. Measured (tools/ctc/skipstudy.py, the bench's āyāt with
+         * one word more in the text than was said, 3,015 of them): a word not said costs 23 nats at
+         * the median, whatever its length, but under 10 for 11 % (2.9.0's free tolerance), under 7
+         * for 6 %, under 5 for 2 %, under 4 for 0.5 %. And the words said that the free reading
+         * did not write (the bench's recitations said as written, noisy ones mostly: 14 checked)
+         * cost 0–3.8 for six, 4.1 and 4.5 for two (each held a reciter up for five words at 4
+         * nats), 6.8 and more for the rest (cut by a pause, or not heard at all).
          */
-        const val CHECK_TOLERANCE_FREE = 4.3f
+        const val CHECK_TOLERANCE_UNHEARD = 5f * 3f / 7f
         /** A word's cost when the reading couldn't be held to the text there (bias.h HFD_CHECK_FAIL). */
         const val CHECK_FAILED = 99f
         /** Words before the utterance's start it may begin with (said again). */

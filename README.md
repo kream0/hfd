@@ -123,13 +123,17 @@ that the app updates itself from new releases. Android 8.0 or newer.
   app follows along live, lighting up each word once said (the text shows dim by default; the
   eye button hides it), with *Hint* for the next word (counted as a mistake). What a mistake
   does is the reciter's choice (the pill at the top of the screen, or Settings): **Free** (the
-  default) marks nothing and waits at the word not said until it is said; **Strict** marks
-  skipped (struck through) and wrong words in red and goes on; **Tajwīd** is Strict plus two
-  checks on what was read right: the long vowels' timing, and each word held to the sound letter
-  by letter (a letter or a short vowel not heard as written is underlined; `CtcRecognizer.SOUNDS`).
-  At every level the recitation stays with the reciter: it never passes over more than three
-  words, so words that are also the text's a few āyāt later move nothing, and another place of
-  the Qur'an the reciter is clearly saying is offered, not gone to. The word being said stays
+  default) marks nothing and waits at the word not said until it is said; **Strict** waits the
+  same and turns the word stumbled on red, where it stays once said right; **Tajwīd** is Strict
+  plus two checks on what was read right: the long vowels' timing, and each word held to the
+  sound letter by letter (a letter or a short vowel not heard as written is underlined;
+  `CtcRecognizer.SOUNDS`).
+  At every level the recitation stays with the reciter and never goes past a word that was not
+  said: a word counts once every letter of it is heard (one that only resembles it, or that the
+  recogniser did not write, is listened to again held to the text, `Follower.Check`), words that
+  are also the text's a few āyāt later move nothing, and another place of the Qur'an the reciter
+  is clearly saying is offered, not gone to. A word a pause cut in two is heard whole: what an
+  utterance ends on goes before the next one's sound (`Carry`). The word being said stays
   in view down a long āya, an āya's end turns gold once recited whole (red with a mistake), a
   bar counts the words and the mistakes so far, and the screen says to take it up again at the
   marked word when the recitation waits. The microphone is cut into utterances at short pauses
