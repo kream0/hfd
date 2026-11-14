@@ -184,6 +184,12 @@ class Result(
      * it had not followed then.
      */
     val stalls: Int = 0, val lost: Int = 0, val asWritten: Boolean = false,
+    /**
+     * Times the text stopped at a word while the reciter went on (a reading of an utterance still
+     * being said, stopped at a word its check ruled out), and the seconds until it moved again or
+     * the utterance was whole: what the reciter sees as the text lagging.
+     */
+    val darks: Int = 0, val darkSeconds: Double = 0.0,
     /** With an āya skipped by the reciter: whether the recitation is still in it at the end, waiting (null: none skipped). */
     val waited: Boolean? = null,
 ) {
@@ -197,6 +203,7 @@ class Result(
         (if (againAll > 0) "  SAID AGAIN: marker in it $againIn/$againAll" else "") +
         (if (holds > 0) "  HELD UP $holds" else "") + (if (strays > 0) "  followed nothing $strays" else "") +
         (if (stalls > 0) "  STALLS $stalls ($lost words to say again)" else "") +
+        (if (darks > 0) String.format(Locale.US, "  STOPPED WHILE SPEAKING %d (%.1f s)", darks, darkSeconds) else "") +
         (waited?.let { if (it) "  WAITS AT THE SKIPPED AYA" else "  WENT ON PAST THE SKIPPED AYA" } ?: "")
 
     fun line(): String {
@@ -365,6 +372,9 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
     private var carried = 0
     /** The sound of the reading in flight (a word not right is checked on it at once). */
     private var flightSound: FloatArray? = null
+    private var darks = 0
+    private var darkSeconds = 0.0
+    private var darkSince: Double? = null
     private var checks = 0
     private var rescued = 0
     /**
@@ -542,8 +552,13 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
                         rescued += right
                         readings.append(String.format(Locale.US, "      %6.1f s  #%d check   %d of %d right, still speaking: %s\n", at, u.id, right, c.words.size, again.substringAfterLast('\t')))
                     }
+                    val went = tracker.position
                     follower.hold(u.id)
-                }
+                    // (Stopped at a word while the reciter goes on: until a reading isn't, or the utterance is whole.)
+                    if (tracker.position < went) {
+                        if (darkSince == null) { darkSince = at; darks++ }
+                    } else darkSince?.let { darkSeconds += at - it; darkSince = null }
+                } else if (u.final) darkSince?.let { darkSeconds += at - it; darkSince = null }
                 // As the app: an utterance the readings stall in is ended at its pause (Stall).
                 stall.heard(u, tracker.position)?.let { sample ->
                     segmenter?.splitAt(u.id, sample)?.let { split ->
@@ -723,7 +738,7 @@ private class Simulation(val case: Case, val pcm: FloatArray, val decoder: Decod
             markerTimes,
             againIn, againAll,
             holds, strays,
-            stalls = stalls, lost = lost, asWritten = asWritten,
+            stalls = stalls, lost = lost, asWritten = asWritten, darks = darks, darkSeconds = darkSeconds,
             // An āya the reciter skipped: the recitation is still at its first word, nothing marked after.
             waited = targets.indices.firstOrNull { a -> a < lastRecited && targets[a].ref !in case.spans && !case.owner }?.let { a ->
                 tracker.position >= tracker.startOf(a) && tracker.position < tracker.startOf(a + 1)

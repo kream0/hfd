@@ -294,11 +294,39 @@ class FollowerWaitTest {
             assertEquals(8, f.tracker.position)
             assertEquals(0, f.red())
         }
-        // A word the sound does not hold stops the phrase there, asked about once while it grows,
+        // A word the sound neither bears out nor rules out (the owner's 2.10.1: eleven stops in four
+        // minutes of recitation, to each phrase's end) is only doubted: the text goes on past it,
+        // that word not lit, and the whole phrase's check decides.
+        val d = strict(kahf, free = true)
+        d.heard(0, off.take(3).joinToString(" "), final = false, hold = false)
+        d.toCheck(0, partial = true)!!.let { c -> assertEquals(0, d.checked(c, List(c.to - c.from) { if (it == 1) 3.2f else 0f })) }
+        d.hold(0)
+        assertEquals(3, d.tracker.position)
+        assertEquals(3, d.reach)
+        assertTrue(d.tracker.status[1] != WordStatus.OK)
+        d.heard(0, off.take(6).joinToString(" "), final = false, hold = false)
+        assertNull(d.toCheck(0, partial = true))
+        d.hold(0)
+        assertEquals(6, d.reach)
+        // Whole, and refused: back to it, the words after it to say again.
+        d.heard(0, off.take(6).joinToString(" "), final = true)
+        d.toCheck(0)!!.let { c -> assertEquals(listOf(1), c.words); d.checked(c, List(c.to - c.from) { if (it == 1) 3.2f else 0f }) }
+        assertEquals(1, d.settle(0))
+        assertEquals(1, d.reach)
+        // (Borne out once whole: it goes on.)
+        val e = strict(kahf, free = true)
+        e.heard(0, off.take(3).joinToString(" "), final = false, hold = false)
+        e.toCheck(0, partial = true)!!.let { c -> e.checked(c, List(c.to - c.from) { if (it == 1) 2.8f else 0f }) }
+        e.hold(0)
+        e.heard(0, off.take(6).joinToString(" "), final = true)
+        e.toCheck(0)!!.let { c -> assertEquals(1, e.checked(c, List(c.to - c.from) { if (it == 1) 2.8f else 0f })) }
+        assertNull(e.settle(0))
+        assertEquals(6, e.tracker.position)
+        // A word the sound rules out stops the phrase there, asked about once while it grows,
         // and again once it is whole.
         val g = strict(kahf, free = true)
         g.heard(0, off.take(3).joinToString(" "), final = false, hold = false)
-        g.toCheck(0, partial = true)!!.let { c -> assertEquals(0, g.checked(c, List(c.to - c.from) { if (it == 1) 4f else 0f })) }
+        g.toCheck(0, partial = true)!!.let { c -> assertEquals(0, g.checked(c, List(c.to - c.from) { if (it == 1) 6f else 0f })) }
         g.hold(0)
         assertEquals(1, g.tracker.position)
         g.heard(0, off.take(5).joinToString(" "), final = false, hold = false)
@@ -308,7 +336,7 @@ class FollowerWaitTest {
         g.heard(0, off.take(6).joinToString(" "), final = true)
         val whole = g.toCheck(0)!!
         assertEquals(listOf(1), whole.words)
-        g.checked(whole, List(whole.to - whole.from) { if (it == 1) 4f else 0f })
+        g.checked(whole, List(whole.to - whole.from) { if (it == 1) 6f else 0f })
         assertEquals(1, g.settle(0))
         assertEquals(1, g.tracker.position)
     }

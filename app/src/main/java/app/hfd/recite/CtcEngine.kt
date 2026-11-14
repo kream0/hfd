@@ -22,11 +22,10 @@ class CtcEngine private constructor(private val model: OrtCtcModel, private val 
         check(!closed) { "closed" }
         val started = System.currentTimeMillis()
         val text = runCatching { recognizer.transcribe(pcm, expected) }.onFailure { Diag.error("ctc.text", it) }.getOrNull()
-        // The text is in recite.partial / recite.heard (and ctc.selftest).
-        Diag.log(
-            "ctc.text", "seconds" to pcm.size / Whisper.SAMPLE_RATE.toFloat(), "ms" to System.currentTimeMillis() - started,
-            "threads" to threads, "check" to expected.startsWith("?").takeIf { it }, "failed" to (text == null).takeIf { it },
-        )
+        // The text and the time it took are in recite.partial / recite.heard (and ctc.selftest): a
+        // line per reading here as well, three a second, used up ntfy's 250 messages a day in one
+        // evening's recitation, and nothing of 2.10.0 nor 2.10.1 came through (13 Nov).
+        if (text == null) Diag.log("ctc.text", "seconds" to pcm.size / Whisper.SAMPLE_RATE.toFloat(), "ms" to System.currentTimeMillis() - started, "threads" to threads, "failed" to true)
         return text
     }
 

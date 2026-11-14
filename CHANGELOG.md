@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.10.2
+Fixed: the text still stopped for seconds in the middle of a long phrase.
+- **A doubtful word no longer stops the text.** When a word was heard unclearly while you kept reciting, 2.10.1 stopped showing anything until your next pause, even though the word was usually accepted then. On recordings of your own recitation that happened 9 times in 5 minutes, 51 seconds in all. Now the words after it light as you say them; that one word stays unlit until the pause settles it, and the recitation only goes back to it if it really wasn't said.
+- A word that clearly wasn't said still stops the text at once, at every level.
+- **Your sessions reach the diagnostics again** (if you send them): the log of a recitation is ten times lighter. It had filled the log service's daily allowance in one evening, and nothing was received after that.
+
 ## 2.10.1
 Fixed: in 2.10.0 the words lit up seconds after you said them. And after going back you can take it up again where you had got to.
 - **The text keeps up with you again.** In 2.10.0, one word heard a letter off early in a long phrase kept everything after it dark until you paused: ten words said, shown three seconds later. Such a word is now listened to again against your voice at once, while you go on, and the words after it show as you say them. It was not the phone's speed, nor the Tajwīd level.

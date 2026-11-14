@@ -237,6 +237,15 @@ class ReciteSession(
     @Volatile private var heardRaw: FloatArray? = null
     /** The sound of the reading just made (of an utterance whole or still being said), as the recogniser heard it. */
     @Volatile private var heardSound: FloatArray? = null
+    /** For the diagnostics: when the newest sound was handed over, and the reading just made (its sound's length, how long it waited and took). */
+    @Volatile private var offeredAt = 0L
+    @Volatile private var readingWait = 0L
+    @Volatile private var readingMs = 0L
+    @Volatile private var readingSeconds = 0f
+    /** The utterance's reading logged last: the next one is logged as what it keeps of it and what it adds. */
+    private var loggedId = -1
+    private var loggedText = ""
+    private var loggedTo = -1
     private val carry = Carry()
 
     private val _ui = MutableStateFlow(snapshot(ReciteUi(targets, emptyList(), null)))
@@ -294,7 +303,14 @@ class ReciteSession(
                                 "zcr" to st.zcr, "bands" to st.bands.joinToString("/"),
                             )
                         }
-                        speech.reader()?.invoke(pcm, expected).also { sure = speech.sure }
+                        val started = android.os.SystemClock.elapsedRealtime()
+                        // (How old the newest sound was when its reading began: with one waiting to be read, the wait.)
+                        readingWait = started - offeredAt
+                        speech.reader()?.invoke(pcm, expected).also {
+                            sure = speech.sure
+                            readingMs = android.os.SystemClock.elapsedRealtime() - started
+                            readingSeconds = pcm.size / Segmenter.RATE.toFloat()
+                        }
                     }
                     if (u.final) _ui.value = _ui.value.copy(pending = (_ui.value.pending - 1).coerceAtLeast(0))
                     // Anywhere in the Qur'an: where this is, first. Found, the utterance is followed
@@ -372,6 +388,7 @@ class ReciteSession(
 
     private fun offer(u: Utterance) {
         lastId = maxOf(lastId, u.id)
+        offeredAt = android.os.SystemClock.elapsedRealtime()
         if (queue.lastOrNull()?.let { !it.final && it.id == u.id } == true) queue.removeLast()
         queue.addLast(u)
         if (u.final) _ui.value = _ui.value.copy(pending = _ui.value.pending + 1)
@@ -658,7 +675,7 @@ class ReciteSession(
             val costs = again?.let(Follower.Check::costs)
             if (costs != null) {
                 val right = follower.checked(c, costs)
-                Diag.log("recite.check", "id" to id, "level" to level.name, "words" to c.words.joinToString(","), "right" to right, "reading" to again)
+                Diag.log("recite.check", "id" to id, "level" to level.name, "words" to c.words.joinToString(","), "right" to right, "costs" to again.substringAfterLast('\t'))
             }
         }
         // (Timing is an extra: whatever goes wrong in it, the recitation goes on.)
@@ -767,7 +784,21 @@ class ReciteSession(
         follower.waits = !speech.rough
         tracker.strict = !speech.rough
         val moved = follower.heard(id, text, final, hold)
-        Diag.log(if (final) "recite.heard" else "recite.partial", "id" to id, "text" to text, "from" to before, "to" to tracker.position, "moved" to moved, "done" to tracker.done)
+        // A reading still growing is logged as what it keeps of the one before and what it adds
+        // (the whole text three times a second filled ntfy's day in an evening), and not at all
+        // when it says and moves nothing new; a whole one, in full. With the sound's length, the
+        // time the reading waited and took (ms), and how far the text shows (reach): what lags.
+        if (final) {
+            Diag.log("recite.heard", "id" to id, "text" to text, "from" to before, "to" to tracker.position, "moved" to moved, "done" to tracker.done,
+                "sec" to readingSeconds, "wait" to readingWait, "ms" to readingMs, "reach" to follower.reach)
+        } else if (id != loggedId || text != loggedText || tracker.position != loggedTo) {
+            val keep = if (id == loggedId) text.commonPrefixWith(loggedText).length else 0
+            Diag.log("recite.partial", "id" to id, "keep" to keep, "add" to text.substring(keep), "from" to before, "to" to tracker.position,
+                "sec" to readingSeconds, "wait" to readingWait, "ms" to readingMs)
+        }
+        loggedId = id
+        loggedText = text
+        loggedTo = tracker.position
         return moved
     }
 

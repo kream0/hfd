@@ -64,6 +64,16 @@ class Follower(
     private var tried = BooleanArray(tracker.size)
     private var righted = BooleanArray(tracker.size)
     /**
+     * Words of the utterance being followed that its check, made while it was still being said,
+     * neither bore out nor ruled out ([CHECK_DOUBT]): probably said, and misheard. The recitation
+     * doesn't stop at them while the reciter goes on: they stay unlit, the words after them show,
+     * and the whole utterance's check decides (it goes back to them if it refuses them). On the
+     * owner's own recordings (13 Nov, 2.10.1's rule, which stopped at every word the check didn't
+     * bear out at once): eleven such stops in four minutes, each until the phrase's end, up to 8 s;
+     * eight of them at 4.4–8.3 nats, most then read right or righted once the phrase was whole.
+     */
+    private var doubted = BooleanArray(tracker.size)
+    /**
      * Words a whole utterance's check refused: the recitation waited at them. They are not asked
      * about again while the next utterance is still being said, only once it is whole (asked
      * every time, a word that was not said ends up passing: the bench's «يُنفِقُونَ» said «يُؤْمِنُونَ»,
@@ -85,6 +95,7 @@ class Follower(
             current = id
             tried = BooleanArray(tracker.size)
             righted = BooleanArray(tracker.size)
+            doubted = BooleanArray(tracker.size)
             // What the utterances before recited is kept (the reciter may go back, and take it up again from there).
             tracker.remember()
             before = tracker.mark()
@@ -184,7 +195,7 @@ class Follower(
     fun hold(id: Int) {
         if (!waits || id != current || id <= closed) return
         val from = before?.position ?: return
-        firstBad(from)?.let {
+        firstBad(from, passDoubted = true)?.let {
             holdAt(it)
             voice = null
         }
@@ -210,11 +221,12 @@ class Follower(
      * The first word from [from] this utterance leaves wrong or missed. Not one right before it
      * (it stays right), nor one wrong before it as it is now (from when mistakes were marked).
      */
-    private fun firstBad(from: Int): Int? {
+    private fun firstBad(from: Int, passDoubted: Boolean = false): Int? {
         val b = before ?: return null
         val status = tracker.status
         return (from until tracker.position).firstOrNull { w ->
-            (status[w] == WordStatus.WRONG || status[w] == WordStatus.MISSED) && b.statusAt(w) != WordStatus.OK && (w >= b.position || b.statusAt(w) != status[w])
+            (status[w] == WordStatus.WRONG || status[w] == WordStatus.MISSED) && b.statusAt(w) != WordStatus.OK && (w >= b.position || b.statusAt(w) != status[w]) &&
+                !(passDoubted && doubted[w])
         }
     }
 
@@ -223,7 +235,7 @@ class Follower(
      * utterance leaves wrong or missed until [settle] has ruled (its check may take a moment, and
      * the words after it would light up, then go out).
      */
-    val reach: Int get() = (if (waits) firstBad(0) else null) ?: tracker.position
+    val reach: Int get() = (if (waits) firstBad(0, passDoubted = current > closed) else null) ?: tracker.position
 
     /** The recitation is back at word [w], and nothing is said from there on. */
     private fun holdAt(w: Int) {
@@ -443,6 +455,8 @@ class Follower(
         val margin = if (check.partial) CHECK_PARTIAL_MARGIN else 0f
         val right = check.words.filter { costs[check.opening + it - check.from] <= (if (it in check.unheard) minOf(tolerance, CHECK_TOLERANCE_UNHEARD) else tolerance) - margin }
         if (!check.partial) for (w in check.words) refused[w] = w !in right
+        // Still being said, and neither borne out nor ruled out: the reciter isn't stopped for it yet.
+        else for (w in check.words) if (w !in right && costs[check.opening + w - check.from] <= CHECK_DOUBT) doubted[w] = true
         for (w in right) {
             tracker.status[w] = WordStatus.OK
             righted[w] = true
@@ -516,6 +530,14 @@ class Follower(
         const val CHECK_TOLERANCE_UNHEARD = 5f * 3f / 7f
         /** What a check made while the utterance is still being said asks for more: a nat (6 for 7, 4 for 5). */
         const val CHECK_PARTIAL_MARGIN = 3f / 7f
+        /**
+         * A word a check made while the utterance is still being said doesn't bear out, but that
+         * costs no more than this (the CTC recogniser's worst character at 10 nats), is only
+         * doubted: the recitation goes on past it until the utterance is whole. A word not said
+         * costs under 10 nats for 11 % (tools/ctc/skipstudy.py): the other 89 % stop it at once,
+         * and the whole utterance's check, unchanged, catches the rest.
+         */
+        const val CHECK_DOUBT = 10f * 3f / 7f
         /** A word's cost when the reading couldn't be held to the text there (bias.h HFD_CHECK_FAIL). */
         const val CHECK_FAILED = 99f
         /** Words before the utterance's start it may begin with (said again). */

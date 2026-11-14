@@ -153,7 +153,8 @@ class Recorder(private val audio: AudioManager? = null) {
                 secSum += seg.rms
                 secMax = maxOf(secMax, seg.rms)
                 if (seg.voiced) secVoiced++
-                if (secFrames == 50) {
+                // (Every five seconds: a line a second was a third of a session's log.)
+                if (secFrames == 250) {
                     // A second in, where Android really routes the recording.
                     if (!routedLogged) {
                         routedLogged = true

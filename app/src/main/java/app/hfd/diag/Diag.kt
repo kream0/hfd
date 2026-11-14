@@ -106,9 +106,15 @@ object Diag {
         }.toString()
         synchronized(lines) {
             lines += line
-            if (lines.size > 400) lines.removeAt(0)
+            if (lines.size > 400) {
+                lines.removeAt(0)
+                dropped++
+            }
         }
     }
+
+    /** Lines lost since the last one sent: offline, or refused (ntfy's quota: 429). Said in the log once it goes through again. */
+    private var dropped = 0
 
     fun error(event: String, e: Throwable, vararg fields: Pair<String, Any?>) = log(
         event, *fields,
@@ -163,6 +169,8 @@ object Diag {
     /** Posts what's waiting (blocking; call off the main thread). */
     fun flush() {
         val client = http ?: return
+        val lost = synchronized(lines) { dropped.also { dropped = 0 } }
+        if (lost > 0) log("diag.dropped", "lines" to lost)
         val batch = synchronized(lines) { lines.toList().also { lines.clear() } }
         if (batch.isEmpty()) return
         var chunk = StringBuilder()
@@ -190,7 +198,10 @@ object Diag {
                 val rest = chunks.drop(i).flatMap { it.trimEnd().split('\n') }
                 synchronized(lines) {
                     lines.addAll(0, rest)
-                    while (lines.size > 400) lines.removeAt(0)
+                    while (lines.size > 400) {
+                        lines.removeAt(0)
+                        dropped++
+                    }
                 }
                 return
             }

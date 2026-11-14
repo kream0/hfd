@@ -456,6 +456,40 @@
   same word as its description), counts one button in the bar, and fails if the search field's
   microphone or the palette come back.
 
+## 2.10.1 still lagged: a doubted word doesn't stop the text (2.10.2, the owner, 14 Nov: "still encountering lags, when using the recitation in the faḍāʾil part. You should have some data")
+- **There was no data**: nothing from the phone reached ntfy after 19:14 UTC on 13 Nov (that
+  session's log stops in mid-utterance; three later pulls and two scheduled runs: nothing of
+  2.10.0 nor 2.10.1). ntfy.sh's free tier takes 250 messages a day from a visitor, and that
+  day's recitations had logged some 6,000 lines (two a reading, three readings a second, each
+  with the whole text read so far): about 300 messages. Past the quota every post is refused
+  (429) and the app kept the last 400 lines only.
+- So the log is a tenth of what it was (2.10.2): no `ctc.text` per reading (only when it
+  fails); `recite.partial` says what a reading keeps of the one before and what it adds
+  (`keep` characters, `add`), and nothing when it says and moves nothing new; `mic.second`
+  every five seconds; `recite.check` the costs alone. And it says what lags: `recite.partial`
+  / `recite.heard` carry `sec` (the sound read), `wait` (ms from the newest sound to its
+  reading's start), `ms` (the reading), and the whole one `reach` (how far the text shows);
+  `diag.dropped lines=n` when lines were lost. To read a session back: rebuild each partial's
+  text from `keep` / `add` (per utterance `id`).
+- What showed it instead: `recite.yml` replays the owner's kept recordings (the Actions cache:
+  five sessions of 10–13 Nov, 318 s) with the app's code, and its report prints each reading
+  and check. With 2.10.1 (the run of feed03d): a check made while speaking refused a word
+  eleven times (4.4–16 nats), the text stopped there until the utterance's end **nine times,
+  51.5 s of the 318** (up to 9 s each: the owner's utterances run 10–20 s), and most of those
+  words were then read right or righted once the utterance was whole.
+- The fix (`Follower.doubted`, `CHECK_DOUBT` 10 nats): a word a check made while speaking
+  neither bears out (6 nats; 4 for one not written) nor rules out (over 10) is only doubted:
+  `hold` and `reach` pass it, the words after it show, it stays unlit (its status is still
+  wrong or missed, undecided on screen), and the whole utterance's check decides as before
+  (refused: `settle` goes back to it). A word not said costs over 10 nats for 89 %
+  (skipstudy): those still stop the text at once.
+- The bench (this sandbox, CTC, 60 cases): as 2.10.1 to the word where it counts (ok
+  1978/2118, wrong 0, missed 0, swaps 4/5, skipped āya waited at 3/3, 6 stalls in 5), lag p90
+  0.5 s; new per case, "STOPPED WHILE SPEAKING n (s)": the text stopped at a word while the
+  reciter went on, until a reading moved it or the utterance was whole. The swapped and
+  skipped cases stop for 4–19 s (they should); Ḥuṣarī's slow Āl ʿImrān 4 times, 10.9 s; the
+  others a reading or two (0.3 s).
+
 ## 2.10.0 lagged: a word checked while the phrase goes on (2.10.1, the owner, 13 Nov: "the tracking is way too laggy: I have the time to say 10 words and it goes up 3 seconds after. I have a powerful phone. Maybe because I was in tajweed mode. Check if you have some data")
 - Not speed (the phone: a reading 67 ms at 0–3 s of sound, 296 ms at 9–12 s, 582 ms at 18–21 s;
   a check on the sound just read 0–11 ms, its frames are kept), nor the level. 2.10.0 stopped a
