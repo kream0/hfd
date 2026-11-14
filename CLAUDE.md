@@ -483,6 +483,10 @@
   wrong or missed, undecided on screen), and the whole utterance's check decides as before
   (refused: `settle` goes back to it). A word not said costs over 10 nats for 89 %
   (skipstudy): those still stop the text at once.
+- **On the owner's recordings with the fix** (CI on 9db7a19, the code of 2.10.2): the text
+  stopped while speaking 3 times, 1.0 s in all (2.10.1: 9 times, 51.5 s), the same words
+  followed (51, 87, 16 and 49 in the four sessions that follow something). That run's ctc
+  parts: ok 1978/2118, wrong 0, missed 0, swaps 4/5, skipped āya waited at. Smoke passed.
 - The bench (this sandbox, CTC, 60 cases): as 2.10.1 to the word where it counts (ok
   1978/2118, wrong 0, missed 0, swaps 4/5, skipped āya waited at 3/3, 6 stalls in 5), lag p90
   0.5 s; new per case, "STOPPED WHILE SPEAKING n (s)": the text stopped at a word while the
